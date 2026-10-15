@@ -1,0 +1,479 @@
+# Визуальный стиль экосистемы AnkiBook
+
+Этот файл — для Claude Code в новом проекте. Новый инструмент должен выглядеть
+как продукт той же семьи, что и AnkiBook: тот же «бумажный» спокойный вид,
+те же токены, те же приёмы. Всё ниже снято с работающего кода AnkiBook
+(`web/src/styles/*`, `web/src/components/*`, `web/src/steps/*.css`).
+
+Положи этот файл в корень нового проекта и сошлись на него из `CLAUDE.md`:
+«Визуальный стиль — строго по DESIGN.md».
+
+---
+
+## 1. Характер
+
+- **Инструмент, а не продукт на продажу.** Никаких лендинговых приёмов:
+  нет героев, градиентов, теней на карточках, иллюстраций, эмодзи в интерфейсе.
+- **Бумага и чернила.** Холодная серо-зелёная бумага, почти чёрный текст,
+  тонкие линейки 1px. Структура держится на линейках и отступах, а не на
+  плашках и тенях.
+- **Цвет несёт смысл, а не украшает.** Акцентов мало, и каждый что-то
+  означает. Если цвет ничего не означает — его нет.
+- **Данные — моноширинным.** Числа, счётчики, леммы, частотность, пути
+  файлов — `--font-data` с `tabular-nums`. Они читаются как таблица.
+- **Узкая колонка.** Одна колонка `max-width: 860px` по центру. Это чтение,
+  а не дашборд.
+- **Тихий интерфейс.** Подсказки мелкие и приглушённые (`.muted`, `--t-xs`).
+  Решения на виду и обратимы: отключённое не исчезает, а бледнеет до 0.35–0.4.
+
+## 2. Токены — копировать дословно
+
+Файл `src/styles/tokens.css`. Это **единственное** место с конкретными
+цветами и размерами: в компонентах только `var(--…)`, никаких hex и px
+вне шкалы.
+
+```css
+/**
+ * Дизайн-токены. Единственное место с конкретными цветами и размерами —
+ * редизайн меняет этот файл, а не компоненты.
+ */
+:root {
+    --paper:      #f1f3ef;
+    --paper-deep: #e4e8e1;
+    /* Поднятая поверхность: светлее полотна страницы. Нужна там, где
+       что-то лежит НА фоне, а не является фоном. */
+    --paper-lift: #ffffff;
+    --ink:        #1a1f1c;
+    --ink-soft:   #5c6660;
+    --rule:       #cdd4c9;
+
+    --speak:      #6b2d5c;   /* фирменный акцент (слива) */
+    --speak-bg:   #f3e9f0;
+    --read:       #8a6a1f;   /* второй смысловой акцент (охра) */
+    --read-bg:    #f5efdc;
+    --warn:       #a33a2a;
+    --done:       #3f6b46;   /* доведено до конца */
+    --done-bg:    #dcebdd;
+
+    /* Гротеск для интерфейса, моноширинный для данных. */
+    --font-ui:   'Inter Tight Variable', system-ui, -apple-system, sans-serif;
+    --font-data: 'JetBrains Mono Variable', ui-monospace, 'SF Mono', monospace;
+
+    --t-xs: 0.75rem;
+    --t-sm: 0.875rem;
+    --t-md: 1rem;
+    --t-lg: 1.375rem;
+    --t-xl: 2rem;
+
+    --s-1: 4px;
+    --s-2: 8px;
+    --s-3: 12px;
+    --s-4: 16px;
+    --s-5: 24px;
+    --s-6: 40px;
+    --s-7: 64px;
+
+    --radius: 3px;
+    --line: 1px solid var(--rule);
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --paper:      #161a17;
+        --paper-deep: #1e2320;
+        --paper-lift: #232925;
+        --ink:        #e8ece7;
+        --ink-soft:   #98a29b;
+        --rule:       #2f3733;
+        --speak:      #c98bb5;
+        --speak-bg:   #2a1d26;
+        --read:       #d4b464;
+        --read-bg:    #2a2417;
+        --done:       #7fbf8b;
+        --done-bg:    #1f2c22;
+    }
+}
+```
+
+### Как пользоваться акцентами в новом проекте
+
+- `--speak` (слива) — **фирменный цвет семьи**, а не только «колода speak».
+  Им окрашены: основная кнопка, фокус, ручки ползунков, заливка прогресса,
+  галочки (`accent-color`), рамка поля ввода в фокусе, номер текущего шага,
+  ссылки-кнопки. В новом проекте он остаётся главным акцентом.
+- `--read` (охра) — второй акцент. Использовать только как **вторую сторону
+  смыслового деления** (две колоды, два режима, две категории). Нет деления —
+  нет охры.
+- Если новому инструменту нужна своя пара категорий — переименуй токены
+  по смыслу (`--cat-a`, `--cat-b` или по предметной области), **но значения
+  оставь теми же**. Новые цвета не добавлять без смысловой причины; если
+  очень нужен третий — подобрать той же светлоты и насыщенности, с парой
+  `*-bg` и тёмной версией.
+- `--warn` — только ошибки и брак. `--done` / `--done-bg` — только «доведено
+  до конца» (выгружено, завершено).
+- Тёмная тема обязательна и работает через `prefers-color-scheme`, без
+  переключателя.
+
+### Шрифты
+
+Inter Tight (интерфейс) и JetBrains Mono (данные) **едут вместе со сборкой**
+из npm, а не с Google Fonts — инструмент обязан открываться без сети.
+Нужны именно вариативные версии: в стилях есть веса 550 и 650.
+
+```bash
+npm i -D @fontsource-variable/inter-tight @fontsource-variable/jetbrains-mono
+```
+
+Подключение — первыми строками `base.css`, до токенов (Vite сам положит
+woff2 в сборку; браузер качает только нужные алфавиты по `unicode-range`,
+кириллица в наборе есть):
+
+```css
+@import '@fontsource-variable/inter-tight';
+@import '@fontsource-variable/jetbrains-mono';
+@import './tokens.css';
+```
+
+Имена семейств в пакетах — с суффиксом `Variable`, поэтому в токенах стоит
+`'Inter Tight Variable'`, а не `'Inter Tight'`. Если статику раздаёт свой
+сервер, проверить, что `.woff2` уходит с `Content-Type: font/woff2`.
+
+## 3. База — копировать дословно
+
+`src/styles/base.css`:
+
+```css
+@import './tokens.css';
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-ui);
+    font-size: var(--t-md);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible { outline: 2px solid var(--speak); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+.app { max-width: 860px; margin: 0 auto; padding: var(--s-6) var(--s-4) var(--s-7); }
+.mono { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+.muted { color: var(--ink-soft); }
+.row { display: flex; align-items: center; gap: var(--s-3); }
+.stack { display: flex; flex-direction: column; gap: var(--s-4); }
+```
+
+Общие примитивы уровня приложения (`App.css`):
+
+```css
+/* Блок «факты»: подпись капителью сверху, крупное значение снизу. */
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--s-4); margin: 0; padding: var(--s-4) 0; border-block: var(--line); }
+.facts dt { font-size: var(--t-xs); text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-soft); }
+.facts dd { margin: var(--s-1) 0 0; font-size: var(--t-lg); }
+.error { color: var(--warn); font-size: var(--t-sm); margin: 0; }
+
+/* Шапка: навигация слева, пользователь справа, одна черта под всем. */
+.topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: var(--s-4); flex-wrap: wrap;
+    padding-bottom: var(--s-3); margin-bottom: var(--s-6);
+    border-bottom: var(--line);
+}
+
+/* Предупреждение: полоса слева, глубокая бумага, без рамки. */
+.banner {
+    padding: var(--s-2) var(--s-3);
+    border-left: 2px solid var(--warn);
+    background: var(--paper-deep);
+    font-size: var(--t-sm);
+    margin: 0 0 var(--s-4);
+}
+.linklike {
+    font: inherit; font-size: inherit; color: var(--speak);
+    background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline;
+}
+```
+
+## 4. Типографическая система
+
+| роль | правило |
+|---|---|
+| заголовок экрана (h1) | `--t-xl`, `font-weight: 650`, `letter-spacing: -0.02em`, `margin: 0` |
+| подзаголовок раздела (h2) | `--t-sm`, `600`, `uppercase`, `letter-spacing: 0.06em`, `--ink-soft`, `margin-top: --s-5` |
+| подпись поля / колонки | `--t-xs`, `uppercase`, `letter-spacing: 0.05–0.06em`, `--ink-soft`, вес 500 |
+| основной текст | `--t-md`, `line-height: 1.5` |
+| подсказка, пояснение | `--t-xs`, `.muted`, `margin: 0` |
+| главный объект в строке (слово, название) | вес `550–600` |
+| числа, счётчики, пути | `.mono` |
+
+Веса только 500 / 550 / 600 / 650 — без 700+. Капитель (uppercase +
+разрядка) — для подписей и подзаголовков, никогда для основного текста.
+Разделитель в строке метаданных — ` · ` (средняя точка с пробелами):
+`в словаре 120 · в Noji 48`.
+
+## 5. Компоненты
+
+Каждый компонент — `Component.tsx` + `Component.css` рядом, BEM-подобные
+классы (`block__elem--mod`). Без UI-библиотек, без CSS-фреймворков,
+без CSS-in-JS. Стек: React + Vite + обычный CSS.
+
+### Кнопка
+
+```css
+.btn {
+    font: inherit; font-size: var(--t-sm);
+    padding: var(--s-2) var(--s-4);
+    border: var(--line); border-radius: var(--radius);
+    background: transparent; color: var(--ink); cursor: pointer;
+    transition: background 120ms, border-color 120ms;
+}
+.btn:hover:not(:disabled) { background: var(--paper-deep); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn--primary { background: var(--speak); border-color: var(--speak); color: var(--paper); }
+/* Фон повторён намеренно: .btn:hover специфичнее .btn--primary. */
+.btn--primary:hover:not(:disabled) { background: var(--speak); filter: brightness(1.15); }
+.btn--quiet { border-color: transparent; color: var(--ink-soft); padding-inline: var(--s-2); }
+```
+
+Варианты: `default` (контур), `primary` (одна на экран — главное действие),
+`quiet` (назад, отмена, второстепенное). Блок действий экрана —
+`.row` с `padding-top: --s-4; border-top: var(--line)`; «назад» — quiet слева,
+главное — primary справа.
+
+### Переключатель (вместо select при 2–5 коротких вариантах)
+
+```css
+.choice { display: inline-flex; border: var(--line); border-radius: var(--radius); overflow: hidden; }
+.choice__opt {
+    font: inherit; font-size: var(--t-xs);
+    padding: var(--s-1) var(--s-3);
+    background: transparent; color: var(--ink-soft);
+    border: 0; border-left: var(--line); cursor: pointer; white-space: nowrap;
+    transition: background 120ms, color 120ms;
+}
+.choice__opt:first-child { border-left: 0; }
+.choice__opt:hover:not(.choice__opt--on) { background: var(--paper-deep); color: var(--ink); }
+.choice__opt--on { color: var(--ink); font-weight: 600; background: var(--paper-deep); }
+.choice__opt--speak.choice__opt--on { background: var(--speak-bg); color: var(--speak); }
+.choice__opt--read.choice__opt--on  { background: var(--read-bg);  color: var(--read); }
+```
+
+`role="radiogroup"` с `aria-label`, кнопки `role="radio"` + `aria-checked`.
+
+### Иконки
+
+Рисуются руками, инлайн SVG, **без библиотек иконок**. Сетка 16×16,
+отображение 14×14, `fill="none" stroke="currentColor" stroke-width="1.4"
+stroke-linecap="round" stroke-linejoin="round"`. Иконочная кнопка — 24×24,
+без рамки, `--ink-soft`, на hover фон `--paper` и цвет `--ink`; обязательно
+`title` и `aria-label`. Готовые пути из AnkiBook:
+
+```tsx
+pencil:   <><path d="M2 14l.9-3.2L10.6 3l2.4 2.4-7.7 7.7L2 14z" /><path d="M9.6 4l2.4 2.4" /></>
+regen:    <><path d="M13.2 8a5.2 5.2 0 1 1-1.5-3.7" /><path d="M13.4 2.2v3h-3" /></>
+ok:       <path d="M3 8.4l3.2 3.2L13 4.8" />
+download: <><path d="M8 2v8" /><path d="M4.5 6.8L8 10.3l3.5-3.5" /><path d="M2.5 13.2h11" /></>
+copy:     <><rect x="5.5" y="5.5" width="8" height="8" rx="1.5" /><path d="M10.5 3.5h-7a1.5 1.5 0 0 0-1.5 1.5v7" /></>
+cancel:   <><path d="M4 4l8 8" /><path d="M12 4l-8 8" /></>
+```
+
+### Шаги мастера (если в новом инструменте есть последовательность)
+
+```css
+.steps { display: flex; flex-wrap: wrap; gap: var(--s-4); font-size: var(--t-xs); letter-spacing: 0.02em; }
+.steps__item { display: inline-flex; align-items: baseline; gap: var(--s-2); color: var(--ink-soft); }
+.steps__num { font-size: 0.6875rem; opacity: 0.6; }
+.steps__item--now { color: var(--ink); font-weight: 600; }
+.steps__item--now .steps__num { color: var(--speak); opacity: 1; }
+.steps__item--done .steps__num { text-decoration: line-through; }
+```
+
+Номер — `.mono`, двузначный: `01`, `02`… Пройденный шаг — номер зачёркнут.
+Нет последовательности — нет нумерации, просто текстовые пункты тем же видом.
+
+### Пользователь и аватар
+
+Справа в `.topbar`: имя (вес 550) + квадратная плитка 34×34 с радиусом
+`--radius` (не круг). Цвет плитки выводится из имени: хэш → сетка из 12 тонов
+по 30° и двух светлот:
+
+```ts
+const h = hash(name);  // h = (Math.imul(h, 31) + codePoint) | 0, затем Math.abs
+`hsl(${(h % 12) * 30} 45% ${Math.floor(h / 12) % 2 ? 38 : 52}%)`
+```
+
+Поверх — зверёк DiceBear через `<img>` (не инлайн):
+`https://api.dicebear.com/10.x/critters/svg?tags=animation&seed=<имя>`,
+`width/height: 118%`, `object-fit: cover`, `object-position: 50% 12%`.
+Не загрузился — первая буква имени белым на плитке. Те же формулы
+→ у одного имени одинаковый зверёк и цвет **во всех инструментах семьи**.
+Это главный сквозной знак экосистемы, его важно повторить точно.
+
+Выпадающее меню: `--paper-lift`, `var(--line)`, `--radius`,
+`box-shadow: 0 6px 20px rgb(0 0 0 / 12%)` (единственная тень в системе —
+у того, что парит над страницей), `padding: --s-2`, `min-width: 220px`.
+Закрывается кликом мимо и Escape.
+
+### Поле ввода
+
+`font: inherit; font-size: --t-sm; padding: --s-1 --s-2; background: --paper;
+border: var(--line); border-radius: --radius`. В фокусе — `outline: none;
+border-color: var(--speak)`.
+
+### Ползунки
+
+Трек 2px `--rule`, заливка 2px `--speak`, ручка 14×14 круг: фон `--paper`,
+рамка `2px solid var(--speak)`, `cursor: grab`. Фокус — свечение
+`box-shadow: 0 0 0 3px var(--speak-bg)` у ручки, без outline у инпута.
+Над ползунком строка: подпись капителью слева, значение `.mono --t-xs` справа.
+Опорная риска на шкале — 1×12px `--ink-soft` с `opacity: 0.7`.
+
+### Прогресс
+
+```css
+.bar { height: 4px; background: var(--paper-deep); border-radius: 2px; overflow: hidden; }
+.bar__fill { height: 100%; background: var(--speak); transition: width 200ms; }
+/* Неизвестный объём: полоса ходит туда-обратно. */
+.bar--wait .bar__fill { width: 30%; animation: bar-wait 1.1s ease-in-out infinite; }
+@keyframes bar-wait { 0% { margin-inline-start: 0; } 50% { margin-inline-start: 70%; } 100% { margin-inline-start: 0; } }
+```
+
+Прогресс внутри строки списка — фон строки, а не отдельный элемент:
+`background: linear-gradient(90deg, var(--done-bg) var(--done-part), transparent var(--done-part))`.
+
+### Зона загрузки файла
+
+```css
+.drop {
+    display: flex; flex-direction: column; align-items: center; gap: var(--s-3);
+    padding: var(--s-7) var(--s-4);
+    border: 1px dashed var(--rule); border-radius: var(--radius);
+    background: var(--paper-deep);
+    transition: border-color 120ms, background 120ms;
+}
+.drop--over { border-color: var(--speak); background: var(--speak-bg); }
+.drop--busy { opacity: 0.6; }
+.drop__lead { margin: 0; font-size: var(--t-lg); }
+.drop__formats { margin: 0; font-size: var(--t-xs); letter-spacing: 0.04em; } /* .muted .mono, «epub · txt · srt» */
+```
+
+### Списки и таблицы
+
+- Список — `list-style: none`, строки разделены `border-bottom: var(--line)`,
+  отступ строки `--s-3` по вертикали. Никаких карточек-плашек для строк.
+- Таблица: `border-collapse: collapse; table-layout: fixed; font-size: --t-sm`.
+  Заголовки — капитель `--t-xs` вес 500 `--ink-soft`, линейка снизу.
+  Числовые колонки — справа, `.mono`. Ширины колонок явные.
+- Сортировка — сам заголовок-кнопка, стрелка всегда занимает место
+  (`width: 0.7em`), чтобы заголовок не дёргался.
+- Выключенная строка: `opacity: 0.35–0.4`, главное слово зачёркнуто,
+  остаётся на месте. Галочки — `accent-color: var(--speak)`.
+- Цитата/контекст: `border-left: 2px solid var(--rule); padding-left: --s-3;
+  --t-sm; --ink-soft`.
+- Брак в строке — полоса слева `2px solid var(--warn)` + текст замечания
+  `--t-xs --warn` под содержимым. Принятый брак — та же полоса через
+  `color-mix(in srgb, var(--warn) 35%, transparent)`.
+
+### Метка категории (бейдж)
+
+```css
+.tag { font-size: var(--t-xs); padding: 0 var(--s-2); border-radius: var(--radius); }
+.tag--speak { background: var(--speak-bg); color: var(--speak); }
+.tag--read  { background: var(--read-bg);  color: var(--read); }
+```
+
+### Карточка (единственный «объёмный» элемент)
+
+Показывает учебную карточку так, как её увидят при повторении. Двойная рамка
+в цвет категории; это исключение из правила «радиус 3px».
+
+```css
+.side--speak { --deck: var(--speak); --deck-bg: var(--speak-bg); }
+.side--read  { --deck: var(--read);  --deck-bg: var(--read-bg); }
+.side {
+    display: flex; flex-direction: column; padding: var(--s-2);
+    background: var(--deck-bg);
+    background: color-mix(in srgb, var(--deck) 40%, var(--paper-lift));
+    border: 2px solid var(--deck); border-radius: 12px;
+}
+.side__inner {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    min-height: 124px; padding: var(--s-3);
+    background: var(--paper-lift);
+    border: 1px solid color-mix(in srgb, var(--deck) 35%, transparent);
+    border-radius: 6px;
+}
+.side__text { margin: 0; font-size: var(--t-sm); text-align: center; }
+```
+
+Две стороны рядом: `grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+max-width: 600px`. Иконочные кнопки — в поле рамки под текстом, справа.
+
+### Панель с текстом/файлом
+
+`border: var(--line); --radius; background: --paper-deep`; шапка
+`.row` (имя `--t-sm`, счётчик `.muted --t-xs`, иконки); тело — `<textarea>`
+на `--paper-lift`, `.mono --t-xs`, `line-height: 1.6`, `white-space: pre`,
+линейка сверху.
+
+## 6. Компоновка экрана
+
+```
+┌──────────────────────── 860px ────────────────────────┐
+│ 01 Книга  02 Разбор  03 …              Кеша [🦔]      │  .topbar
+│───────────────────────────────────────────────────────│  линейка, ниже 40px
+│ Заголовок экрана                                       │  h1 --t-xl
+│ Пояснение мелким приглушённым                          │  .muted --t-xs
+│                                                        │
+│ ПОДЗАГОЛОВОК                                           │  h2 капитель
+│ строка списка ................................ 12 · 4  │
+│ строка списка ................................ 30 · 9  │
+│───────────────────────────────────────────────────────│
+│ Назад                                    [ Дальше ]    │  quiet / primary
+└────────────────────────────────────────────────────────┘
+```
+
+Экран — `.stack` (вертикаль с `gap: --s-4`). Слева состояние, справа
+действие. Загрузка — одной строкой `.muted`: «Загружаю…», «Считаю…».
+
+## 7. Движение
+
+Только `transition` 120ms на фон/цвет/рамку и 200ms на ширину прогресса.
+Никаких появлений, сдвигов, пружин. `prefers-reduced-motion` гасит всё.
+
+## 8. Текст интерфейса
+
+- Язык интерфейса — русский, `<html lang="ru">`.
+- На «ты», коротко, глаголом: «Перетащи файл сюда», «Выбрать файл»,
+  «Разбираю книгу…», «Книг пока нет. Загрузи первую — дальше словарь будет
+  копиться сам».
+- Процесс — глагол в настоящем с многоточием (`…`, один символ).
+- Тире — длинное `—` с пробелами; диапазоны — `1 — 5` в `.mono`.
+- Без восклицательных знаков, без «Упс», без эмодзи.
+- `<title>` — имя инструмента строчными, как `ankibook`.
+
+## 9. Чего не делать
+
+- Не подключать Tailwind, MUI, shadcn, иконки-библиотеки, Google Fonts
+  и любые другие шрифты, кроме двух из раздела «Шрифты».
+- Не вводить новые цвета, тени, радиусы и размеры вне токенов.
+- Не красить ради красоты: цвет = смысл.
+- Не использовать вес 700+, курсив (кроме пометки пустого значения),
+  подчёркивание (кроме `.linklike`).
+- Не прятать отключённое — бледнить на месте.
+- Не делать плашки-карточки для строк списков и разделов: разделитель —
+  линейка 1px.
+
+## 10. Стиль кода стилей
+
+Комментарии в CSS — по-русски и объясняют **почему** (например: «Фон повторён
+намеренно: `.btn:hover` специфичнее…»), а не что. Общие примитивы — в
+`base.css`/`App.css`, а не в CSS первого попавшегося экрана: иначе вид блока
+зависит от того, смонтирован ли чужой компонент.

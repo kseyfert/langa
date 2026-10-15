@@ -1,0 +1,886 @@
+<title>Тренажёр синей книги</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=Literata:opsz,wght@7..72,400;7..72,500;7..72,600&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: workbook — unit index on the left, one exercise sheet on the right; stacks on phones */
+:root{
+  --bg:#F3F5F9; --surface:#FFFFFF; --ink:#141A2E; --muted:#5A6279; --line:#DCE1EB;
+  --accent:#1D4ED8; --accent-ink:#FFFFFF; --accent-soft:#E7EDFD;
+  --good:#17784A; --good-soft:#E3F4EA; --warn:#9A5B00; --warn-soft:#FBF0DC;
+  --bad:#B42318; --bad-soft:#FCE8E6; --none:#6B7280; --none-soft:#EEF0F3;
+  --f-ui:"Onest",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-text:"Literata",Georgia,"Times New Roman",serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0D1120; --surface:#151A2B; --ink:#E6E9F2; --muted:#98A0B7; --line:#283049;
+  --accent:#7FA2FF; --accent-ink:#0D1120; --accent-soft:#1C2648;
+  --good:#52C48C; --good-soft:#15301F; --warn:#E5A84B; --warn-soft:#33270F;
+  --bad:#F27A6E; --bad-soft:#3A1A18; --none:#9AA1AE; --none-soft:#222838; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0D1120; --surface:#151A2B; --ink:#E6E9F2; --muted:#98A0B7; --line:#283049;
+  --accent:#7FA2FF; --accent-ink:#0D1120; --accent-soft:#1C2648;
+  --good:#52C48C; --good-soft:#15301F; --warn:#E5A84B; --warn-soft:#33270F;
+  --bad:#F27A6E; --bad-soft:#3A1A18; --none:#9AA1AE; --none-soft:#222838; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-ui);font-size:15px;line-height:1.5}
+button,input,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.app{display:grid;grid-template-columns:310px minmax(0,1fr);min-height:100vh}
+aside{border-right:1px solid var(--line);background:var(--surface);position:sticky;top:env(safe-area-inset-top,0px);height:100vh;display:flex;flex-direction:column;min-width:0}
+.brand{padding:18px 18px 10px}
+.brand h1{font-size:17px;margin:0;font-weight:700;letter-spacing:-.01em}
+.brand p{margin:2px 0 0;color:var(--muted);font-size:13px}
+.search{margin:6px 18px 10px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);width:calc(100% - 36px)}
+.units{overflow-y:auto;padding:0 8px 24px;flex:1}
+.sec{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);padding:14px 10px 4px;font-weight:600}
+.u{display:flex;gap:10px;width:100%;text-align:left;border:0;background:none;padding:6px 10px;border-radius:7px;cursor:pointer;align-items:baseline}
+.u:hover{background:var(--bg)}
+.u .n{font-family:var(--f-mono);font-size:12px;color:var(--muted);min-width:26px;font-variant-numeric:tabular-nums}
+.u .t{font-size:13.5px;line-height:1.35}
+.u[aria-current="true"]{background:var(--accent-soft)}
+.u[aria-current="true"] .n{color:var(--accent);font-weight:700}
+main{padding-block:28px 64px;padding-inline:clamp(16px,4vw,48px);min-width:0}
+.sheet{max-width:820px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+.unit-head .num{font-family:var(--f-mono);font-size:13px;color:var(--accent);font-weight:700}
+.unit-head h2{font-size:clamp(22px,3vw,28px);margin:2px 0 4px;letter-spacing:-.02em;text-wrap:balance;line-height:1.2}
+.unit-head p{margin:0;color:var(--muted);max-width:65ch}
+.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.seg{display:flex;flex-wrap:wrap;border:1px solid var(--line);border-radius:10px;padding:3px;background:var(--surface);gap:2px}
+.seg button{border:0;background:none;padding:7px 12px;border-radius:7px;cursor:pointer;font-size:14px;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--surface)}
+.btn{border:0;border-radius:9px;padding:9px 16px;cursor:pointer;font-weight:600;background:var(--accent);color:var(--accent-ink)}
+.btn:disabled{opacity:.5;cursor:default}
+.btn.ghost{background:none;color:var(--ink);border:1px solid var(--line);font-weight:500}
+.btn.small{padding:6px 12px;font-size:13.5px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px clamp(16px,3vw,28px)}
+.card h3{margin:0 0 4px;font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+.instr{margin:0 0 16px;color:var(--muted)}
+.tag{display:inline-block;font-size:12px;padding:2px 8px;border-radius:99px;background:var(--warn-soft);color:var(--warn);font-weight:600;margin-left:8px;vertical-align:middle;letter-spacing:0;text-transform:none}
+.items{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:14px}
+.item{display:grid;grid-template-columns:28px minmax(0,1fr);gap:6px}
+.item .i{font-family:var(--f-mono);color:var(--muted);font-size:13px;padding-top:3px}
+.sent{font-family:var(--f-text);font-size:17px;line-height:1.7}
+.gap{font-family:var(--f-text);font-size:16px;border:0;border-bottom:2px solid var(--accent);background:var(--accent-soft);padding:1px 6px;min-width:120px;width:auto;border-radius:4px 4px 0 0}
+.gap.ok{border-color:var(--good);background:var(--good-soft)}
+.gap.no{border-color:var(--bad);background:var(--bad-soft)}
+.opts{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.opt{display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:8px;padding:5px 12px;cursor:pointer;font-family:var(--f-text);font-size:15.5px}
+.opt input{accent-color:var(--accent)}
+.opt.ok{border-color:var(--good);background:var(--good-soft)}
+.opt.no{border-color:var(--bad);background:var(--bad-soft)}
+.fb{font-size:13.5px;margin-top:4px;color:var(--muted)}
+.fb b.ok{color:var(--good)} .fb b.no{color:var(--bad)}
+.source{font-family:var(--f-text);font-size:19px;line-height:1.6;margin:0 0 14px;padding:14px 16px;background:var(--bg);border-radius:10px}
+.source small{display:block;font-family:var(--f-ui);font-size:13px;color:var(--muted);margin-top:6px}
+textarea{width:100%;min-height:96px;border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:var(--bg);font-family:var(--f-text);font-size:16.5px;line-height:1.6;resize:vertical}
+.start{font-family:var(--f-text);color:var(--accent);font-size:16px;margin:0 0 6px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:14px}
+.status{color:var(--muted);font-size:14px}
+.err{color:var(--bad);font-size:14px}
+.verdict{display:flex;gap:10px;align-items:center;padding:12px 14px;border-radius:10px;font-weight:600;margin-bottom:16px}
+.verdict.correct_target{background:var(--good-soft);color:var(--good)}
+.verdict.correct_non_target{background:var(--warn-soft);color:var(--warn)}
+.verdict.incorrect{background:var(--bad-soft);color:var(--bad)}
+.summary{margin:0 0 16px;max-width:65ch}
+.urow{display:grid;grid-template-columns:minmax(0,1fr) 150px;gap:6px 16px;padding:12px 0;border-top:1px solid var(--line)}
+.urow:first-of-type{border-top:0}
+.urow.target{background:var(--bg);border:0;border-radius:10px;padding:14px;margin-bottom:6px}
+.uname{font-weight:600}
+.uname .n{font-family:var(--f-mono);font-size:12.5px;color:var(--accent);margin-right:6px}
+.uname .k{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);display:block;font-weight:600;margin-bottom:2px}
+.ucomment{grid-column:1/-1;font-size:14px;color:var(--muted)}
+.frag{grid-column:1/-1;font-family:var(--f-text);font-size:15px}
+.frag del{color:var(--bad);text-decoration-thickness:1.5px}
+.frag ins{color:var(--good);text-decoration:none;font-weight:600}
+.score{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.chip{font-size:12px;font-weight:600;padding:2px 9px;border-radius:99px}
+.chip.correct{background:var(--good-soft);color:var(--good)}
+.chip.error{background:var(--bad-soft);color:var(--bad)}
+.chip.partial{background:var(--warn-soft);color:var(--warn)}
+.chip.not_used{background:var(--none-soft);color:var(--none)}
+.meter{display:flex;align-items:center;gap:8px;width:100%;justify-content:flex-end}
+.meter .bar{flex:1;max-width:90px;height:6px;border-radius:3px;background:var(--line);overflow:hidden}
+.meter .bar i{display:block;height:100%}
+.meter b{font-family:var(--f-mono);font-size:14px;font-variant-numeric:tabular-nums;min-width:28px;text-align:right}
+.sub{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600;margin:18px 0 4px}
+.ref{font-family:var(--f-text);font-size:16px;margin:4px 0}
+.retry{margin-top:18px;padding:16px;border:1px dashed var(--warn);border-radius:12px}
+.retry p{margin:0 0 10px;font-weight:600;color:var(--warn)}
+.dispute{margin-top:16px;padding-top:16px;border-top:1px solid var(--line)}
+.dispute textarea{min-height:70px;font-family:var(--f-ui);font-size:15px}
+.reply{margin-top:10px;padding:10px 14px;background:var(--accent-soft);border-radius:10px;font-size:14.5px}
+.attempt-label{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600;margin:0 0 8px}
+.empty{color:var(--muted)}
+.mobile-pick{display:none}
+/* progress */
+.filter{display:flex;gap:2px;margin:0 18px 6px;border:1px solid var(--line);border-radius:8px;padding:2px;background:var(--bg)}
+.filter button{flex:1;border:0;background:none;padding:5px 8px;border-radius:6px;cursor:pointer;font-size:13px;color:var(--muted)}
+.filter button[aria-pressed="true"]{background:var(--surface);color:var(--ink);font-weight:600;box-shadow:0 0 0 1px var(--line)}
+.sync{margin:0 18px 6px;font-size:12px;color:var(--muted)}
+.urow-side{display:grid;grid-template-columns:24px minmax(0,1fr);align-items:start}
+.urow-side .act{margin:9px 0 0 6px;width:15px;height:15px;accent-color:var(--accent);cursor:pointer}
+.u{display:grid;grid-template-columns:26px minmax(0,1fr) auto;column-gap:8px;row-gap:4px;align-items:baseline}
+.u .sc{font-family:var(--f-mono);font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.u .pb{grid-column:2/4;height:3px;border-radius:2px;background:var(--line);overflow:hidden}
+.u .pb i{display:block;height:100%;background:var(--accent)}
+.u.off .t{color:var(--muted)}
+.list-empty{padding:16px 10px;color:var(--muted);font-size:13.5px}
+.mastery{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;margin-top:14px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.mastery label{display:flex;gap:8px;align-items:center;cursor:pointer;font-weight:600}
+.mastery label input{width:17px;height:17px;accent-color:var(--accent)}
+.mastery .m{display:flex;align-items:center;gap:10px;flex:1;min-width:220px}
+.mastery .m .bar{flex:1;height:8px;border-radius:4px;background:var(--line);overflow:hidden}
+.mastery .m .bar i{display:block;height:100%;background:var(--accent)}
+.mastery .m b{font-family:var(--f-mono);font-size:15px;font-variant-numeric:tabular-nums}
+.mastery .m span{color:var(--muted);font-size:13px;white-space:nowrap}
+.deltas{display:flex;flex-direction:column;gap:4px}
+.delta{display:flex;gap:10px;align-items:baseline;font-size:14px}
+.delta .n{font-family:var(--f-mono);font-size:12.5px;color:var(--accent);min-width:28px}
+.delta .t{flex:1;min-width:0}
+.delta .v{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.delta .v.up{color:var(--good)} .delta .v.down{color:var(--bad)}
+@media (max-width:860px){
+  .filter,.sync{display:none} aside.open .filter, aside.open .sync{display:flex}
+  .app{grid-template-columns:1fr}
+  aside{position:static;height:auto;border-right:0;border-bottom:1px solid var(--line)}
+  .units{max-height:0;overflow:hidden;padding-bottom:0}
+  aside.open .units{max-height:55vh;overflow-y:auto;padding-bottom:16px}
+  .search{display:none} aside.open .search{display:block}
+  .mobile-pick{display:block;margin:0 18px 12px}
+  .urow{grid-template-columns:1fr}
+  .score{align-items:flex-start}
+  .meter{justify-content:flex-start}
+}
+@media (prefers-reduced-motion:no-preference){.meter .bar i{transition:width .5s ease}}
+</style>
+
+<div class="app">
+  <aside id="side">
+    <div class="brand">
+      <h1>Тренажёр синей книги</h1>
+      <p>English Grammar in Use · 5th edition · 145 юнитов</p>
+    </div>
+    <button class="btn ghost small mobile-pick" id="toggleUnits">Выбрать юнит</button>
+    <input class="search" id="search" type="search" placeholder="Поиск: perfect, артикли, 72…" aria-label="Поиск юнита">
+    <div class="filter" id="filter" role="group" aria-label="Какие юниты показывать"></div>
+    <div class="sync" id="sync">Загрузка прогресса…</div>
+    <nav class="units" id="units" aria-label="Юниты"></nav>
+  </aside>
+  <main>
+    <div class="sheet">
+      <header class="unit-head" id="unitHead"></header>
+      <div class="controls">
+        <div class="seg" id="types" role="group" aria-label="Тип задания"></div>
+        <button class="btn" id="newBtn">Новое задание</button>
+      </div>
+      <div id="notice" class="status" hidden></div>
+      <section id="exercise"></section>
+      <section id="results"></section>
+    </div>
+  </main>
+</div>
+
+<script>
+const UNITS = [
+[1, "Present continuous (I am doing)", "действие в процессе сейчас или в текущий период: am/is/are + -ing"],
+[2, "Present simple (I do)", "привычки, факты, регулярные действия; do/does в вопросах и отрицаниях"],
+[3, "Present continuous and present simple 1 (I am doing and I do)", "контраст: временное и происходящее сейчас против постоянного и регулярного; always + continuous для раздражающих привычек"],
+[4, "Present continuous and present simple 2 (I am doing and I do)", "глаголы состояния (know, want, believe) обычно не в continuous; think/see/have/be в разных значениях; he's being …"],
+[5, "Past simple (I did)", "законченное действие в прошлом, правильные и неправильные глаголы"],
+[6, "Past continuous (I was doing)", "действие в процессе в момент в прошлом; фон для другого события"],
+[7, "Present perfect 1 (I have done)", "прошлое действие с результатом сейчас; новости; just / already / yet"],
+[8, "Present perfect 2 (I have done)", "опыт до настоящего: ever / never; It's the first time …; today, this week и незаконченный период"],
+[9, "Present perfect continuous (I have been doing)", "действие, которое длится до сих пор или только что закончилось и видны следы: have been doing"],
+[10, "Present perfect continuous and simple (I have been doing and I have done)", "контраст: процесс и длительность (PPC) против результата и количества (PP)"],
+[11, "how long have you (been) … ?", "как долго что-то длится до сих пор: have been / have been doing; не путать с present simple"],
+[12, "for and since, when … ? and how long … ?", "for + период, since + точка отсчёта; When did …? против How long have …?; It's … since …"],
+[13, "Present perfect and past 1 (I have done and I did)", "present perfect (связь с настоящим) против past simple (законченное время в прошлом)"],
+[14, "Present perfect and past 2 (I have done and I did)", "контраст PP и past simple с маркерами времени: today / yesterday, this year / last year, finished time"],
+[15, "Past perfect (I had done)", "действие раньше другого момента в прошлом: had + V3"],
+[16, "Past perfect continuous (I had been doing)", "длительное действие до момента в прошлом: had been doing"],
+[17, "have and have got", "владение и связанные значения: have / have got; have для действий (have a shower)"],
+[18, "used to (do)", "прошлые привычки и состояния, которые прекратились; used to против past simple"],
+[19, "Present tenses (I am doing / I do) for the future", "present continuous для договорённостей и present simple для расписаний в будущем"],
+[20, "I'm going to (do)", "намерения и прогнозы по признакам; was going to"],
+[21, "will and shall 1", "спонтанные решения, предложения, обещания, просьбы; Shall I / shall we …?"],
+[22, "will and shall 2", "will для предсказаний и мнения о будущем: I think … will, probably"],
+[23, "I will and I'm going to", "сравнение will и going to: решение в момент речи против заранее принятого"],
+[24, "will be doing and will have done", "действие в процессе в момент в будущем; действие, завершённое к моменту в будущем"],
+[25, "when I do and when I've done, if and when", "when / as soon as / until + present для будущего; when I've done; if против when"],
+[26, "can, could and (be) able to", "умение и возможность: can / could / be able to, managed to"],
+[27, "could (do) and could have (done)", "could для возможности и нереального; could have done для упущенной возможности в прошлом"],
+[28, "must and can't", "логический вывод: must (наверняка) и can't (не может быть); must have done / can't have done"],
+[29, "may and might 1", "предположения: may / might (have) done; may be doing"],
+[30, "may and might 2", "might для будущего; might as well; may / might и could"],
+[31, "have to and must", "обязанность: have to против must; don't have to"],
+[32, "must, mustn't, needn't", "must, mustn't, needn't; needn't have done против didn't need to"],
+[33, "should 1", "совет и мнение: should, should have done"],
+[34, "should 2", "should после suggest, insist и т. п.; should в условных; I should …"],
+[35, "I'd better … , it's time …", "had better для совета; it's time + past"],
+[36, "would", "would в воображаемых ситуациях, would have; прошлые привычки с would"],
+[37, "can/could/would you … ? etc. (Requests, offers, permission and invitations)", "просьбы, предложения, разрешение, приглашения: can / could / would you …?"],
+[38, "if I do … and if I did …", "первый и второй тип условных: реальное против воображаемого"],
+[39, "if I knew … , I wish I knew …", "второй тип условных и wish для настоящего: if I knew, I wish I knew"],
+[40, "if I had known … , I wish I had known …", "третий тип условных и wish для прошлого: if I had known, I wish I had known"],
+[41, "wish", "wish + would; wish против hope"],
+[42, "Passive 1 (is done / was done)", "пассив в present / past simple; by + деятель"],
+[43, "Passive 2 (be done / been done / being done)", "пассив после модальных, в инфинитиве, perfect и continuous"],
+[44, "Passive 3", "пассив с двумя дополнениями; get + V3; I was born"],
+[45, "it is said that … , he is said to … , he is supposed to …", "it is said that … / he is said to …; be supposed to"],
+[46, "have something done", "каузатив: have / get something done"],
+[47, "Reported speech 1 (he said that …)", "косвенная речь: сдвиг времён после said; say против tell"],
+[48, "Reported speech 2", "косвенная речь: когда время не сдвигается; просьбы и приказы: told / asked … to"],
+[49, "Questions 1", "порядок слов в вопросах; вопрос к подлежащему; предлог в конце вопроса"],
+[50, "Questions 2 (do you know where … ? / he asked me where …)", "косвенные вопросы: Do you know where …?; he asked me where …"],
+[51, "Auxiliary verbs (have/do/can etc.), I think so / I hope so etc.", "вспомогательные в кратких ответах; so / neither; I think so / I hope not"],
+[52, "Question tags (do you? isn't it? etc.)", "разделительные вопросы: do you? / isn't it?"],
+[53, "Verb + -ing (enjoy doing / stop doing etc.)", "глагол + -ing: enjoy, stop, avoid, mind и т. п.; having done"],
+[54, "Verb + to … (decide to … / forget to … etc.)", "глагол + to: decide, forget, promise; seem to; question word + to"],
+[55, "Verb (+ object) + to … (I want you to …)", "глагол + объект + to: want / tell / advise you to; make / let без to"],
+[56, "Verb + -ing or to … 1 (remember, regret etc.)", "-ing или to с изменением смысла: remember, regret, go on"],
+[57, "Verb + -ing or to … 2 (try, need, help)", "-ing или to: try, need, help"],
+[58, "Verb + -ing or to … 3 (like / would like etc.)", "like / love / hate + -ing или to; would like + to; would like to have done"],
+[59, "prefer and would rather", "prefer и would rather: предпочтения; would rather you did"],
+[60, "Preposition (in/for/about etc.) + -ing", "предлог + -ing: before / after / instead of / by + -ing"],
+[61, "be/get used to … (I'm used to …)", "be / get used to + -ing против used to do"],
+[62, "Verb + preposition + -ing (succeed in -ing / insist on -ing etc.)", "глагол + предлог + -ing: succeed in, insist on; verb + object + preposition + -ing"],
+[63, "there's no point in -ing, it's worth -ing etc.", "устойчивые выражения с -ing: no point in, worth, have difficulty, spend time, go + -ing"],
+[64, "to … , for … and so that …", "цель: to …, for …, so that …"],
+[65, "Adjective + to …", "прилагательное + to: easy to, nice of you to; the first / the last to"],
+[66, "to … (afraid to do) and preposition + -ing (afraid of -ing)", "afraid to / afraid of -ing, sorry, interested и т. п.: to против предлог + -ing"],
+[67, "see somebody do and see somebody doing", "see / hear somebody do и see / hear somebody doing"],
+[68, "-ing clauses (He hurt his knee playing football.)", "-ing-обороты: одновременные и последовательные действия, причина"],
+[69, "Countable and uncountable 1", "исчисляемые и неисчисляемые: a / an, some, many / much"],
+[70, "Countable and uncountable 2", "неисчисляемые в английском, исчисляемые в русском: advice, information, news, furniture"],
+[71, "Countable nouns with a/an and some", "a / an и some с исчисляемыми; a / an при описании и профессии"],
+[72, "a/an and the", "первое упоминание против известного; единственное в ситуации"],
+[73, "the 1", "the в устойчивых случаях: the sun, the same, the cinema; без артикля: breakfast, next week"],
+[74, "the 2 (school / the school etc.)", "school / the school, prison / the prison, hospital, church, bed, work, home"],
+[75, "the 3 (children / the children)", "общее без артикля (children) против конкретного (the children)"],
+[76, "the 4 (the giraffe / the telephone / the old etc.)", "the для вида и изобретения (the giraffe, the telephone); the + прилагательное (the old); the + национальность"],
+[77, "Names with and without the 1", "имена собственные: люди, страны, города, горы, озёра — с the и без"],
+[78, "Names with and without the 2", "названия: улицы, здания, организации, газеты — с the и без"],
+[79, "Singular and plural", "единственное и множественное: news, police, team, a pair of; согласование"],
+[80, "Noun + noun (a bus driver / a headache)", "существительное + существительное: a bus driver, a ten-minute walk"],
+[81, "-'s (your sister's name) and of … (the name of the book)", "-'s против of: your sister's name, the name of the book; время с -'s"],
+[82, "myself/yourself/themselves etc.", "возвратные местоимения: myself; each other; by myself"],
+[83, "a friend of mine, my own house, on my own / by myself", "a friend of mine, my own, on my own / by myself"],
+[84, "there … and it …", "there … и it …: введение нового и ссылка на известное"],
+[85, "some and any", "some / any, somebody / anybody; any в значении «любой»"],
+[86, "no/none/any, nothing/nobody etc.", "no / none / any; nothing / nobody; отрицание одно на предложение"],
+[87, "much, many, little, few, a lot, plenty", "количество: much, many, little, few, a lot, plenty; few против a few"],
+[88, "all / all of, most / most of, no / none of etc.", "квантификаторы с of и без: all / all of, most / most of, none of"],
+[89, "both / both of, neither / neither of, either / either of", "both / neither / either с of и без"],
+[90, "all, every, whole", "all, every, whole; all против everything"],
+[91, "each and every", "each против every"],
+[92, "Relative clauses 1: clauses with who/that/which", "определительные придаточные: who / that / which как подлежащее"],
+[93, "Relative clauses 2: clauses with and without who/that/which", "придаточные без who / that / which (дополнение); предлог в конце"],
+[94, "Relative clauses 3: whose/whom/where", "whose, whom, where; why и when в придаточных"],
+[95, "Relative clauses 4: extra information clauses (1)", "описательные придаточные с запятыми: who / which, нельзя that"],
+[96, "Relative clauses 5: extra information clauses (2)", "which в конце о целом предложении; придаточные с предлогами; all of which"],
+[97, "-ing and -ed clauses (the woman talking to Tom, the boy injured in the accident)", "-ing и -ed обороты вместо придаточных"],
+[98, "Adjectives ending in -ing and -ed (boring/bored etc.)", "-ing против -ed прилагательных: boring / bored"],
+[99, "Adjectives: a nice new house, you look tired", "порядок прилагательных; прилагательные после look, feel, seem"],
+[100, "Adjectives and adverbs 1 (quick/quickly)", "прилагательное против наречия: quick / quickly"],
+[101, "Adjectives and adverbs 2 (well, fast, late, hard/hardly)", "well, fast, late, hard / hardly; hardly any"],
+[102, "so and such", "so против such"],
+[103, "enough and too", "enough и too: позиция и конструкции с to / for"],
+[104, "quite, pretty, rather and fairly", "quite, pretty, rather, fairly: значения и позиция"],
+[105, "Comparative 1 (cheaper, more expensive etc.)", "сравнительная степень: cheaper, more expensive"],
+[106, "Comparative 2 (much better / any better etc.)", "much / a bit / any + comparative; the more …, the better; better and better"],
+[107, "Comparative 3 (as … as / than)", "as … as, not as … as; than me / than I am; the same as"],
+[108, "Superlative (the longest, the most enjoyable etc.)", "превосходная степень; in / of после превосходной; present perfect с превосходной"],
+[109, "Word order 1: verb + object; place and time", "порядок слов: глагол и дополнение рядом; место перед временем"],
+[110, "Word order 2: adverbs with the verb", "позиция наречий с глаголом: always, also, probably, all, both"],
+[111, "still, any more, yet, already", "still, any more / any longer, yet, already"],
+[112, "even", "even, even if, even when; not even"],
+[113, "although, though, even though, in spite of, despite", "уступка: although / though / even though против in spite of / despite"],
+[114, "in case", "in case: на случай если; in case против if"],
+[115, "unless, as long as, provided", "unless, as long as, provided / providing"],
+[116, "as (as I walked … / as I was … etc.)", "as для времени и причины"],
+[117, "like and as", "like против as: как кто-то против в роли"],
+[118, "like, as if", "like и as if / as though"],
+[119, "during, for, while", "during против for против while"],
+[120, "by and until, by the time …", "by и until; by the time …"],
+[121, "at/on/in (time)", "предлоги времени at / on / in"],
+[122, "on time and in time, at the end and in the end", "on time / in time; at the end / in the end"],
+[123, "in/at/on (position) 1", "in / at / on для места"],
+[124, "in/at/on (position) 2", "in / at / on в устойчивых сочетаниях места: in a car, on a bus, at the station"],
+[125, "in/at/on (position) 3", "in / at для зданий и городов; at home; in the hospital / at the hospital"],
+[126, "to, at, in and into", "to / at / in / into: движение и местоположение; arrive in / at"],
+[127, "in/on/at (other uses)", "in / on / at в других значениях: on holiday, in my opinion, at 100 km/h"],
+[128, "by", "by: by bus, by mistake, by + деятель; on foot"],
+[129, "Noun + preposition (reason for, cause of etc.)", "существительное + предлог: reason for, cause of, demand for"],
+[130, "Adjective + preposition 1", "прилагательное + предлог: nice of, angry with / about"],
+[131, "Adjective + preposition 2", "прилагательное + предлог: afraid of, good at, interested in"],
+[132, "Verb + preposition 1: to and at", "глагол + предлог: to и at; глаголы без предлога (phone, discuss)"],
+[133, "Verb + preposition 2: about/for/of/after", "глагол + предлог: about / for / of / after"],
+[134, "Verb + preposition 3: about and of", "глагол + предлог: about и of (hear about / of, think about / of)"],
+[135, "Verb + preposition 4: of/for/from/on", "глагол + предлог: of / for / from / on"],
+[136, "Verb + preposition 5: in/into/with/to/on", "глагол + предлог: in / into / with / to / on"],
+[137, "Phrasal verbs 1: Introduction", "фразовые глаголы: значения и позиция дополнения"],
+[138, "Phrasal verbs 2: in/out", "фразовые глаголы с in / out"],
+[139, "Phrasal verbs 3: out", "фразовые глаголы с out"],
+[140, "Phrasal verbs 4: on/off (1)", "фразовые глаголы с on / off"],
+[141, "Phrasal verbs 5: on/off (2)", "фразовые глаголы с on / off: дальнейшие значения"],
+[142, "Phrasal verbs 6: up/down", "фразовые глаголы с up / down"],
+[143, "Phrasal verbs 7: up (1)", "фразовые глаголы с up"],
+[144, "Phrasal verbs 8: up (2)", "фразовые глаголы с up: дальнейшие значения"],
+[145, "Phrasal verbs 9: away/back", "фразовые глаголы с away / back"]
+];
+const SECTIONS = [[1, 6, "Present and past"], [7, 18, "Present perfect and past"], [19, 25, "Future"], [26, 37, "Modals"], [38, 41, "if and wish"], [42, 46, "Passive"], [47, 48, "Reported speech"], [49, 52, "Questions and auxiliary verbs"], [53, 68, "-ing and to …"], [69, 81, "Articles and nouns"], [82, 91, "Pronouns and determiners"], [92, 97, "Relative clauses"], [98, 112, "Adjectives and adverbs"], [113, 120, "Conjunctions and prepositions"], [121, 136, "Prepositions"], [137, 145, "Phrasal verbs"]];
+const UNIT = Object.fromEntries(UNITS.map(u=>[u[0],u]));
+const TYPES = [["gap","Пропуски"],["choice","Выбор"],["translate","Перевод"],["rephrase","Перефразирование"],["free","Свободный ответ"]];
+const TOPICS = ["работа в IT","путешествия","семья","еда и кафе","спорт и тренировки","покупки","учёба","погода","визит к врачу","город и транспорт","друзья и выходные","кино и музыка","переезд и жильё","домашние животные","праздники","горы и походы","деньги и банк","соседи"];
+const STATUS_RU = {correct:"верно",error:"ошибка",partial:"частично",not_used:"не использован"};
+const VERDICT_RU = {correct_target:"Верно, целевая конструкция использована",correct_non_target:"Верно, но без целевой конструкции",incorrect:"Есть ошибки"};
+
+const EXAMPLE = {unit:7,type:"gap",example:true,data:{instructions_ru:"Поставьте глагол в present perfect.",items:[
+ {text:"I can't find my keys. I think I ___ (lose) them.",answers:["have lost","'ve lost"],explain_ru:"Ключей нет сейчас: результат прошлого действия."},
+ {text:"Look! Somebody ___ (break) the window.",answers:["has broken","'s broken"],explain_ru:"Видим результат прямо сейчас."},
+ {text:"Where's Anna? — She ___ (go) out.",answers:["has gone","'s gone"],explain_ru:"Её нет сейчас, потому что она ушла."},
+ {text:"Is Tom here? — No, he ___ (not / arrive) yet.",answers:["hasn't arrived","has not arrived"],explain_ru:"yet в отрицании: ожидаемое ещё не произошло."},
+ {text:"We ___ (buy) a new car. Do you want to see it?",answers:["have bought","'ve bought"],explain_ru:"Новость с результатом в настоящем, время не указано."},
+ {text:"Oh no, the bus ___ (leave)! Now we'll have to wait.",answers:["has left","'s left"],explain_ru:"Последствие сейчас: придётся ждать."}
+]}};
+
+const $ = s => document.querySelector(s);
+function h(tag, attrs, ...kids){
+  const el = document.createElement(tag);
+  for (const [k,v] of Object.entries(attrs||{})){
+    if (v==null || v===false) continue;
+    if (k==="class") el.className = v;
+    else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
+    else if (k==="text") el.textContent = v;
+    else el.setAttribute(k, v===true ? "" : v);
+  }
+  for (const c of kids.flat()){ if (c==null||c===false) continue; el.append(c instanceof Node ? c : String(c)); }
+  return el;
+}
+const store = {get(k){try{return localStorage.getItem(k)}catch{return null}}, set(k,v){try{localStorage.setItem(k,v)}catch{}}};
+
+const state = {
+  unit: Number(store.get("gd.unit2")) || 7,
+  type: store.get("gd.type") || "gap",
+  ex: EXAMPLE, busy:false, sample:null, sampleReady:false,
+  filter: store.get("gd.filter")==="active" ? "active" : "all",
+  progress: {units:{}}, loaded:false, preload:new Set(), db:null, ref:null
+};
+if (!UNIT[state.unit]) state.unit = 7;
+if (!TYPES.some(t=>t[0]===state.type)) state.type = "gap";
+
+/* ---------- unit list ---------- */
+function renderUnits(){
+  const q = $("#search").value.trim().toLowerCase();
+  const activeCount = UNITS.filter(u=>prog(u[0]).active).length;
+  $("#filter").replaceChildren(
+    h("button",{"aria-pressed":String(state.filter==="all"),onclick:()=>setFilter("all")},"Все"),
+    h("button",{"aria-pressed":String(state.filter==="active"),onclick:()=>setFilter("active")},`В работе · ${activeCount}`));
+  const nav = $("#units"); nav.replaceChildren();
+  let shown = 0;
+  for (const [a,b,name] of SECTIONS){
+    const list = UNITS.filter(u=>u[0]>=a&&u[0]<=b)
+      .filter(u=>state.filter!=="active" || prog(u[0]).active)
+      .filter(u=>!q || String(u[0])===q || (u[1]+" "+u[2]+" "+name).toLowerCase().includes(q));
+    if (!list.length) continue;
+    nav.append(h("div",{class:"sec",text:name}));
+    for (const u of list){
+      shown++;
+      const p = prog(u[0]), sc = Math.round(p.score);
+      nav.append(h("div",{class:"urow-side"},
+        h("input",{type:"checkbox",class:"act",checked:p.active,"aria-label":`Юнит ${u[0]} в работе`,title:"Беру в работу",onchange:e=>setActive(u[0],e.target.checked)}),
+        h("button",{class:"u"+(p.active?"":" off"),"aria-current":String(u[0]===state.unit),onclick:()=>pickUnit(u[0])},
+          h("span",{class:"n",text:u[0]}), h("span",{class:"t",text:u[1]}), h("span",{class:"sc",text: p.n ? sc : ""}),
+          p.n ? h("span",{class:"pb"}, h("i",{style:`width:${sc}%`})) : null)));
+    }
+  }
+  if (!shown) nav.append(h("p",{class:"list-empty",text: state.filter==="active" && !activeCount ? "Пока ни один юнит не взят в работу. Отметьте галочкой нужные юниты в списке «Все»." : "Ничего не найдено."}));
+}
+function setFilter(f){ state.filter = f; store.set("gd.filter", f); renderUnits(); }
+function pickUnit(n){
+  state.unit = n; store.set("gd.unit2", n);
+  $("#side").classList.remove("open");
+  renderUnits(); renderHead();
+  if (state.ex && state.ex.unit !== n){ state.ex = null; renderExercise(); clearResults(); }
+}
+function renderHead(){
+  const u = UNIT[state.unit];
+  const p = prog(u[0]), sc = Math.round(p.score);
+  $("#unitHead").replaceChildren(h("div",{class:"num",text:"Unit "+u[0]}), h("h2",{text:u[1]}), h("p",{text:u[2]}),
+    h("div",{class:"mastery"},
+      h("label",{}, h("input",{type:"checkbox",id:"headActive",checked:p.active,onchange:e=>setActive(u[0],e.target.checked)}), "Беру в работу"),
+      h("div",{class:"m"}, h("b",{text:sc}), h("span",{class:"bar",role:"img","aria-label":`Освоение ${sc} из 100`}, h("i",{style:`width:${sc}%`})),
+        h("span",{text: p.n ? `освоение · ${p.n} ${plural(p.n,["проверка","проверки","проверок"])}` : "освоение · ещё не было проверок"}))));
+  $("#toggleUnits").textContent = "Юнит "+u[0]+" · сменить";
+}
+function plural(n,f){ const a=n%100,b=n%10; return (a>10&&a<20)?f[2]:b===1?f[0]:(b>=2&&b<=4)?f[1]:f[2]; }
+
+/* ---------- progress: storage and score model ---------- */
+// Score model: Elo-style. Each exercise type has a difficulty; the gain is K × (result − expected),
+// where expected is the chance to succeed at that difficulty given the current score.
+const DIFF = {gap:15, choice:35, translate:55, rephrase:65, free:75};
+const K_TARGET = 15, K_SIDE = 6;
+const clamp = (x,a,b)=>Math.max(a,Math.min(b,x));
+function prog(n){ return state.progress.units[n] || {active:false,score:0,n:0}; }
+function entry(n){ return state.progress.units[n] ||= {active:false,score:0,n:0}; }
+function setActive(n,v){ entry(n).active = !!v; touch(n); save(); renderUnits(); renderHead(); }
+function touch(n){ if (!state.loaded) state.preload.add(String(n)); }
+function applyScore(n, type, r, K, count){
+  const e = entry(n), from = e.score;
+  const expected = 1/(1+Math.exp((DIFF[type]-from)/12));
+  e.score = clamp(from + K*(clamp(r,0,1) - expected), 0, 100);
+  if (count) e.n = (e.n||0) + 1;
+  e.at = Date.now(); touch(n);
+  return {id:n, from, to:e.score};
+}
+function revert(applied){
+  for (const d of applied||[]){ const e = entry(d.id); e.score = clamp(e.score - (d.to - d.from), 0, 100); touch(d.id); }
+}
+// What a graded open answer does to the scores.
+function applyGrade(ex, g, count){
+  const out = [], t = g.target_unit || {};
+  let r = null;
+  if (g.verdict === "correct_target") r = t.score!=null ? Number(t.score)/100 : 1;
+  else if (g.verdict === "incorrect") r = (t.status==="not_used" || t.score==null) ? 0.25 : Number(t.score)/100;
+  // correct_non_target: the learner avoided the structure, the target score stays as it is
+  if (r!=null && !isNaN(r)) out.push(applyScore(ex.unit, ex.type, r, K_TARGET, count));
+  for (const o of g.other_units||[]){
+    const id = Number(o.id);
+    if (!UNIT[id] || id===ex.unit) continue;
+    const relevant = o.status==="error" || o.status==="partial" || (o.status==="correct" && o.notable);
+    if (!relevant) continue;
+    const sr = o.score!=null ? Number(o.score)/100 : (o.status==="correct"?1:0.3);
+    if (!isNaN(sr)) out.push(applyScore(id, ex.type, sr, K_SIDE, false));
+  }
+  save(); renderUnits(); renderHead();
+  return out;
+}
+function deltaBlock(applied){
+  const rows = (applied||[]).filter(d=>Math.round(d.to)!==Math.round(d.from) || d.id===state.ex?.unit);
+  if (!rows.length) return null;
+  return h("div",{}, h("div",{class:"sub",text:"Прогресс"}), h("div",{class:"deltas"}, rows.map(d=>{
+    const a=Math.round(d.from), b=Math.round(d.to), diff=b-a;
+    return h("div",{class:"delta"}, h("span",{class:"n",text:d.id}), h("span",{class:"t",text:UNIT[d.id][1]}),
+      h("span",{class:"v"+(diff>0?" up":diff<0?" down":""),text:`${a} → ${b}${diff?` (${diff>0?"+":""}${diff})`:""}`}));
+  })));
+}
+let writing = false, dirty = false;
+async function save(){
+  if (!state.db || !state.loaded){ return; }
+  dirty = true;
+  if (writing) return;
+  writing = true;
+  while (dirty){
+    dirty = false;
+    try{ await state.ref.set({units: JSON.parse(JSON.stringify(state.progress.units)), updatedAt: Date.now()}); $("#sync").textContent = "Прогресс сохраняется"; }
+    catch(e){ $("#sync").textContent = e && e.code==="quota_exceeded" ? "Хранилище заполнено, прогресс не сохранён" : "Не удалось сохранить прогресс"; break; }
+  }
+  writing = false;
+}
+function renderTypes(){
+  $("#types").replaceChildren(...TYPES.map(([k,l])=>h("button",{"aria-pressed":String(k===state.type),onclick:()=>{state.type=k;store.set("gd.type",k);renderTypes();}},l)));
+}
+
+/* ---------- Claude ---------- */
+const ERR_RU = {not_granted:"Доступ к Claude для этой страницы не разрешён.",sampling_disabled:"Claude недоступен для этого аккаунта.",rate_limited:"Слишком много запросов. Подождите немного и попробуйте снова.",session_expired:"Нужно заново войти в Claude.",invalid_json:"Claude ответил в неожиданном формате. Попробуйте ещё раз.",refused:"Claude отказался отвечать на этот запрос.",upstream_error:"Сбой связи с Claude. Попробуйте ещё раз."};
+const errText = e => ERR_RU[e&&e.code] || ("Ошибка: "+((e&&e.message)||e));
+function setBusy(b, msg){
+  state.busy = b; $("#newBtn").disabled = b || !state.sample;
+  document.querySelectorAll("[data-needs-claude]").forEach(x=>x.disabled = b || !state.sample);
+  const n = $("#notice");
+  if (msg){ n.hidden=false; n.className="status"; n.textContent=msg; } else if (state.sampleReady && !state.sample){ n.hidden=false; } else n.hidden = true;
+}
+function showError(e){ const n=$("#notice"); n.hidden=false; n.className="err"; n.textContent=errText(e); }
+async function ask(prompt){
+  if (!state.sample) throw {code:"not_granted"};
+  return await state.sample.json(prompt,{cache:false});
+}
+const catalog = () => UNITS.map(u=>u[0]+". "+u[1]).join("\n");
+
+function genPrompt(type){
+  const u = UNIT[state.unit];
+  const topic = TOPICS[Math.floor(Math.random()*TOPICS.length)];
+  const head = `You write grammar practice for a Russian-speaking adult learner of English, following Raymond Murphy's "English Grammar in Use" (5th edition, intermediate).
+Target unit ${u[0]}: "${u[1]}". Focus: ${u[2]}.
+Context theme: ${topic}. Use natural, varied, everyday English; avoid textbook clichés. Random seed: ${Math.random().toString(36).slice(2,8)}.
+All *_ru fields are in Russian.
+`;
+  const spec = {
+gap:`Make a gap-fill exercise of exactly 6 items.
+- Each "text" is one natural sentence with exactly one blank written as ___ (three underscores).
+- When the answer is a form of a given word, put the base word in brackets right after the blank, e.g. "She ___ (work) here."
+- The correct answer must be decided by the grammar of the target unit, not by vocabulary.
+- "answers" lists EVERY acceptable filling: contracted and full forms ("hasn't arrived","has not arrived"), and any alternative that is also correct in context.
+- Vary affirmative, negative and question forms where the unit allows.
+Reply with only JSON: {"instructions_ru":"...","items":[{"text":"...","answers":["..."],"explain_ru":"one short sentence why"}]}`,
+choice:`Make a multiple-choice exercise of exactly 6 items.
+- Each "text" is one natural sentence with one blank ___ .
+- 2 or 3 options; exactly one is correct in context. Distractors are typical mistakes of Russian speakers on this unit. Vary the position of the correct option.
+Reply with only JSON: {"instructions_ru":"...","items":[{"text":"...","options":["...","..."],"correct":0,"explain_ru":"one short sentence why"}]}`,
+translate:`Make one translation task from Russian into English.
+- "source_ru": 1–3 connected, natural Russian sentences.
+- The most natural correct English translation must REQUIRE the target structure. Build the context (time markers, situation, consequences) so that a translation without it would be wrong or clearly unnatural.
+- Do not mention grammar in the source.
+- "target_note_ru": what the learner should notice; it is shown only after checking.
+Reply with only JSON: {"instructions_ru":"Переведите на английский","source_ru":"...","target_note_ru":"...","reference_en":["one or two good translations"]}`,
+rephrase:`Make one rephrasing task.
+- "source_en": an English sentence that does NOT use the target structure.
+- The learner must rewrite it with the same meaning using the target structure.
+- "start_with": the beginning of the expected answer that forces the structure (e.g. "It's the first time"). If a key word works better, set "start_with" to "" and name the word in "instructions_ru" (e.g. "Используйте слово since").
+Reply with only JSON: {"instructions_ru":"...","source_en":"...","start_with":"...","reference_en":["..."]}`,
+free:`Make one free-answer task.
+- A situation or question that naturally invites the target structure in an answer of 2–4 English sentences.
+- Do not name the grammar.
+Reply with only JSON: {"instructions_ru":"...","prompt_ru":"situation/question in Russian","prompt_en":"the same question in English","reference_en":["a model answer"]}`
+  }[type];
+  return head + spec;
+}
+
+function exerciseForPrompt(ex){
+  const d = ex.data;
+  if (ex.type==="translate") return `Task: translate into English.\nRussian source: ${d.source_ru}\nReference translation(s): ${(d.reference_en||[]).join(" | ")}`;
+  if (ex.type==="rephrase") return `Task: rewrite the sentence keeping the meaning, using the target structure.\nSource: ${d.source_en}\n${d.start_with?`Answer must start with: "${d.start_with}"`:""}\nInstructions given: ${d.instructions_ru}\nReference: ${(d.reference_en||[]).join(" | ")}`;
+  return `Task: answer in 2–4 English sentences.\nQuestion: ${d.prompt_en || d.prompt_ru} (${d.prompt_ru})\nModel answer: ${(d.reference_en||[]).join(" | ")}`;
+}
+
+const GRADE_SHAPE = `{
+ "verdict": "correct_target" | "correct_non_target" | "incorrect",
+ "summary_ru": "1–2 sentences",
+ "target_unit": {"id": <target id>, "status": "correct"|"error"|"partial"|"not_used", "score": <0-100 or null if not_used>, "fragment": "exact quote from the answer or empty", "fix": "corrected fragment or empty", "comment_ru": "..."},
+ "other_units": [{"id": <catalog id>, "status": "correct"|"error"|"partial", "score": <0-100>, "notable": <true only for a correct use that is advanced or especially well done and worth praising; otherwise false>, "fragment": "exact quote", "fix": "corrected fragment or empty", "comment_ru": "..."}],
+ "other_issues": [{"fragment": "...", "fix": "...", "comment_ru": "spelling, vocabulary, meaning, punctuation"}],
+ "corrected_answer": "the learner's answer with minimal corrections",
+ "natural_version": "how a native speaker would naturally say it"
+}`;
+
+function gradePrompt(ex, answer, opts={}){
+  const u = UNIT[ex.unit];
+  let p = `You are a strict but fair English grammar examiner for a Russian-speaking learner. The syllabus is Murphy's "English Grammar in Use" (5th edition); its units are the catalog below.
+
+CATALOG:
+${catalog()}
+
+TARGET UNIT: ${u[0]}. ${u[1]} — ${u[2]}
+
+${exerciseForPrompt(ex)}
+`;
+  if (opts.retry) p += `
+This is attempt 2. In attempt 1 the learner wrote: "${opts.retry.prev}". It was correct but avoided the target structure, so they were asked: "${opts.retry.prompt}". Judge this attempt the same way; if it still avoids the target structure, the verdict is correct_non_target again.
+`;
+  p += `
+LEARNER ANSWER: "${answer}"
+
+How to evaluate:
+- verdict "correct_target": grammatical, meaning preserved, target structure used correctly.
+- verdict "correct_non_target": grammatical and meaning preserved, but the learner avoided the target structure in a way that is still acceptable English.
+- verdict "incorrect": any grammar error, wrong meaning, or a wrong use of the target structure.
+- target_unit: how the target structure was handled.
+- other_units: list EVERY other catalog unit whose grammar is actually exercised in the answer — tenses, articles, plurals, prepositions, word order, pronouns, determiners, comparatives and so on — whether used correctly or not. Use only catalog ids. Do not list the target unit here.
+- Score: 100 flawless; 80–95 correct but slightly unnatural; 50–75 partly right; 0–45 wrong.
+- fragment must be quoted exactly from the learner answer.
+- other_issues: problems outside the catalog (spelling, word choice, meaning). Empty array if none.
+- Write comments briefly, in Russian.
+`;
+  if (opts.dispute) p += `
+PREVIOUS EVALUATION: ${JSON.stringify(opts.dispute.prev)}
+LEARNER OBJECTION: "${opts.dispute.comment}"
+Re-evaluate from scratch, taking the objection into account. Change only what was actually wrong; do not give in just because the learner objects. Add the field "dispute_reply_ru": what you changed and why, or why the original evaluation stands.
+`;
+  p += `
+Reply with only JSON:
+${GRADE_SHAPE}`;
+  return p;
+}
+
+/* ---------- exercise ---------- */
+function clearResults(){ $("#results").replaceChildren(); }
+
+async function newExercise(){
+  const type = state.type, unit = state.unit;
+  clearResults(); setBusy(true, "Claude составляет задание…");
+  try{
+    const data = await ask(genPrompt(type));
+    const ex = {unit,type,data:normalizeEx(type,data)};
+    if (!ex.data) throw {code:"invalid_json"};
+    state.ex = ex; setBusy(false); renderExercise();
+  }catch(e){ setBusy(false); showError(e); }
+}
+function normalizeEx(type,d){
+  if (!d || typeof d!=="object") return null;
+  if (type==="gap"){
+    const items = (d.items||[]).filter(i=>i && typeof i.text==="string" && i.text.split("___").length===2 && Array.isArray(i.answers) && i.answers.length);
+    return items.length ? {...d,items} : null;
+  }
+  if (type==="choice"){
+    const items = (d.items||[]).filter(i=>i && Array.isArray(i.options) && i.options.length>1 && Number.isInteger(i.correct) && i.options[i.correct]!=null);
+    return items.length ? {...d,items} : null;
+  }
+  if (type==="translate") return d.source_ru ? d : null;
+  if (type==="rephrase") return d.source_en ? d : null;
+  if (type==="free") return (d.prompt_ru||d.prompt_en) ? d : null;
+  return null;
+}
+
+function renderExercise(){
+  const box = $("#exercise"); box.replaceChildren();
+  const ex = state.ex;
+  if (!ex){
+    box.append(h("div",{class:"card"}, h("p",{class:"empty",style:"margin:0"},"Выберите тип задания и нажмите «Новое задание».")));
+    return;
+  }
+  const d = ex.data, typeName = TYPES.find(t=>t[0]===ex.type)[1];
+  const card = h("div",{class:"card"},
+    h("h3",{}, typeName, ex.example ? h("span",{class:"tag",text:"пример, без Claude"}) : null),
+    h("p",{class:"instr",text:d.instructions_ru||""}));
+  if (ex.type==="gap"){
+    const ol = h("ol",{class:"items"});
+    d.items.forEach((it,i)=>{
+      const [a,b] = it.text.split("___");
+      ol.append(h("li",{class:"item"}, h("span",{class:"i",text:i+1}),
+        h("div",{}, h("div",{class:"sent"}, a, h("input",{class:"gap",id:"gap-"+i,"aria-label":"Пропуск "+(i+1),autocomplete:"off",autocapitalize:"off",spellcheck:"false",size:"14"}), b),
+          h("div",{class:"fb",id:"fb-"+i}))));
+    });
+    card.append(ol, h("div",{class:"row"}, h("button",{class:"btn",id:"checkBtn",onclick:checkClosed},"Проверить")));
+  } else if (ex.type==="choice"){
+    const ol = h("ol",{class:"items"});
+    d.items.forEach((it,i)=>{
+      ol.append(h("li",{class:"item"}, h("span",{class:"i",text:i+1}),
+        h("div",{}, h("div",{class:"sent",text:it.text}),
+          h("div",{class:"opts"}, it.options.map((o,j)=>h("label",{class:"opt",id:`opt-${i}-${j}`}, h("input",{type:"radio",name:"q"+i,value:j,id:`r-${i}-${j}`}), o))),
+          h("div",{class:"fb",id:"fb-"+i}))));
+    });
+    card.append(ol, h("div",{class:"row"}, h("button",{class:"btn",id:"checkBtn",onclick:checkClosed},"Проверить")));
+  } else {
+    if (ex.type==="translate") card.append(h("div",{class:"source",text:d.source_ru}));
+    if (ex.type==="rephrase") card.append(h("div",{class:"source",text:d.source_en}));
+    if (ex.type==="free") card.append(h("div",{class:"source"}, d.prompt_ru||"", d.prompt_en ? h("small",{text:d.prompt_en}) : null));
+    if (ex.type==="rephrase" && d.start_with) card.append(h("p",{class:"start",text:"Начните с: "+d.start_with+" …"}));
+    const ta = h("textarea",{id:"answer",placeholder:"Ваш ответ на английском",spellcheck:"false"});
+    if (ex.type==="rephrase" && d.start_with) ta.value = d.start_with+" ";
+    card.append(ta, h("div",{class:"row"}, h("button",{class:"btn",id:"checkBtn","data-needs-claude":true,onclick:()=>checkOpen()},"Проверить")));
+  }
+  box.append(card);
+  setBusy(state.busy);
+}
+
+/* ---------- closed types: local check ---------- */
+const norm = s => String(s||"").toLowerCase().replace(/[’‘`]/g,"'").replace(/\s+/g," ").replace(/^[\s"]+|[\s".,!?]+$/g,"").trim();
+function checkClosed(){
+  const ex = state.ex, d = ex.data;
+  const res = d.items.map((it,i)=>{
+    if (ex.type==="gap"){
+      const v = $("#gap-"+i).value;
+      return {given:v, ok: it.answers.some(a=>norm(a)===norm(v))};
+    }
+    const sel = document.querySelector(`input[name="q${i}"]:checked`);
+    const v = sel ? Number(sel.value) : null;
+    return {given:v, ok: v===it.correct};
+  });
+  const first = !ex.closed;
+  if (ex.closed) revert(ex.closed.applied);
+  const frac = res.filter(r=>r.ok).length / res.length;
+  ex.closed = {res, reply:null, applied:[applyScore(ex.unit, ex.type, frac, K_TARGET, first)]};
+  save(); renderUnits(); renderHead();
+  paintClosed();
+}
+function paintClosed(){
+  const ex = state.ex, d = ex.data, res = ex.closed.res;
+  d.items.forEach((it,i)=>{
+    const r = res[i], fb = $("#fb-"+i);
+    if (ex.type==="gap"){
+      const inp = $("#gap-"+i); inp.classList.toggle("ok",r.ok); inp.classList.toggle("no",!r.ok);
+    } else {
+      it.options.forEach((_,j)=>{ const l=$(`#opt-${i}-${j}`); l.classList.toggle("ok", j===it.correct); l.classList.toggle("no", j===r.given && !r.ok); });
+    }
+    const right = ex.type==="gap" ? it.answers[0] : it.options[it.correct];
+    fb.replaceChildren(r.ok ? h("b",{class:"ok",text:"Верно. "}) : h("b",{class:"no",text:"Правильно: "+right+". "}), r.note || it.explain_ru || "");
+  });
+  const ok = res.filter(r=>r.ok).length, score = Math.round(ok/res.length*100);
+  const u = UNIT[ex.unit];
+  const status = score===100 ? "correct" : score>=50 ? "partial" : "error";
+  const card = h("div",{class:"card"},
+    h("h3",{text:"Результат"}),
+    h("div",{class:"verdict "+(score===100?"correct_target":score>=50?"correct_non_target":"incorrect"),text:`${ok} из ${res.length} верно`}),
+    unitRow({id:u[0],status,score,comment_ru:"Оценка считается локально по ключу ответов, без Claude. Побочные юниты для пропусков и выбора не оцениваются."}, true));
+  card.append(deltaBlock(ex.closed.applied));
+  if (ex.closed.reply) card.append(h("div",{class:"reply",text:ex.closed.reply}));
+  card.append(disputeBlock(async comment=>{
+    const prompt = `A learner disputes the automatic check of a ${ex.type==="gap"?"gap-fill":"multiple-choice"} exercise for Murphy's English Grammar in Use (5th edition), unit ${u[0]} "${u[1]}".
+Items with the key and the learner's answers:
+${d.items.map((it,i)=>`${i}. ${it.text} | key: ${ex.type==="gap"?it.answers.join(" / "):it.options[it.correct]} | learner: ${ex.type==="gap"?JSON.stringify(res[i].given):(res[i].given==null?"(none)":it.options[res[i].given])} | marked ${res[i].ok?"correct":"wrong"}`).join("\n")}
+Learner objection: "${comment}"
+Decide honestly for each item whether the learner's answer is acceptable English in that context. Do not give in just because the learner objects.
+Reply with only JSON: {"dispute_reply_ru":"what changed and why, in Russian","items":[{"index":0,"ok":true,"note_ru":"short, Russian"}]} (include only items whose verdict you discuss)`;
+    const r = await ask(prompt);
+    (r.items||[]).forEach(x=>{ const i=Number(x.index); if (res[i]){ res[i].ok=!!x.ok; if (x.note_ru) res[i].note=x.note_ru; }});
+    ex.closed.reply = r.dispute_reply_ru || "Проверка пересмотрена.";
+    revert(ex.closed.applied);
+    ex.closed.applied = [applyScore(ex.unit, ex.type, res.filter(x=>x.ok).length/res.length, K_TARGET, false)];
+    save(); renderUnits(); renderHead();
+    paintClosed();
+  }), nextRow());
+  $("#results").replaceChildren(card);
+  setBusy(state.busy);
+  card.scrollIntoView({behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",block:"start"});
+}
+
+/* ---------- open types: Claude check ---------- */
+async function checkOpen(){
+  const ans = $("#answer").value.trim();
+  if (!ans){ $("#answer").focus(); return; }
+  state.ex.attempts = [];
+  await gradeAttempt(ans, {});
+}
+async function gradeAttempt(answer, opts){
+  setBusy(true, "Claude проверяет ответ…");
+  try{
+    const g = await ask(gradePrompt(state.ex, answer, opts));
+    setBusy(false);
+    const list = state.ex.attempts;
+    if (opts.dispute){
+      const old = list[opts.dispute.index];
+      revert(old.applied);
+      list[opts.dispute.index] = {answer, grade:g, retry:old.retry, applied:applyGrade(state.ex, g, false)};
+    } else list.push({answer, grade:g, retry:opts.retry||null, applied:applyGrade(state.ex, g, true)});
+    renderAttempts();
+  }catch(e){ setBusy(false); showError(e); }
+}
+function renderAttempts(){
+  const wrap = $("#results"); wrap.replaceChildren();
+  const ex = state.ex;
+  ex.attempts.forEach((a,idx)=>{
+    const g = a.grade || {};
+    const card = h("div",{class:"card"});
+    card.append(h("p",{class:"attempt-label",text: ex.attempts.length>1 ? `Попытка ${idx+1}` : "Результат"}));
+    card.append(h("div",{class:"ref",style:"margin-bottom:14px"}, h("span",{class:"status",text:"Ваш ответ: "}), a.answer));
+    const v = VERDICT_RU[g.verdict] ? g.verdict : "incorrect";
+    card.append(h("div",{class:"verdict "+v,text:VERDICT_RU[v]}));
+    const last = idx===ex.attempts.length-1;
+    const u = UNIT[ex.unit];
+    // While a retry is pending, hide everything that would show how to use the target structure.
+    const concealed = last && v==="correct_non_target" && !a.revealed;
+    if (g.summary_ru && !concealed) card.append(h("p",{class:"summary",text:g.summary_ru}));
+    if (g.target_unit) card.append(unitRow(concealed ? {id:ex.unit,status:"not_used",score:null} : {...g.target_unit,id:ex.unit}, true));
+    const others = (g.other_units||[]).filter(o=>o && Number(o.id)!==ex.unit);
+    const shown = others.filter(o=>o.status==="error"||o.status==="partial"||(o.status==="correct"&&o.notable));
+    const hiddenCount = others.length - shown.length;
+    card.append(h("div",{class:"sub",text:"Побочные юниты"}));
+    const byScore = (a,b)=>(a.score??101)-(b.score??101);
+    if (shown.length) shown.sort(byScore).forEach(o=>card.append(unitRow(o,false)));
+    else card.append(h("p",{class:"empty",text: others.length ? "Ошибок в побочных юнитах нет." : "Claude не нашёл других юнитов в ответе."}));
+    if (hiddenCount){
+      const rest = h("div",{hidden:true}, others.filter(o=>!shown.includes(o)).sort(byScore).map(o=>unitRow(o,false)));
+      const tg = h("button",{class:"btn ghost small",onclick:()=>{rest.hidden=!rest.hidden; tg.textContent = rest.hidden ? `Показать все найденные (${hiddenCount} без ошибок)` : "Скрыть юниты без ошибок";}},`Показать все найденные (${hiddenCount} без ошибок)`);
+      card.append(h("div",{class:"row",style:"margin-top:6px"}, tg), rest);
+    }
+    const issues = (g.other_issues||[]).filter(Boolean);
+    if (issues.length){
+      card.append(h("div",{class:"sub",text:"Вне юнитов"}));
+      issues.forEach(x=>card.append(h("div",{class:"urow"}, fragLine(x), h("div",{class:"ucomment",text:x.comment_ru||""}))));
+    }
+    if (!concealed){
+      if (g.corrected_answer){ card.append(h("div",{class:"sub",text:"Исправленный ответ"}), h("p",{class:"ref",text:g.corrected_answer})); }
+      if (g.natural_version){ card.append(h("div",{class:"sub",text:"Как сказал бы носитель"}), h("p",{class:"ref",text:g.natural_version})); }
+      const refs = ex.data.reference_en||[];
+      if (refs.length){ card.append(h("div",{class:"sub",text:"Эталон"}), ...refs.map(r=>h("p",{class:"ref",text:r}))); }
+      if (ex.data.target_note_ru) card.append(h("p",{class:"status",text:ex.data.target_note_ru}));
+    }
+    card.append(deltaBlock(a.applied));
+    if (g.dispute_reply_ru && !concealed) card.append(h("div",{class:"reply",text:"Пересмотр: "+g.dispute_reply_ru}));
+    card.append(disputeBlock(comment=>gradeAttempt(a.answer,{retry:a.retry,dispute:{index:idx,prev:g,comment}})));
+    if (concealed){
+      const ask = `Верно! А теперь напишите ответ, используя конструкцию из юнита ${u[0]}: ${u[1]}.`;
+      const ta = h("textarea",{id:"retry-"+idx,placeholder:"Ещё одна попытка",spellcheck:"false"});
+      card.append(h("div",{class:"retry"},
+        h("p",{text:ask}),
+        ta, h("div",{class:"row"},
+          h("button",{class:"btn","data-needs-claude":true,onclick:()=>{const v2=ta.value.trim(); if(!v2){ta.focus();return;} gradeAttempt(v2,{retry:{prev:a.answer,prompt:ask}});}},"Проверить"),
+          h("button",{class:"btn ghost small",onclick:()=>{a.revealed=true; renderAttempts();}},"Сдаться и показать разбор"))));
+    }
+    if (last) card.append(nextRow());
+    wrap.append(card);
+  });
+  setBusy(state.busy);
+  const lastCard = wrap.lastElementChild;
+  if (lastCard) lastCard.scrollIntoView({behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",block:"start"});
+}
+
+/* ---------- shared bits ---------- */
+function scoreColor(s){ return s>=80?"var(--good)":s>=50?"var(--warn)":"var(--bad)"; }
+function fragLine(o){
+  if (!o.fragment) return null;
+  if (o.fix && norm(o.fix)!==norm(o.fragment)) return h("div",{class:"frag"}, h("del",{text:o.fragment}), " → ", h("ins",{text:o.fix}));
+  return h("div",{class:"frag",text:"«"+o.fragment+"»"});
+}
+function unitRow(o, isTarget){
+  const id = Number(o.id), u = UNIT[id];
+  const st = STATUS_RU[o.status] ? o.status : "partial";
+  const chipText = (st==="correct" && o.notable && !isTarget) ? "отлично" : STATUS_RU[st];
+  const sc = (o.score==null || st==="not_used") ? null : Math.max(0,Math.min(100,Math.round(Number(o.score))));
+  const name = h("div",{class:"uname"}, isTarget ? h("span",{class:"k",text:"Целевой юнит"}) : null,
+    h("span",{class:"n",text: u ? u[0] : "—"}), u ? u[1] : "Вне каталога");
+  const meter = h("div",{class:"meter"}, sc==null ? h("b",{text:"—"}) : [h("span",{class:"bar"}, h("i",{style:`width:${sc}%;background:${scoreColor(sc)}`})), h("b",{text:sc,style:`color:${scoreColor(sc)}`})]);
+  return h("div",{class:"urow"+(isTarget?" target":"")}, name,
+    h("div",{class:"score"}, h("span",{class:"chip "+st,text:chipText}), meter),
+    fragLine(o), o.comment_ru ? h("div",{class:"ucomment",text:o.comment_ru}) : null);
+}
+function disputeBlock(onSend){
+  const box = h("div",{class:"dispute",hidden:true});
+  const ta = h("textarea",{placeholder:"Что не так с проверкой? Например: «мой вариант тоже правильный, потому что…»"});
+  const msg = h("span",{class:"status"});
+  const send = h("button",{class:"btn small","data-needs-claude":true,onclick:async()=>{
+    const c = ta.value.trim(); if (!c){ ta.focus(); return; }
+    setBusy(true,"Claude пересматривает проверку…");
+    try{ await onSend(c); setBusy(false); }catch(e){ setBusy(false); showError(e); }
+  }},"Отправить");
+  box.append(ta, h("div",{class:"row"}, send, msg));
+  const open = h("button",{class:"btn ghost small",onclick:()=>{box.hidden=!box.hidden; if(!box.hidden) ta.focus();}},"Оспорить проверку");
+  return h("div",{}, h("div",{class:"row"}, open), box);
+}
+function nextRow(){
+  return h("div",{class:"row",style:"margin-top:18px"}, h("button",{class:"btn","data-needs-claude":true,onclick:()=>{window.scrollTo({top:0});newExercise();}},"Следующее задание"));
+}
+
+/* ---------- boot ---------- */
+$("#search").addEventListener("input", renderUnits);
+$("#newBtn").addEventListener("click", newExercise);
+$("#toggleUnits").addEventListener("click", ()=>$("#side").classList.toggle("open"));
+renderUnits(); renderHead(); renderTypes(); renderExercise();
+setBusy(false);
+(async()=>{
+  try{ state.sample = window.claude ? await window.claude.use("sample") : null; }catch{ state.sample = null; }
+  state.sampleReady = true;
+  if (!state.sample){
+    const n=$("#notice"); n.hidden=false; n.className="status";
+    n.textContent="Генерация и проверка работают, когда страница открыта в Claude. Пример с пропусками проверяется и без него.";
+  }
+  setBusy(false);
+})();
+(async()=>{
+  let db = null;
+  try{ db = window.claude ? await window.claude.use("db") : null; }catch{ db = null; }
+  if (!db){ state.loaded = true; $("#sync").textContent = "Прогресс не сохраняется: хранилище недоступно в этом окне"; return; }
+  state.db = db; state.ref = db.doc("progress/units");
+  state.ref.onSnapshot(snap=>{
+    if (snap.metadata.hasPendingWrites || writing) return;
+    const server = (snap.exists && snap.data() && snap.data().units) ? JSON.parse(JSON.stringify(snap.data().units)) : {};
+    const firstLoad = !state.loaded;
+    if (firstLoad){
+      // keep anything changed in this tab before the store answered
+      for (const k of state.preload) server[k] = state.progress.units[k];
+      state.preload.clear();
+    }
+    state.progress.units = server;
+    state.loaded = true;
+    $("#sync").textContent = "Прогресс сохраняется";
+    renderUnits(); renderHead();
+    if (firstLoad && Object.keys(state.progress.units).length) save();
+  }, e=>{
+    state.loaded = true;
+    $("#sync").textContent = e && e.code==="revoked" ? "Доступ к хранилищу закрыт" : "Прогресс сейчас не синхронизируется";
+  });
+})();
+</script>
