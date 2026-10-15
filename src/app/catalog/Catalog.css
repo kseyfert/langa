@@ -1,14 +1,76 @@
-.catalog__search { flex: 1; min-width: 0; padding-block: var(--s-2); }
-/* Ссылка в виде кнопки: подчёркивание по дизайну только у .linklike. */
-.catalog__reset { text-decoration: none; }
-
 .catalog__list { list-style: none; margin: var(--s-2) 0 0; padding: 0; border-top: var(--line); }
 .catalog__unit {
-    display: grid; grid-template-columns: 3ch 1fr; gap: var(--s-3);
-    align-items: baseline;
-    padding: var(--s-3) 0;
+    display: grid; grid-template-columns: 3ch 1fr; column-gap: var(--s-3);
+    /* Отступ по бокам — чтобы подсветка не прилипала к тексту; отрицательное
+       поле возвращает номера на одну вертикаль с заголовками. */
+    padding: var(--s-3) var(--s-2);
+    margin-inline: calc(-1 * var(--s-2));
     border-bottom: var(--line);
+    transition: background 120ms;
 }
+.catalog__unit:hover, .catalog__unit--open { background: var(--paper-deep); }
+
+/* Шапка — кнопка во всю ширину; subgrid держит номер и текст в колонках строки,
+   чтобы guide ниже встал ровно под названием. */
+.catalog__head {
+    grid-column: 1 / -1;
+    display: grid; grid-template-columns: subgrid; align-items: baseline;
+    font: inherit; color: inherit; text-align: left;
+    background: none; border: 0; padding: 0; cursor: pointer;
+}
+.catalog__title, .catalog__summary { display: block; }
+
+/* Раскрытие вниз: исключение из «Движения» в design.md. Кривая — быстрый
+   старт и долгое мягкое торможение: так высота «доезжает», а не обрывается. */
+.catalog__more {
+    grid-column: 2;
+    display: grid; grid-template-rows: 0fr;
+    transition: grid-template-rows 360ms cubic-bezier(0.2, 0, 0, 1);
+}
+.catalog__unit--open .catalog__more { grid-template-rows: 1fr; }
+.catalog__more-inner { overflow: hidden; min-height: 0; }
+.catalog__more-inner > * { margin-top: var(--s-3); }
+.catalog__deps { margin: 0; font-size: var(--t-sm); }
+
+/* Переход по ссылке из builds_on: строка не прячется под краем окна и на
+   пару секунд вспыхивает фирменным фоном, чтобы глаз нашёл, куда приехал.
+   Класс ставит UnitRow.tsx. */
+.catalog__unit { scroll-margin-top: var(--s-6); }
+.catalog__unit--flash { animation: unit-flash 3s ease-out; }
+/* Конца у кадров нет намеренно: фон угасает к тому, что у строки сейчас
+   (обычный, наведение или раскрыта), а не к прозрачному. */
+@keyframes unit-flash {
+    0%, 50% { background: var(--speak-bg); }
+}
+
+/* Отрендеренный guide: тот же тихий вид, что и всё остальное. */
+.guide { font-size: var(--t-sm); }
+.guide h2, .guide h3 {
+    font-size: var(--t-xs); font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--ink-soft); margin: var(--s-3) 0 var(--s-1);
+}
+.guide > :first-child { margin-top: 0; }
+.guide p, .guide ul, .guide ol { margin: 0; }
+.guide ul, .guide ol { padding-left: var(--s-4); }
+/* В guide звёздочками помечена неправильная фраза («*I will meet* → I'm meeting»):
+   это ошибка, а не акцент — цвет брака вместо курсива. */
+.guide em { font-style: normal; color: var(--warn); }
+.guide code { font-family: var(--font-data); font-size: var(--t-xs); }
+.guide blockquote { margin: 0; border-left: 2px solid var(--rule); padding-left: var(--s-3); color: var(--ink-soft); }
 /* Номер справа: однозначные и трёхзначные стоят по одной вертикали. */
 .catalog__num { font-size: var(--t-xs); color: var(--ink-soft); text-align: right; }
 .catalog__title { font-weight: 550; }
+
+/* Книга — уровень между заголовком экрана и разделами: крупнее капители
+   разделов, мельче h1. Линейка снизу отделяет книгу от её первого раздела. */
+.catalog__book + .catalog__book { margin-top: var(--s-6); }
+.catalog__book-title {
+    font-size: var(--t-lg); font-weight: 600; letter-spacing: -0.01em;
+    text-transform: none; color: var(--ink);
+    margin: 0; padding-bottom: var(--s-2); border-bottom: var(--line);
+}
+/* Вид подзаголовка раздела из design.md (h2), но уровнем ниже книги. */
+.catalog__section-title {
+    font-size: var(--t-sm); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--ink-soft); margin: var(--s-5) 0 0;
+}
