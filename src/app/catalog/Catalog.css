@@ -10,21 +10,23 @@
 }
 .catalog__unit:hover, .catalog__unit--open { background: var(--paper-deep); }
 
-/* Шапка — кнопка во всю ширину; subgrid держит номер и текст в колонках строки,
-   чтобы guide ниже встал ровно под названием. */
-.catalog__head {
-    grid-column: 1 / 3;
-    display: grid; grid-template-columns: subgrid; align-items: baseline;
-    font: inherit; color: inherit; text-align: left;
+/* Сетка строки: номер | название и описание | показатели у правого края.
+   Ряд 1 — название (+▶) и график, ряд 2 — описание и интервал с освоением. */
+.catalog__num { grid-column: 1; grid-row: 1; align-self: baseline; cursor: pointer; }
+.catalog__titleline { grid-column: 2; grid-row: 1; align-self: baseline; }
+.catalog__summary { grid-column: 2; grid-row: 2; display: block; cursor: pointer; }
+.catalog__spark { grid-column: 3; grid-row: 1; align-self: center; }
+.catalog__hold { grid-column: 3; grid-row: 2; align-self: center; }
+.catalog__title {
+    font: inherit; font-weight: 550; color: inherit; text-align: left;
     background: none; border: 0; padding: 0; cursor: pointer;
 }
-.catalog__title, .catalog__summary { display: block; }
-/* Кнопка запуска — справа от названия, в первой строке; спиннер встаёт на её место. */
-.catalog__play { grid-column: 3; grid-row: 1; align-self: start; }
+/* ▶ сразу за последним словом названия, на его строке. */
+.catalog__play { vertical-align: middle; margin-left: var(--s-1); }
 
 /* Задание — под названием, той же колонкой, что guide; крестик в правом углу. */
 .catalog__task {
-    grid-column: 2 / -1;
+    grid-column: 2 / -1; grid-row: 4;
     position: relative;
     margin-top: var(--s-3); padding-top: var(--s-3);
     border-top: var(--line);
@@ -35,7 +37,7 @@
 /* Раскрытие вниз: исключение из «Движения» в design.md. Кривая — быстрый
    старт и долгое мягкое торможение: так высота «доезжает», а не обрывается. */
 .catalog__more {
-    grid-column: 2;
+    grid-column: 2; grid-row: 3;
     display: grid; grid-template-rows: 0fr;
     transition: grid-template-rows 360ms cubic-bezier(0.2, 0, 0, 1);
 }
@@ -71,7 +73,6 @@
 .guide blockquote { margin: 0; border-left: 2px solid var(--rule); padding-left: var(--s-3); color: var(--ink-soft); }
 /* Номер справа: однозначные и трёхзначные стоят по одной вертикали. */
 .catalog__num { font-size: var(--t-xs); color: var(--ink-soft); text-align: right; }
-.catalog__title { font-weight: 550; }
 
 /* Книга — уровень между заголовком экрана и разделами: крупнее капители
    разделов, мельче h1. Линейка снизу отделяет книгу от её первого раздела. */

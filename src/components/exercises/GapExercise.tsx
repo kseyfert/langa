@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useState, useTransition, type FormEvent } from 'react';
 import { checkExercise } from '@/app/actions';
 import { Icon } from '@/components/Icon';
@@ -14,6 +15,7 @@ export function GapExercise({ exerciseId, content }: { exerciseId: number; conte
     const [checked, setChecked] = useState<Checked | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [busy, startBusy] = useTransition();
+    const router = useRouter();
 
     const submit = (e: FormEvent) => {
         e.preventDefault();
@@ -26,6 +28,8 @@ export function GapExercise({ exerciseId, content }: { exerciseId: number; conte
                 return setError('Сервер вернул проверку не того вида');
             }
             setChecked({ evaluation: res.attempt.evaluation, solution: res.solution.content });
+            // Попытка изменила рейтинг юнита — перечитать страницу с сервера; состояние формы останется.
+            router.refresh();
         });
     };
 

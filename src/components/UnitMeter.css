@@ -1,0 +1,30 @@
+/* Показатели юнита (design.md, «Показатели юнита в строке»): график в строке
+   названия, под ним — интервал и полоса освоения в строке описания. Ширина обоих
+   частей одна, чтобы они стояли ровным столбцом у правого края. */
+.meter { position: relative; display: block; width: calc(var(--s-6) * 2); cursor: default; }
+.meter__spark { display: block; width: 100%; height: var(--s-5); overflow: visible; }
+.meter__base { stroke: var(--rule); stroke-width: 1; }
+.meter__area { fill: var(--trend-bg); }
+.meter__line { fill: none; stroke: var(--trend); stroke-width: 1.4; stroke-linejoin: round; stroke-linecap: round; }
+.meter__dot { fill: var(--trend); }
+
+.meter--hold { display: flex; align-items: center; gap: var(--s-2); }
+.meter__days {
+    font-family: var(--font-data); font-variant-numeric: tabular-nums;
+    font-size: var(--t-xs); font-weight: 550; white-space: nowrap;
+}
+.meter__days small { font-size: 0.6875rem; font-weight: 400; color: var(--ink-soft); margin-left: 2px; }
+.meter__bar { flex: 1; height: 2px; background: var(--rule); border-radius: 1px; overflow: hidden; }
+.meter__bar > span { display: block; height: 100%; background: var(--mastery); transition: width 200ms; }
+
+/* Значения сразу при наведении, без задержки системного title. Парит над
+   страницей — поэтому тень, как у выпадающего меню в design.md. */
+.meter[data-tip]:hover::after {
+    content: attr(data-tip);
+    position: absolute; right: 0; bottom: calc(100% + var(--s-2));
+    padding: var(--s-1) var(--s-2);
+    background: var(--paper-lift); border: var(--line); border-radius: var(--radius);
+    box-shadow: 0 6px 20px rgb(0 0 0 / 12%);
+    font-family: var(--font-data); font-size: var(--t-xs); line-height: 1.6;
+    color: var(--ink); white-space: pre; z-index: 1; pointer-events: none;
+}

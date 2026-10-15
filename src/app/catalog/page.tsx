@@ -1,5 +1,6 @@
 import { marked } from 'marked';
 import { listUnits, type Unit } from '@/server/catalog';
+import { unitRatings, type UnitRating } from '@/server/learner';
 import { UnitRow, type Dep } from './UnitRow';
 import './Catalog.css';
 
@@ -36,8 +37,9 @@ function plural(n: number, one: string, few: string, many: string): string {
 
 export default async function CatalogPage() {
     let units: Unit[];
+    let ratings: Map<number, UnitRating>;
     try {
-        units = await listUnits();
+        [units, ratings] = await Promise.all([listUnits(), unitRatings()]);
     } catch (e) {
         return (
             <div className="stack">
@@ -96,6 +98,7 @@ export default async function CatalogPage() {
                                             summaryRu={u.summaryRu}
                                             guideHtml={u.guide.trim() ? marked.parse(u.guide, { async: false }) : null}
                                             deps={depsOf(u)}
+                                            rating={ratings.get(u.id) ?? null}
                                         />
                                     ))}
                                 </ul>

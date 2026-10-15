@@ -3,6 +3,8 @@
 import { useEffect, useId, useRef, useState, useTransition, type MouseEvent } from 'react';
 import { Icon } from '@/components/Icon';
 import { GapExercise } from '@/components/exercises/GapExercise';
+import { MeterHold, MeterSpark } from '@/components/UnitMeter';
+import type { UnitRating } from '@/server/learner';
 import type { ExerciseView } from '@/server/tasks';
 import { startGap } from '@/app/actions';
 
@@ -41,15 +43,19 @@ type Props = {
     /** guide, уже отрендеренный на сервере; null — описания нет. */
     guideHtml: string | null;
     deps: Dep[];
+    /** null — по юниту ещё не было практики. */
+    rating: UnitRating | null;
 };
 
-export function UnitRow({ id: unitId, number, title, summaryRu, guideHtml, deps }: Props) {
+export function UnitRow({ id: unitId, number, title, summaryRu, guideHtml, deps, rating }: Props) {
     const [open, setOpen] = useState(false);
     const id = useId();
     const row = useRef<HTMLLIElement>(null);
     const [exercise, setExercise] = useState<ExerciseView | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [loading, startLoading] = useTransition();
+
+    const toggle = () => setOpen((v) => !v);
 
     const play = () =>
         startLoading(async () => {
@@ -66,30 +72,29 @@ export function UnitRow({ id: unitId, number, title, summaryRu, guideHtml, deps 
     }, [unitId]);
     return (
         <li ref={row} id={`unit-${unitId}`} className={`catalog__unit${open ? ' catalog__unit--open' : ''}`}>
-            {/* Переключает только шапка: клик по тексту guide не должен сворачивать — его выделяют и копируют. */}
-            <button
-                type="button"
-                className="catalog__head"
-                aria-expanded={open}
-                aria-controls={id}
-                onClick={() => setOpen((v) => !v)}
-            >
-                <span className="catalog__num mono">{number ?? '—'}</span>
-                <span>
-                    <span className="catalog__title">{title}</span>
-                    {summaryRu && <span className="catalog__summary hint muted">{summaryRu}</span>}
-                </span>
-            </button>
-            {/* Отдельно от шапки: кнопка в кнопке недопустима, и запуск задания не должен раскрывать guide. */}
-            <span className="catalog__play">
+            {/* Шапка — не одна кнопка: внутри неё ▶, а кнопку в кнопку вкладывать нельзя.
+                Раскрывает guide кнопка-название (и с клавиатуры); номер и описание — щелчком мыши.
+                Клик по тексту guide не сворачивает: его выделяют и копируют. */}
+            <span className="catalog__num mono" onClick={toggle}>{number ?? '—'}</span>
+            <span className="catalog__titleline">
+                <button type="button" className="catalog__title" aria-expanded={open} aria-controls={id} onClick={toggle}>
+                    {title}
+                </button>
                 {loading ? (
-                    <span className="icon-btn" role="status" aria-label="Составляю задание…"><span className="spinner" /></span>
+                    <span className="icon-btn catalog__play" role="status" aria-label="Составляю задание…"><span className="spinner" /></span>
                 ) : (
-                    <button type="button" className="icon-btn" title="Задание на пропуски" aria-label="Задание на пропуски" onClick={play}>
+                    <button type="button" className="icon-btn catalog__play" title="Задание на пропуски" aria-label="Задание на пропуски" onClick={play}>
                         <Icon name="play" />
                     </button>
                 )}
             </span>
+            {summaryRu && <span className="catalog__summary hint muted" onClick={toggle}>{summaryRu}</span>}
+            {rating && (
+                <>
+                    <MeterSpark rating={rating} className="catalog__spark" />
+                    <MeterHold rating={rating} className="catalog__hold" />
+                </>
+            )}
             <div className="catalog__more" id={id} inert={!open}>
                 <div className="catalog__more-inner">
                     {deps.length > 0 && (
