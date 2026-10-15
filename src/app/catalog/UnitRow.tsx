@@ -1,37 +1,26 @@
 'use client';
 
-import { useEffect, useId, useRef, useState, useTransition, type MouseEvent } from 'react';
+import { useEffect, useId, useRef, useState, useTransition } from 'react';
 import { Icon } from '@/components/Icon';
 import { ChoiceExercise } from '@/components/exercises/ChoiceExercise';
 import { GapExercise } from '@/components/exercises/GapExercise';
+import { RephraseExercise } from '@/components/exercises/RephraseExercise';
+import { flash, jump } from '@/components/jump';
 import { MeterHold, MeterSpark } from '@/components/UnitMeter';
 import type { UnitRating } from '@/server/learner';
 import type { ExerciseView } from '@/server/tasks';
 import { startExercise } from '@/app/actions';
+import { READY_TYPES } from '@/server/tasks/types';
 
-const FLASH = 'catalog__unit--flash';
-
-/**
- * Подсветка классом, а не :target: :target не срабатывает повторно, если
- * ссылка ведёт туда же, куда и прошлая, — а на один юнит ссылаются многие.
- */
-function flash(el: HTMLElement) {
-    el.classList.remove(FLASH);
-    void el.offsetWidth; // перезапуск анимации, если строка уже мигала
-    el.classList.add(FLASH);
-    el.addEventListener('animationend', () => el.classList.remove(FLASH), { once: true });
-}
-
-/** Переход к юниту на этой же странице; прокрутка плавная за счёт scroll-behavior в base.css. */
-function jump(e: MouseEvent<HTMLAnchorElement>, href: string) {
-    if (!href.startsWith('#')) return;
-    const el = document.getElementById(href.slice(1));
-    if (!el) return;
-    e.preventDefault();
-    history.pushState(null, '', href);
-    el.scrollIntoView({ block: 'start' });
-    flash(el);
-}
+// Выбор типа задания — временно, на время тестов. Общий для всех строк:
+// запоминается в браузере, чтобы не выбирать заново в каждом юните.
+const TYPE_KEY = 'langa:exercise-type';
+const readType = () => {
+    try { return localStorage.getItem(TYPE_KEY) ?? ''; } catch { return ''; }
+};
+const saveType = (t: string) => {
+    try { localStorage.setItem(TYPE_KEY, t); } catch { /* без памяти — не страшно */ }
+};
 
 /** Юнит из builds_on: title и href — null, если такого id в базе нет. */
 export type Dep = { id: number; title: string | null; href: string | null };
@@ -56,18 +45,22 @@ export function UnitRow({ id: unitId, number, title, summaryRu, guideHtml, deps,
     const [error, setError] = useState<string | null>(null);
     const [loading, startLoading] = useTransition();
 
+    const [type, setType] = useState('');
     const toggle = () => setOpen((v) => !v);
 
     const play = () =>
         startLoading(async () => {
             setError(null);
-            const res = await startExercise(unitId);
+            const res = await startExercise(unitId, readType() || null);
             if (res.ok) setExercise(res.exercise);
             else setError(res.error);
         });
 
     // Пришли по ссылке с другой страницы (из выдачи поиска): браузер уже
     // прокрутил к якорю, осталось подсветить.
+    // Из localStorage — после монтирования: на сервере его нет, иначе разойдётся гидратация.
+    useEffect(() => setType(readType()), []);
+
     useEffect(() => {
         if (row.current && location.hash === `#unit-${unitId}`) flash(row.current);
     }, [unitId]);
@@ -88,6 +81,12 @@ export function UnitRow({ id: unitId, number, title, summaryRu, guideHtml, deps,
                         <Icon name="play" />
                     </button>
                 )}
+                <select className="catalog__type" aria-label="Тип задания" title="Тип задания" value={type}
+                    onFocus={() => setType(readType())}
+                    onChange={(e) => { setType(e.target.value); saveType(e.target.value); }}>
+                    <option value="">любой</option>
+                    {READY_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                </select>
             </span>
             {summaryRu && <span className="catalog__summary hint muted" onClick={toggle}>{summaryRu}</span>}
             {rating && (
@@ -134,6 +133,7 @@ export function UnitRow({ id: unitId, number, title, summaryRu, guideHtml, deps,
                             </button>
                             {exercise.type === 'gap' && <GapExercise key={exercise.id} exerciseId={exercise.id} content={exercise.content} />}
                             {exercise.type === 'choice' && <ChoiceExercise key={exercise.id} exerciseId={exercise.id} content={exercise.content} />}
+                            {exercise.type === 'rephrase' && <RephraseExercise key={exercise.id} exerciseId={exercise.id} content={exercise.content} targetName={`${number ?? '—'}. ${title}`} />}
                         </>
                     )}
                 </div>

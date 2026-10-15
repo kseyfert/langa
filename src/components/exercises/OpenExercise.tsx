@@ -1,0 +1,120 @@
+'use client';
+
+import { useRouter } from 'next/navigation';
+import { useState, useTransition, type FormEvent, type ReactNode } from 'react';
+import { checkExercise, revealExercise } from '@/app/actions';
+import type { Exercise, OpenEvaluation } from '@/server/exercises/types';
+import { OpenAttempt } from './OpenAttempt';
+import './Exercise.css';
+import './OpenExercise.css';
+
+type Done = { answer: string; evaluation: OpenEvaluation };
+
+type Props = {
+    exerciseId: number;
+    instructions: string;
+    /** Само задание: исходное предложение, текст на перевод, вопрос. */
+    task: ReactNode;
+    /** «номер. название» целевого юнита — подпись к его правкам. */
+    targetName: string;
+};
+
+/**
+ * Открытое задание (rephrase, позже translate и free): ответ проверяет Claude.
+ * После «верно, но без нужной конструкции» разбор скрыт, пока нет следующей
+ * попытки или пока не нажат «Показать разбор» (exercise-spec §8).
+ */
+export function OpenExercise({ exerciseId, instructions, task, targetName }: Props) {
+    const [draft, setDraft] = useState('');
+    const [attempts, setAttempts] = useState<Done[]>([]);
+    const [units, setUnits] = useState<Record<number, string>>({});
+    const [retryRu, setRetryRu] = useState<string | null>(null);
+    const [finished, setFinished] = useState(false);
+    const [solution, setSolution] = useState<Exercise | null>(null);
+    const [error, setError] = useState<string | null>(null);
+    const [busy, startBusy] = useTransition();
+    const router = useRouter();
+
+    // Ждёт вторую попытку: разбор последней скрыт, форма снова открыта.
+    const pending = retryRu != null && !solution;
+    const showForm = !finished && (attempts.length === 0 || pending);
+
+    const submit = (e: FormEvent) => {
+        e.preventDefault();
+        const text = draft.trim();
+        if (!text || busy) return;
+        startBusy(async () => {
+            setError(null);
+            const res = await checkExercise(exerciseId, { text });
+            if (!res.ok) return setError(res.error);
+            const ev = res.attempt.evaluation;
+            if (!('verdict' in ev)) return setError('Сервер вернул проверку не того вида');
+            setAttempts((a) => [...a, { answer: text, evaluation: ev }]);
+            setUnits((u) => ({ ...u, ...res.units }));
+            setRetryRu(res.retryRu);
+            setFinished(res.status != null);
+            setSolution(res.solution);
+            setDraft('');
+            // Попытка изменила рейтинг юнита — перечитать страницу с сервера; состояние формы останется.
+            router.refresh();
+        });
+    };
+
+    const reveal = () =>
+        startBusy(async () => {
+            setError(null);
+            const res = await revealExercise(exerciseId);
+            if (!res.ok) return setError(res.error);
+            setSolution(res.solution);
+        });
+
+    // Эталон — один: почти одинаковые варианты (а в старых заданиях их бывает по три) только шумят.
+    const references = solution && 'reference_en' in solution.content ? solution.content.reference_en.slice(0, 1) : [];
+    return (
+        <div className="exercise">
+            {instructions && <p className="exercise__instructions">{instructions}</p>}
+            <div className="open__task">{task}</div>
+
+            {attempts.map((a, i) => (
+                <OpenAttempt
+                    key={i}
+                    label={attempts.length > 1 ? `Попытка ${i + 1}` : null}
+                    answer={a.answer}
+                    evaluation={a.evaluation}
+                    units={units}
+                    targetName={targetName}
+                    // Эталон — один на задание: показывается в последнем разборе.
+                    references={i === attempts.length - 1 ? references : []}
+                    concealed={pending && i === attempts.length - 1}
+                />
+            ))}
+
+            {showForm && (
+                <form className={`open__form${pending ? ' open__form--retry' : ''}`} onSubmit={submit}>
+                    {pending && <p className="open__retry">{retryRu}</p>}
+                    <textarea
+                        className="input open__answer"
+                        aria-label="Твой ответ"
+                        placeholder={pending ? 'Ещё одна попытка' : 'Твой ответ на английском'}
+                        rows={3}
+                        value={draft}
+                        onChange={(e) => setDraft(e.target.value)}
+                        autoCapitalize="off" spellCheck={false}
+                    />
+                    {error && <p className="error">{error}</p>}
+                    <div className="exercise__actions row">
+                        {pending && (
+                            <button type="button" className="btn btn--quiet" disabled={busy} onClick={reveal}>
+                                Показать разбор
+                            </button>
+                        )}
+                        <button type="submit" className="btn btn--primary exercise__check" disabled={busy || !draft.trim()}>
+                            {busy ? 'Проверяю…' : 'Проверить'}
+                        </button>
+                    </div>
+                </form>
+            )}
+            {!showForm && error && <p className="error">{error}</p>}
+        </div>
+    );
+}

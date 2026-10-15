@@ -1,5 +1,6 @@
 'use server';
 
+import type { Exercise } from '@/server/exercises/types';
 import * as tasks from '@/server/tasks';
 
 // Ошибки возвращаются значением: брошенную из server action Next в проде прячет.
@@ -11,10 +12,11 @@ function fail(e: unknown, what: string): { ok: false; error: string } {
     return { ok: false, error: `${what}: ${e instanceof Error ? e.message : String(e)}` };
 }
 
-/** Задание по юниту, тип выбирается случайно. */
-export async function startExercise(unitId: number): Promise<Result<{ exercise: tasks.ExerciseView }>> {
+/** Задание по юниту: заданного типа или, если тип не задан или не готов, случайного. */
+export async function startExercise(unitId: number, type: string | null = null): Promise<Result<{ exercise: tasks.ExerciseView }>> {
     try {
-        return { ok: true, exercise: await tasks.getRandom(unitId) };
+        const ready = tasks.READY_TYPES.find((t) => t === type);
+        return { ok: true, exercise: await (ready ? tasks.get(unitId, ready) : tasks.getRandom(unitId)) };
     } catch (e) {
         return fail(e, 'Не получилось составить задание');
     }
@@ -26,5 +28,14 @@ export async function checkExercise(exerciseId: number, answer: unknown): Promis
         return { ok: true, ...(await tasks.check(exerciseId, answer)) };
     } catch (e) {
         return fail(e, 'Не получилось проверить ответ');
+    }
+}
+
+/** Разбор задания с эталоном — после «верно, но без нужной конструкции». */
+export async function revealExercise(exerciseId: number): Promise<Result<{ solution: Exercise }>> {
+    try {
+        return { ok: true, solution: await tasks.reveal(exerciseId) };
+    } catch (e) {
+        return fail(e, 'Не получилось показать разбор');
     }
 }

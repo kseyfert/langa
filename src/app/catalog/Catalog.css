@@ -23,6 +23,14 @@
 }
 /* ▶ сразу за последним словом названия, на его строке. */
 .catalog__play { vertical-align: middle; margin-left: var(--s-1); }
+/* Выбор типа задания — временный, для тестов: тише кнопки ▶, вида поля ввода. */
+.catalog__type {
+    vertical-align: middle; margin-left: var(--s-1);
+    font: inherit; font-family: var(--font-data); font-size: var(--t-xs); color: var(--ink-soft);
+    padding: 0 var(--s-1); background: transparent;
+    border: var(--line); border-radius: var(--radius); cursor: pointer;
+}
+.catalog__type:focus { outline: none; border-color: var(--speak); }
 
 /* Задание — под названием, той же колонкой, что guide; крестик в правом углу. */
 .catalog__task {

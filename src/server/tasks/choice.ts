@@ -62,7 +62,7 @@ export const choice: Task<'choice'> = {
 
     async generate(unitId) {
         const topic = randomTopic();
-        const [unit, v] = await Promise.all([unitForPrompt(unitId), variety(unitId)]);
+        const [unit, v] = await Promise.all([unitForPrompt(unitId), variety(unitId, 6)]);
         const content = normalize(await askJson(prompt(unit, topic, v.prompt), MODEL_GENERATE), v.focus);
         return { content, topic, model: MODEL_GENERATE, promptVersion: PROMPT_VERSION };
     },

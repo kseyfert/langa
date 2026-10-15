@@ -1,0 +1,78 @@
+/* Открытое задание — вариант C макета: полоса итога, список правок, «как лучше». */
+
+/* Исходный текст задания — цитатой (design.md): полоса слева, без плашки.
+   Это главный текст, поэтому --ink и --t-md, а не приглушённый контекст. */
+.open__task {
+    margin: var(--s-2) 0 0; padding-left: var(--s-3);
+    border-left: 2px solid var(--rule);
+    font-size: var(--t-md); white-space: pre-wrap;
+}
+
+/* Подпись — капитель, как подпись поля (design.md §4). */
+.open__cap {
+    margin: 0; font-size: var(--t-xs); font-weight: 500;
+    text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-soft);
+}
+
+.open__attempt { margin-top: var(--s-4); }
+
+/* Итог: вердикт и пояснение слева, балл целевого юнита справа; линейки сверху и снизу. */
+.open__band {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--s-3); align-items: end;
+    margin-top: var(--s-2); padding: var(--s-3) 0;
+    border-block: var(--line);
+}
+.open__verdict { margin: 0; font-size: var(--t-lg); font-weight: 650; letter-spacing: -0.01em; line-height: 1.2; }
+.open__summary { margin: var(--s-1) 0 0; font-size: var(--t-sm); color: var(--ink-soft); }
+.open__score { text-align: right; }
+.open__score b {
+    display: block; font-family: var(--font-data); font-variant-numeric: tabular-nums;
+    font-size: var(--t-xl); font-weight: 550; line-height: 1;
+}
+.open__score span { font-size: var(--t-xs); color: var(--ink-soft); }
+
+/* Цвет = смысл: верно — «доведено», ошибка — брак. «Без конструкции» не ошибка — без цвета. */
+.open--ok { color: var(--done); }
+.open--bad { color: var(--warn); }
+.open--plain { color: var(--ink); }
+
+/* Правки: брак в строке (design.md) — полоса слева --warn. */
+.open__title { margin: var(--s-4) 0 var(--s-2); }
+.open__fixes { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--s-2); }
+.open__fixes li {
+    display: grid; grid-template-columns: 3ch minmax(0, 1fr); column-gap: var(--s-2);
+    padding: var(--s-1) 0 var(--s-1) var(--s-2); border-left: 2px solid var(--warn);
+}
+.open__num { font-size: var(--t-xs); color: var(--ink-soft); padding-top: 3px; grid-row: span 2; }
+.open__fix { font-size: var(--t-md); }
+.open__fix del { color: var(--warn); }
+.open__fix ins { color: var(--done); text-decoration: none; font-weight: 550; }
+.open__why { font-size: var(--t-xs); color: var(--ink-soft); }
+.open__unit { color: var(--ink); }
+/* Ссылка на побочный юнит — вид .linklike, но цвет повторён: .open__unit выше задаёт --ink. */
+.open__unit.linklike { color: var(--speak); }
+
+/* «Как лучше» лежит НА фоне строки (а он то --paper, то --paper-deep) — поэтому --paper-lift. */
+.open__better {
+    margin-top: var(--s-4); padding: var(--s-3) var(--s-4);
+    background: var(--paper-lift); border-radius: var(--radius);
+}
+.open__better dl { margin: var(--s-2) 0 0; display: flex; flex-direction: column; gap: var(--s-2); }
+.open__better-row { display: grid; grid-template-columns: 11ch minmax(0, 1fr); gap: var(--s-3); font-size: var(--t-sm); }
+.open__better-row dt { padding-top: 2px; }
+.open__better-row dd { margin: 0; }
+
+.open__fine { margin: var(--s-3) 0 0; font-size: var(--t-xs); color: var(--ink-soft); }
+
+/* Ответ. Повторная попытка — на той же подложке, что «как лучше»: это продолжение разбора. */
+.open__form { display: flex; flex-direction: column; gap: var(--s-2); margin-top: var(--s-4); }
+.open__form--retry { padding: var(--s-3) var(--s-4); background: var(--paper-lift); border-radius: var(--radius); }
+.open__retry { margin: 0; font-size: var(--t-sm); }
+.open__answer { width: 100%; resize: vertical; line-height: 1.5; }
+.open__form .exercise__actions { margin-top: 0; padding-top: 0; border-top: 0; }
+
+@media (max-width: 560px) {
+    .open__band { grid-template-columns: minmax(0, 1fr); }
+    .open__score { text-align: left; }
+    .open__better-row { grid-template-columns: minmax(0, 1fr); gap: 0; }
+}

@@ -1,5 +1,12 @@
 import type { AnswerByType, ContentByType, Evaluation, ExerciseType } from '../exercises/types';
 
+/**
+ * Типы, которые уже сделаны по-настоящему; остальные — заглушки и в выдачу не попадают.
+ * Здесь, а не в tasks/index.ts: список нужен и клиенту (выбор типа для тестов).
+ */
+export const READY_TYPES = ['gap', 'choice', 'rephrase'] as const satisfies readonly ExerciseType[];
+export type ReadyType = (typeof READY_TYPES)[number];
+
 export type Generated<T extends ExerciseType> = {
     content: ContentByType[T];
     topic: string;

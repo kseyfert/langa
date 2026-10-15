@@ -39,7 +39,10 @@ export type TranslateContent = {
 export type RephraseContent = {
     instructions_ru: string;
     source_en: string;
-    start_with: string;
+    /** Пункт «Употребления» из guide, на который составлено задание; в старых записях нет. */
+    focus?: string[];
+    /** Только в старых заданиях (до rephrase-gen-v3): начало ответа выдавало конструкцию, больше не генерируется и не показывается. */
+    start_with?: string;
     reference_en: string[];
 };
 
@@ -66,7 +69,7 @@ export type PublicContentByType = {
     gap: { instructions_ru: string; items: { text: string }[] };
     choice: { instructions_ru: string; items: { text: string; options: string[] }[] };
     translate: Omit<TranslateContent, 'target_note_ru' | 'reference_en'>;
-    rephrase: Omit<RephraseContent, 'reference_en'>;
+    rephrase: Omit<RephraseContent, 'reference_en' | 'focus' | 'start_with'>;
     free: Omit<FreeContent, 'reference_en'>;
 };
 

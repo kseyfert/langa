@@ -25,8 +25,11 @@ export function parseJsonLoose(text: string): unknown {
     throw new TaskError('Claude ответил в неожиданном формате. Попробуй ещё раз.');
 }
 
-/** Один запрос к Claude, ответ — JSON. Ошибки API переводятся в понятные TaskError. */
-export async function askJson(prompt: string, model: string): Promise<unknown> {
+/**
+ * Один запрос к Claude, ответ — JSON. Ошибки API переводятся в понятные TaskError.
+ * system — неизменная часть промпта: она кэшируется и в следующих запросах стоит дешевле.
+ */
+export async function askJson(prompt: string, model: string, system?: string): Promise<unknown> {
     let res;
     try {
         // Внутри try: без ключа падает уже конструктор.
@@ -37,6 +40,7 @@ export async function askJson(prompt: string, model: string): Promise<unknown> {
             // Если классификатор откажет, запрос сам перезапустится на рекомендованной модели.
             betas: ['server-side-fallback-2026-07-01'],
             fallbacks: 'default',
+            ...(system && { system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }] }),
             messages: [{ role: 'user', content: prompt }],
         });
     } catch (e) {

@@ -72,7 +72,11 @@ export function publicContent(ex: Exercise): PublicContentByType[ExerciseType] {
             const { target_note_ru, reference_en, ...rest } = ex.content;
             return rest;
         }
-        case 'rephrase':
+        case 'rephrase': {
+            // focus называет грамматику, start_with (старые задания) выдаёт ответ — клиенту ни то ни другое.
+            const { reference_en, focus, start_with, ...rest } = ex.content;
+            return rest;
+        }
         case 'free': {
             const { reference_en, ...rest } = ex.content;
             return rest;

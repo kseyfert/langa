@@ -57,7 +57,6 @@ type TranslateContent = {
 type RephraseContent = {
   instructions_ru: string;
   source_en: string;              // предложение без целевой конструкции
-  start_with: string;             // начало ответа, вынуждающее конструкцию; "" если вместо этого ключевое слово в instructions_ru
   reference_en: string[];
 };
 
