@@ -1,0 +1,65 @@
+/* Общие примитивы уровня приложения: здесь, а не в CSS экрана, иначе вид
+   блока зависит от того, смонтирован ли чужой компонент. */
+
+h1 { font-size: var(--t-xl); font-weight: 650; letter-spacing: -0.02em; margin: 0; line-height: 1.2; }
+h2 {
+    font-size: var(--t-sm); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--ink-soft); margin: var(--s-5) 0 0;
+}
+.hint { font-size: var(--t-xs); margin: 0; }
+
+/* Блок «факты»: подпись капителью сверху, крупное значение снизу. */
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--s-4); margin: 0; padding: var(--s-4) 0; border-block: var(--line); }
+.facts dt { font-size: var(--t-xs); text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-soft); }
+.facts dd { margin: var(--s-1) 0 0; font-size: var(--t-lg); }
+.error { color: var(--warn); font-size: var(--t-sm); margin: 0; }
+
+/* Шапка: навигация слева, пользователь справа, одна черта под всем. */
+.topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: var(--s-4); flex-wrap: wrap;
+    padding-bottom: var(--s-3); margin-bottom: var(--s-6);
+    border-bottom: var(--line);
+}
+
+/* Предупреждение: полоса слева, глубокая бумага, без рамки. */
+.banner {
+    padding: var(--s-2) var(--s-3);
+    border-left: 2px solid var(--warn);
+    background: var(--paper-deep);
+    font-size: var(--t-sm);
+    margin: 0 0 var(--s-4);
+}
+.linklike {
+    font: inherit; font-size: inherit; color: var(--speak);
+    background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline;
+}
+
+.btn {
+    font: inherit; font-size: var(--t-sm);
+    padding: var(--s-2) var(--s-4);
+    border: var(--line); border-radius: var(--radius);
+    background: transparent; color: var(--ink); cursor: pointer;
+    transition: background 120ms, border-color 120ms;
+}
+.btn:hover:not(:disabled) { background: var(--paper-deep); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn--primary { background: var(--speak); border-color: var(--speak); color: var(--paper); }
+/* Фон повторён намеренно: .btn:hover специфичнее .btn--primary. */
+.btn--primary:hover:not(:disabled) { background: var(--speak); filter: brightness(1.15); }
+.btn--quiet { border-color: transparent; color: var(--ink-soft); padding-inline: var(--s-2); }
+
+.input {
+    font: inherit; font-size: var(--t-sm); color: var(--ink);
+    padding: var(--s-1) var(--s-2);
+    background: var(--paper);
+    border: var(--line); border-radius: var(--radius);
+    transition: border-color 120ms;
+}
+.input:focus { outline: none; border-color: var(--speak); }
+
+/* Пункты навигации — вид шагов мастера, но без нумерации: последовательности нет. */
+.steps { display: flex; flex-wrap: wrap; gap: var(--s-4); font-size: var(--t-xs); letter-spacing: 0.02em; }
+.steps__item { display: inline-flex; align-items: baseline; gap: var(--s-2); color: var(--ink-soft); text-decoration: none; }
+.steps__item:hover { color: var(--ink); }
+.steps__item--now { color: var(--ink); font-weight: 600; }

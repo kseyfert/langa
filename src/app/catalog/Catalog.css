@@ -1,0 +1,14 @@
+.catalog__search { flex: 1; min-width: 0; padding-block: var(--s-2); }
+/* Ссылка в виде кнопки: подчёркивание по дизайну только у .linklike. */
+.catalog__reset { text-decoration: none; }
+
+.catalog__list { list-style: none; margin: var(--s-2) 0 0; padding: 0; border-top: var(--line); }
+.catalog__unit {
+    display: grid; grid-template-columns: 3ch 1fr; gap: var(--s-3);
+    align-items: baseline;
+    padding: var(--s-3) 0;
+    border-bottom: var(--line);
+}
+/* Номер справа: однозначные и трёхзначные стоят по одной вертикали. */
+.catalog__num { font-size: var(--t-xs); color: var(--ink-soft); text-align: right; }
+.catalog__title { font-weight: 550; }

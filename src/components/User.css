@@ -1,0 +1,10 @@
+.user { gap: var(--s-2); }
+.user__name { font-size: var(--t-sm); font-weight: 550; }
+/* Квадрат, а не круг: так плитка выглядит во всех инструментах семьи. */
+.user__tile {
+    width: 34px; height: 34px; border-radius: var(--radius);
+    overflow: hidden; display: inline-flex; align-items: center; justify-content: center;
+}
+.user__pic { width: 118%; height: 118%; object-fit: cover; object-position: 50% 12%; }
+/* Белый, а не --paper: буква лежит на цветной плитке, которая не меняется с темой. */
+.user__letter { color: white; font-weight: 600; font-size: var(--t-sm); }

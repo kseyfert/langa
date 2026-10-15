@@ -1,0 +1,60 @@
+/**
+ * Дизайн-токены. Единственное место с конкретными цветами и размерами —
+ * редизайн меняет этот файл, а не компоненты.
+ */
+:root {
+    --paper:      #f1f3ef;
+    --paper-deep: #e4e8e1;
+    /* Поднятая поверхность: светлее полотна страницы. Нужна там, где
+       что-то лежит НА фоне, а не является фоном. */
+    --paper-lift: #ffffff;
+    --ink:        #1a1f1c;
+    --ink-soft:   #5c6660;
+    --rule:       #cdd4c9;
+
+    --speak:      #6b2d5c;   /* фирменный акцент (слива) */
+    --speak-bg:   #f3e9f0;
+    --read:       #8a6a1f;   /* второй смысловой акцент (охра) */
+    --read-bg:    #f5efdc;
+    --warn:       #a33a2a;
+    --done:       #3f6b46;   /* доведено до конца */
+    --done-bg:    #dcebdd;
+
+    /* Гротеск для интерфейса, моноширинный для данных. */
+    --font-ui:   'Inter Tight Variable', system-ui, -apple-system, sans-serif;
+    --font-data: 'JetBrains Mono Variable', ui-monospace, 'SF Mono', monospace;
+
+    --t-xs: 0.75rem;
+    --t-sm: 0.875rem;
+    --t-md: 1rem;
+    --t-lg: 1.375rem;
+    --t-xl: 2rem;
+
+    --s-1: 4px;
+    --s-2: 8px;
+    --s-3: 12px;
+    --s-4: 16px;
+    --s-5: 24px;
+    --s-6: 40px;
+    --s-7: 64px;
+
+    --radius: 3px;
+    --line: 1px solid var(--rule);
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --paper:      #161a17;
+        --paper-deep: #1e2320;
+        --paper-lift: #232925;
+        --ink:        #e8ece7;
+        --ink-soft:   #98a29b;
+        --rule:       #2f3733;
+        --speak:      #c98bb5;
+        --speak-bg:   #2a1d26;
+        --read:       #d4b464;
+        --read-bg:    #2a2417;
+        --done:       #7fbf8b;
+        --done-bg:    #1f2c22;
+    }
+}
