@@ -6,7 +6,7 @@ import { randomTopic } from './topics';
 import { TaskError, type Task } from './types';
 import { variety } from './variety';
 
-const PROMPT_VERSION = 'choice-gen-v3';
+const PROMPT_VERSION = 'choice-gen-v4';
 
 // Текст — genPrompt прототипа, шапка та же, что у gap (specs/exercise-spec.md §7).
 // Отличие от эталона: пропуск в предложении обязателен — в него подставляется выбранный вариант.
@@ -24,6 +24,9 @@ ${varietyRules}
 
 Make a multiple-choice exercise of exactly 6 items.
 - Each "text" is one natural sentence with exactly one blank written as ___ (three underscores).
+- The gap must contain the whole verb form that the unit tests, including auxiliaries (do/does/am/is/are/have/will...), in every option. Never put an auxiliary outside the gap.
+- For questions, the options include the subject: "___ a receipt?" → options "Do you need", "Are you needing".
+- The correct option must not be guessable from the words around the gap without knowing the unit's rule.
 - 2 or 3 options; exactly one is correct in context. Distractors are typical mistakes of Russian speakers on this unit. Vary the position of the correct option.
 Reply with only JSON: {"instructions_ru":"...","items":[{"text":"...","options":["...","..."],"correct":0,"explain_ru":"one short sentence why"}]}`;
 }
