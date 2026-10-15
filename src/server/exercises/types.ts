@@ -18,11 +18,15 @@ export type Verdict = (typeof VERDICTS)[number];
 export type GapContent = {
     instructions_ru: string;
     items: { text: string; answers: string[]; explain_ru: string }[];
+    /** Пункты «Употребления» из guide, на которые составлено задание; в старых записях нет. */
+    focus?: string[];
 };
 
 export type ChoiceContent = {
     instructions_ru: string;
     items: { text: string; options: string[]; correct: number; explain_ru: string }[];
+    /** Как у GapContent. */
+    focus?: string[];
 };
 
 export type TranslateContent = {

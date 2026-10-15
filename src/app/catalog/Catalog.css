@@ -32,7 +32,7 @@
     border-top: var(--line);
 }
 .catalog__task-close { position: absolute; top: var(--s-2); right: 0; }
-.catalog__task .gap__instructions { padding-right: var(--s-6); }
+.catalog__task .exercise__instructions { padding-right: var(--s-6); }
 
 /* Раскрытие вниз: исключение из «Движения» в design.md. Кривая — быстрый
    старт и долгое мягкое торможение: так высота «доезжает», а не обрывается. */

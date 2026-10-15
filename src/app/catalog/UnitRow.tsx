@@ -2,11 +2,12 @@
 
 import { useEffect, useId, useRef, useState, useTransition, type MouseEvent } from 'react';
 import { Icon } from '@/components/Icon';
+import { ChoiceExercise } from '@/components/exercises/ChoiceExercise';
 import { GapExercise } from '@/components/exercises/GapExercise';
 import { MeterHold, MeterSpark } from '@/components/UnitMeter';
 import type { UnitRating } from '@/server/learner';
 import type { ExerciseView } from '@/server/tasks';
-import { startGap } from '@/app/actions';
+import { startExercise } from '@/app/actions';
 
 const FLASH = 'catalog__unit--flash';
 
@@ -60,7 +61,7 @@ export function UnitRow({ id: unitId, number, title, summaryRu, guideHtml, deps,
     const play = () =>
         startLoading(async () => {
             setError(null);
-            const res = await startGap(unitId);
+            const res = await startExercise(unitId);
             if (res.ok) setExercise(res.exercise);
             else setError(res.error);
         });
@@ -83,7 +84,7 @@ export function UnitRow({ id: unitId, number, title, summaryRu, guideHtml, deps,
                 {loading ? (
                     <span className="icon-btn catalog__play" role="status" aria-label="Составляю задание…"><span className="spinner" /></span>
                 ) : (
-                    <button type="button" className="icon-btn catalog__play" title="Задание на пропуски" aria-label="Задание на пропуски" onClick={play}>
+                    <button type="button" className="icon-btn catalog__play" title="Задание" aria-label="Задание" onClick={play}>
                         <Icon name="play" />
                     </button>
                 )}
@@ -125,13 +126,14 @@ export function UnitRow({ id: unitId, number, title, summaryRu, guideHtml, deps,
             {(exercise || error) && (
                 <div className="catalog__task">
                     {error && <p className="error">{error}</p>}
-                    {exercise?.type === 'gap' && (
+                    {exercise && (
                         <>
                             <button type="button" className="icon-btn catalog__task-close" title="Закрыть задание"
                                 aria-label="Закрыть задание" onClick={() => setExercise(null)}>
                                 <Icon name="cancel" />
                             </button>
-                            <GapExercise key={exercise.id} exerciseId={exercise.id} content={exercise.content} />
+                            {exercise.type === 'gap' && <GapExercise key={exercise.id} exerciseId={exercise.id} content={exercise.content} />}
+                            {exercise.type === 'choice' && <ChoiceExercise key={exercise.id} exerciseId={exercise.id} content={exercise.content} />}
                         </>
                     )}
                 </div>

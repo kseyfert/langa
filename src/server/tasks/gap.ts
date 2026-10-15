@@ -4,12 +4,13 @@ import type { ClosedEvaluation, GapContent } from '../exercises/types';
 import { askJson, MODEL_GENERATE } from './claude';
 import { randomTopic } from './topics';
 import { TaskError, type Task } from './types';
+import { variety } from './variety';
 
-const PROMPT_VERSION = 'gap-gen-v1';
+const PROMPT_VERSION = 'gap-gen-v4';
 
 // Текст — genPrompt прототипа, с правками из specs/exercise-spec.md §7:
 // юнит описан через unitForPrompt (с guide), и задание не выходит за его границы.
-function prompt(unit: string, topic: string): string {
+function prompt(unit: string, topic: string, varietyRules: string): string {
     return `You write grammar practice for a Russian-speaking adult learner of English (around B2).
 
 Target unit:
@@ -19,27 +20,47 @@ Practise only the grammar described for this unit. Do not touch topics listed un
 Context theme: ${topic}. Use natural, varied, everyday English; avoid textbook clichés. Random seed: ${Math.random().toString(36).slice(2, 8)}.
 All *_ru fields are in Russian.
 
+${varietyRules}
+
 Make a gap-fill exercise of exactly 6 items.
 - Each "text" is one natural sentence with exactly one blank written as ___ (three underscores).
 - When the answer is a form of a given word, put the base word in brackets right after the blank, e.g. "She ___ (work) here."
+- The gap must contain the whole verb form that the unit tests, including auxiliaries (do/does/am/is/are/have/will...). Never put an auxiliary outside the gap.
+- For questions, put the subject in the brackets: "___ (you / need) a receipt?" → answer "Do you need".
+- The correct answer must not be guessable from the words around the gap without knowing the unit's rule.
 - The correct answer must be decided by the grammar of the target unit, not by vocabulary.
 - "answers" lists EVERY acceptable filling: contracted and full forms ("hasn't arrived","has not arrived"), and any alternative that is also correct in context.
 - Vary affirmative, negative and question forms where the unit allows.
+- instructions_ru: 1–2 sentences describing the task only; do not add rules for cases that do not occur in the items.
 Reply with only JSON: {"instructions_ru":"...","items":[{"text":"...","answers":["..."],"explain_ru":"one short sentence why"}]}`;
 }
 
 const isStr = (v: unknown): v is string => typeof v === 'string';
 
-/** Как normalizeEx прототипа: пункты не той формы отбрасываются; ни одного годного — ошибка. */
-function normalize(d: unknown): GapContent {
+type Item = GapContent['items'][number];
+
+/** Пункт задания или null, если он не той формы. */
+function item(i: unknown): Item | null {
+    const o = (i ?? {}) as { text?: unknown; answers?: unknown; explain_ru?: unknown };
+    if (!isStr(o.text) || o.text.split('___').length !== 2 || !Array.isArray(o.answers)) return null;
+    const answers = o.answers.filter(isStr).filter((a) => a.trim());
+    return answers.length ? { text: o.text, answers, explain_ru: isStr(o.explain_ru) ? o.explain_ru : '' } : null;
+}
+
+/**
+ * Как normalizeEx прототипа: пункты не той формы отбрасываются; ни одного годного — ошибка.
+ * План фокуса прорежается вместе с пунктами, чтобы focus[i] по-прежнему описывал items[i].
+ */
+function normalize(d: unknown, plan: string[]): GapContent {
     const o = (d ?? {}) as { instructions_ru?: unknown; items?: unknown };
-    const items = (Array.isArray(o.items) ? o.items : [])
-        .filter((i): i is { text: string; answers: unknown[]; explain_ru?: unknown } =>
-            !!i && isStr(i.text) && i.text.split('___').length === 2 && Array.isArray(i.answers))
-        .map((i) => ({ text: i.text, answers: i.answers.filter(isStr).filter((a) => a.trim()), explain_ru: isStr(i.explain_ru) ? i.explain_ru : '' }))
-        .filter((i) => i.answers.length > 0);
-    if (!items.length) throw new TaskError('Claude ответил в неожиданном формате. Попробуй ещё раз.');
-    return { instructions_ru: isStr(o.instructions_ru) ? o.instructions_ru : '', items };
+    const all = (Array.isArray(o.items) ? o.items : []).map(item);
+    const kept = all.flatMap((it, k) => (it ? [k] : []));
+    if (!kept.length) throw new TaskError('Claude ответил в неожиданном формате. Попробуй ещё раз.');
+    return {
+        instructions_ru: isStr(o.instructions_ru) ? o.instructions_ru : '',
+        items: kept.map((k) => all[k]!),
+        focus: kept.map((k) => plan[k] ?? ''),
+    };
 }
 
 /** Нормализация ответа — norm прототипа: регистр, апострофы, пробелы, кавычки и финальная пунктуация. */
@@ -51,7 +72,8 @@ export const gap: Task<'gap'> = {
 
     async generate(unitId) {
         const topic = randomTopic();
-        const content = normalize(await askJson(prompt(await unitForPrompt(unitId), topic), MODEL_GENERATE));
+        const [unit, v] = await Promise.all([unitForPrompt(unitId), variety(unitId)]);
+        const content = normalize(await askJson(prompt(unit, topic, v.prompt), MODEL_GENERATE), v.focus);
         return { content, topic, model: MODEL_GENERATE, promptVersion: PROMPT_VERSION };
     },
 

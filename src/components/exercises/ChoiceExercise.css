@@ -1,0 +1,12 @@
+/* Пропуск, в который встаёт выбранный вариант: линейка снизу, как строка бланка. */
+.pick__blank { font-weight: 550; padding-inline: var(--s-1); border-bottom: var(--line); }
+.pick__blank--empty { color: var(--ink-soft); font-weight: 500; }
+.exercise__item--bad .pick__blank { color: var(--warn); text-decoration: line-through; }
+
+.pick__opts { display: flex; width: fit-content; margin-block: var(--s-1); line-height: 1.5; }
+/* После проверки варианты не выбираются, но и не бледнеют: по ним читается ответ. */
+.pick__opts .choice__opt:disabled { cursor: default; }
+/* Верный вариант — цветом «доведено», выбранный неверный — браком. Фон повторён:
+   .choice__opt--on задаёт свой. */
+.pick__opts .pick__opt--right { background: var(--done-bg); color: var(--done); font-weight: 600; }
+.pick__opts .pick__opt--wrong { background: transparent; color: var(--warn); text-decoration: line-through; }

@@ -1,24 +1,6 @@
-.gap { font-size: var(--t-sm); }
-.gap__instructions { margin: 0 0 var(--s-2); }
-.gap__items { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--s-2); }
-.gap__item {
-    display: grid; grid-template-columns: 2.5ch 1fr; gap: var(--s-2); align-items: baseline; line-height: 2;
-    /* Место под полосу брака есть всегда — строки не сдвигаются после проверки. */
-    padding-left: var(--s-2); border-left: 2px solid transparent;
-}
-/* Брак в строке (design.md): полоса слева и замечание цветом --warn. */
-.gap__item--bad { border-left-color: var(--warn); }
-.gap__num { font-size: var(--t-xs); color: var(--ink-soft); }
-/* Поле в строке текста: ширина под типичный ответ из двух-трёх слов. */
-.gap__input { width: 14ch; margin-inline: var(--s-1); }
+/* Поле в строке текста: минимум — под типичный ответ из двух-трёх слов, дальше
+   ширину по длине ответа задаёт компонент. ch — ширина «0», буквы Inter Tight
+   в среднем уже, поэтому запас в 2ch хватает и текст не прокручивается. */
+.gap__input { min-width: 14ch; max-width: 100%; margin-inline: var(--s-1); }
 .gap__input:read-only { background: transparent; }
-.gap__item--bad .gap__input { color: var(--warn); text-decoration: line-through; }
-.gap__mark { display: inline-flex; vertical-align: middle; margin-left: var(--s-1); color: var(--done); }
-.gap__note { margin: 0; font-size: var(--t-xs); line-height: 1.5; }
-.gap__answer { color: var(--warn); font-weight: 550; }
-
-/* Блок действий экрана (design.md): линейка сверху, состояние слева, действие справа. */
-.gap__actions { justify-content: space-between; margin-top: var(--s-3); padding-top: var(--s-3); border-top: var(--line); }
-.gap__check { margin-left: auto; }
-.gap__score { margin: 0; font-size: var(--t-sm); color: var(--warn); }
-.gap__score--done { color: var(--done); }
+.exercise__item--bad .gap__input { color: var(--warn); text-decoration: line-through; }

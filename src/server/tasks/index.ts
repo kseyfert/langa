@@ -36,6 +36,12 @@ export async function get(unitId: number, type: ExerciseType): Promise<ExerciseV
     return view(ex);
 }
 
+/** Типы, которые уже сделаны по-настоящему; остальные — заглушки и в выдачу не попадают. */
+const READY: ExerciseType[] = ['gap', 'choice'];
+
+/** Задание по юниту случайного готового типа. */
+export const getRandom = (unitId: number) => get(unitId, READY[Math.floor(Math.random() * READY.length)]);
+
 export type CheckResult = {
     attempt: Attempt;
     status: ExerciseStatus | null;

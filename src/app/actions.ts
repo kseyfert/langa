@@ -11,10 +11,10 @@ function fail(e: unknown, what: string): { ok: false; error: string } {
     return { ok: false, error: `${what}: ${e instanceof Error ? e.message : String(e)}` };
 }
 
-/** Задание на пропуски по юниту. */
-export async function startGap(unitId: number): Promise<Result<{ exercise: tasks.ExerciseView }>> {
+/** Задание по юниту, тип выбирается случайно. */
+export async function startExercise(unitId: number): Promise<Result<{ exercise: tasks.ExerciseView }>> {
     try {
-        return { ok: true, exercise: await tasks.get(unitId, 'gap') };
+        return { ok: true, exercise: await tasks.getRandom(unitId) };
     } catch (e) {
         return fail(e, 'Не получилось составить задание');
     }

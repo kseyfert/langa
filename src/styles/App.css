@@ -83,3 +83,16 @@ h2 {
     animation: spinner 0.8s linear infinite;
 }
 @keyframes spinner { to { transform: rotate(360deg); } }
+
+/* Переключатель (design.md) — вместо select при 2–5 коротких вариантах. */
+.choice { display: inline-flex; border: var(--line); border-radius: var(--radius); overflow: hidden; }
+.choice__opt {
+    font: inherit; font-size: var(--t-xs);
+    padding: var(--s-1) var(--s-3);
+    background: transparent; color: var(--ink-soft);
+    border: 0; border-left: var(--line); cursor: pointer; white-space: nowrap;
+    transition: background 120ms, color 120ms;
+}
+.choice__opt:first-child { border-left: 0; }
+.choice__opt:hover:not(.choice__opt--on):not(:disabled) { background: var(--paper-deep); color: var(--ink); }
+.choice__opt--on { color: var(--ink); font-weight: 600; background: var(--paper-deep); }
