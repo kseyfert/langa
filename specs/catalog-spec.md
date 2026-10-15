@@ -27,7 +27,7 @@ create table public.units (
   title        text      not null,                 -- точно как в книге
   summary_ru   text      not null default '',      -- одна строка для интерфейса
   guide        text      not null default '',      -- markdown по шаблону из раздела 3
-  builds_on    integer[] not null default '{}',    -- id юнитов, которые желательно знать до этого
+  builds_on    bigint[]  not null default '{}',    -- id юнитов, которые желательно знать до этого
   reviewed     boolean   not null default false,   -- описание сверено с книгой
   updated_at   timestamptz not null default now(),
   unique (book, number)
@@ -159,6 +159,7 @@ export type Unit = {
 Скрипт `npm run catalog:import -- data/egu5-units.csv`. CSV: `unit,section,title`.
 
 - Для каждой строки: `book = "English Grammar in Use"`, `section`, `number = unit`, `position = unit × 10`, `title`, остальное по умолчанию.
+- Начальный `summary_ru` — однострочное описание юнита из прототипа (третий элемент `UNITS` в `reference/grammar-drill.html`): оно уже по-русски и годится, пока генератор описаний не прошёл. Пишется только в пустой `summary_ru`.
 - Идемпотентно: если юнит с таким `(book, number)` уже есть, обновляются только `section` и `title`; `id`, `summary_ru`, `guide`, `builds_on`, `reviewed` не трогаются.
 - После импорта запускается валидатор.
 
@@ -219,7 +220,7 @@ Neighbouring units in the section: {{номер и название двух п�
 
 - Генерация задания берёт описание юнита через `unitForPrompt(unitId)` вместо прежней однострочной `desc`.
 - Проверка получает каталог через `catalogForPrompt(ids)`; модель в ответе ссылается на эти `id`.
-- В прототипе (`grammar-drill.html`) юниты идентифицировались номером в книге. При переносе номера переводятся в `id` через `findByNumber("English Grammar in Use", number)`. Совпадение `id` и `number` после импорта не предполагать.
+- В прототипе (`reference/grammar-drill.html`) юниты идентифицировались номером в книге. При переносе номера переводятся в `id` через `findByNumber("English Grammar in Use", number)`. Совпадение `id` и `number` после импорта не предполагать.
 
 ## 10. Тесты
 
