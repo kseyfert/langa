@@ -23,14 +23,17 @@
 }
 /* ▶ сразу за последним словом названия, на его строке. */
 .catalog__play { vertical-align: middle; margin-left: var(--s-1); }
-/* Выбор типа задания — временный, для тестов: тише кнопки ▶, вида поля ввода. */
+/* Выбор типа задания — временный, для тестов: тише кнопки ▶, просто текст без рамки и стрелки. */
 .catalog__type {
     vertical-align: middle; margin-left: var(--s-1);
     font: inherit; font-family: var(--font-data); font-size: var(--t-xs); color: var(--ink-soft);
     padding: 0 var(--s-1); background: transparent;
-    border: var(--line); border-radius: var(--radius); cursor: pointer;
+    border: 0; border-radius: var(--radius); cursor: pointer;
+    appearance: none;
 }
-.catalog__type:focus { outline: none; border-color: var(--speak); }
+/* Селект после выбора мышью тоже считает фокус «видимым» — обводка висела бы
+   до клика мимо. Выбор и так виден по слову в строке. */
+.catalog__type:focus-visible { outline: none; }
 
 /* Задание — под названием, той же колонкой, что guide; крестик в правом углу. */
 .catalog__task {

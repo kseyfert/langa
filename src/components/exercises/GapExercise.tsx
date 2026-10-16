@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useState, type FormEvent, type KeyboardEvent } from 'react';
 import { Icon } from '@/components/Icon';
 import type { PublicContentByType } from '@/server/exercises/types';
 import { CheckActions } from './CheckActions';
@@ -16,6 +16,16 @@ export function GapExercise({ exerciseId, content }: { exerciseId: number; conte
     const onSubmit = (e: FormEvent) => {
         e.preventDefault();
         submit(values);
+    };
+
+    // Enter — к следующему пропуску (на последнем — ничего), Cmd/Ctrl+Enter — проверить.
+    // Без перехвата Enter в поле отправлял бы форму сразу.
+    const onKeyDown = (e: KeyboardEvent<HTMLInputElement>, i: number) => {
+        if (e.key !== 'Enter' || e.nativeEvent.isComposing) return;
+        e.preventDefault();
+        const form = e.currentTarget.form;
+        if (e.metaKey || e.ctrlKey) form?.requestSubmit();
+        else form?.querySelectorAll<HTMLInputElement>('.gap__input')[i + 1]?.focus();
     };
 
     const result = checked?.evaluation;
@@ -41,6 +51,7 @@ export function GapExercise({ exerciseId, content }: { exerciseId: number; conte
                                         style={{ width: `${values[i].length + 2}ch` }}
                                         readOnly={!!checked}
                                         onChange={(e) => setValues((v) => v.map((x, j) => (j === i ? e.target.value : x)))}
+                                        onKeyDown={(e) => onKeyDown(e, i)}
                                         autoComplete="off" autoCapitalize="off" spellCheck={false}
                                     />
                                     {after}

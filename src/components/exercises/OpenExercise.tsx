@@ -99,6 +99,13 @@ export function OpenExercise({ exerciseId, instructions, task, targetName }: Pro
                         rows={3}
                         value={draft}
                         onChange={(e) => setDraft(e.target.value)}
+                        // Enter — перенос строки, Cmd/Ctrl+Enter — проверить.
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                                e.preventDefault();
+                                e.currentTarget.form?.requestSubmit();
+                            }
+                        }}
                         autoCapitalize="off" spellCheck={false}
                     />
                     {error && <p className="error">{error}</p>}

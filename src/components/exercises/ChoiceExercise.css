@@ -10,3 +10,10 @@
    .choice__opt--on задаёт свой. */
 .pick__opts .pick__opt--right { background: var(--done-bg); color: var(--done); font-weight: 600; }
 .pick__opts .pick__opt--wrong { background: transparent; color: var(--warn); text-decoration: line-through; }
+
+/* Клавиатура: цифра у варианта — клавиша выбора. Предложение в фокусе — полосой
+   фирменного цвета на месте полосы брака; до проверки она свободна. */
+.pick__key { font-size: var(--t-xs); color: var(--ink-soft); font-weight: 500; margin-right: var(--s-1); }
+.exercise__item:has(.pick__opts:focus-within):not(.exercise__item--bad) { border-left-color: var(--speak); }
+/* Фокус показан полосой у предложения — обводка группы лишняя. */
+.pick__opts:focus-visible { outline: none; }

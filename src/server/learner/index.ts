@@ -5,9 +5,8 @@ import { exerciseAttempts, exercises } from '../db/schema';
 import { evidenceOf } from './evidence';
 import { CONFIG, interval, level, newUnit, progress, update, type Evidence } from './model';
 
-const DAY_MS = 86_400_000;
-/** Окно графика рейтинга: 8 недель, точка на день. */
-export const HISTORY_DAYS = 56;
+/** Окно графика рейтинга: 4 недели, точка на день — при 80px это ~3px на день. */
+export const HISTORY_DAYS = 28;
 
 /** Показатели юнита для строки каталога. */
 export type UnitRating = {
@@ -16,7 +15,7 @@ export type UnitRating = {
     stageMax: number;
     intervalDays: number;     // интервал текущей ступени — сколько дней тема держится
     progress: number;         // общий рейтинг, 0–100
-    /** Рейтинг по дням за HISTORY_DAYS, последний — сейчас; null — практики ещё не было. */
+    /** Рейтинг на конец каждого из HISTORY_DAYS дней, последний — на сейчас; null — практики ещё не было. */
     history: (number | null)[];
 };
 
@@ -26,8 +25,11 @@ function rate(evs: Evidence[], now: number): UnitRating {
     let i = 0;
     let seen = false;
     const history: (number | null)[] = [];
+    // Прошлые точки — на конец календарного дня, последняя — на сейчас. Отсчёт
+    // «now минус сутки» сливал вчерашнее занятие с сегодняшним в одну точку.
+    const today = new Date(now);
     for (let d = HISTORY_DAYS - 1; d >= 0; d--) {
-        const t = now - d * DAY_MS;
+        const t = d ? new Date(today.getFullYear(), today.getMonth(), today.getDate() - d + 1).getTime() : now;
         for (; i < evs.length && evs[i].at <= t; i++) {
             s = update(s, evs[i]);
             seen = true;

@@ -12,14 +12,14 @@ import type { ExerciseView } from '@/server/tasks';
 import { startExercise } from '@/app/actions';
 import { READY_TYPES } from '@/server/tasks/types';
 
-// Выбор типа задания — временно, на время тестов. Общий для всех строк:
-// запоминается в браузере, чтобы не выбирать заново в каждом юните.
-const TYPE_KEY = 'langa:exercise-type';
-const readType = () => {
-    try { return localStorage.getItem(TYPE_KEY) ?? ''; } catch { return ''; }
+// Выбор типа задания — временно, на время тестов. Свой у каждого юнита,
+// запоминается в браузере.
+const typeKey = (unitId: number) => `langa:exercise-type:${unitId}`;
+const readType = (unitId: number) => {
+    try { return localStorage.getItem(typeKey(unitId)) ?? ''; } catch { return ''; }
 };
-const saveType = (t: string) => {
-    try { localStorage.setItem(TYPE_KEY, t); } catch { /* без памяти — не страшно */ }
+const saveType = (unitId: number, t: string) => {
+    try { localStorage.setItem(typeKey(unitId), t); } catch { /* без памяти — не страшно */ }
 };
 
 /** Юнит из builds_on: title и href — null, если такого id в базе нет. */
@@ -51,7 +51,7 @@ export function UnitRow({ id: unitId, number, title, summaryRu, guideHtml, deps,
     const play = () =>
         startLoading(async () => {
             setError(null);
-            const res = await startExercise(unitId, readType() || null);
+            const res = await startExercise(unitId, type || null);
             if (res.ok) setExercise(res.exercise);
             else setError(res.error);
         });
@@ -59,7 +59,7 @@ export function UnitRow({ id: unitId, number, title, summaryRu, guideHtml, deps,
     // Пришли по ссылке с другой страницы (из выдачи поиска): браузер уже
     // прокрутил к якорю, осталось подсветить.
     // Из localStorage — после монтирования: на сервере его нет, иначе разойдётся гидратация.
-    useEffect(() => setType(readType()), []);
+    useEffect(() => setType(readType(unitId)), [unitId]);
 
     useEffect(() => {
         if (row.current && location.hash === `#unit-${unitId}`) flash(row.current);
@@ -82,8 +82,7 @@ export function UnitRow({ id: unitId, number, title, summaryRu, guideHtml, deps,
                     </button>
                 )}
                 <select className="catalog__type" aria-label="Тип задания" title="Тип задания" value={type}
-                    onFocus={() => setType(readType())}
-                    onChange={(e) => { setType(e.target.value); saveType(e.target.value); }}>
+                    onChange={(e) => { setType(e.target.value); saveType(unitId, e.target.value); }}>
                     <option value="">любой</option>
                     {READY_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
                 </select>
