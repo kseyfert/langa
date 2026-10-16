@@ -70,6 +70,11 @@
 .open__retry { margin: 0; font-size: var(--t-sm); }
 .open__answer { width: 100%; resize: vertical; line-height: 1.5; }
 .open__form .exercise__actions { margin-top: 0; padding-top: 0; border-top: 0; }
+/* Счётчик прижат к кнопке: auto-отступ забирает он, у кнопки свой обнуляется. */
+.open__count { margin-left: auto; font-size: var(--t-xs); color: var(--ink-soft); }
+.open__count + .exercise__check { margin-left: 0; }
+/* Недобор — ещё пишется, не ошибка; перебор надо сокращать — брак. */
+.open__count--over { color: var(--warn); }
 
 @media (max-width: 560px) {
     .open__band { grid-template-columns: minmax(0, 1fr); }

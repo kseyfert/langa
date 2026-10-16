@@ -17,6 +17,8 @@ type Props = {
     task: ReactNode;
     /** «номер. название» целевого юнита — подпись к его правкам. */
     targetName: string;
+    /** Рамки объёма ответа в символах: счётчик у кнопки, вне рамок проверить нельзя. */
+    length?: { min: number; max: number };
 };
 
 /**
@@ -24,7 +26,7 @@ type Props = {
  * После «верно, но без нужной конструкции» разбор скрыт, пока нет следующей
  * попытки или пока не нажат «Показать разбор» (exercise-spec §8).
  */
-export function OpenExercise({ exerciseId, instructions, task, targetName }: Props) {
+export function OpenExercise({ exerciseId, instructions, task, targetName, length }: Props) {
     const [draft, setDraft] = useState('');
     const [attempts, setAttempts] = useState<Done[]>([]);
     const [units, setUnits] = useState<Record<number, string>>({});
@@ -39,10 +41,14 @@ export function OpenExercise({ exerciseId, instructions, task, targetName }: Pro
     const pending = retryRu != null && !solution;
     const showForm = !finished && (attempts.length === 0 || pending);
 
+    // Считается то же, что уйдёт на проверку, — без пробелов по краям.
+    const chars = draft.trim().length;
+    const fits = !length || (chars >= length.min && chars <= length.max);
+
     const submit = (e: FormEvent) => {
         e.preventDefault();
         const text = draft.trim();
-        if (!text || busy) return;
+        if (!text || busy || !fits) return;
         startBusy(async () => {
             setError(null);
             const res = await checkExercise(exerciseId, { text });
@@ -118,7 +124,13 @@ export function OpenExercise({ exerciseId, instructions, task, targetName }: Pro
                                 Показать разбор
                             </button>
                         )}
-                        <button type="submit" className="btn btn--primary exercise__check" disabled={busy || !draft.trim()}>
+                        {length && (
+                            <span className={`open__count mono${chars > length.max ? ' open__count--over' : ''}`}
+                                title={`Нужно от ${length.min} до ${length.max} символов`}>
+                                {chars} / {length.min} — {length.max}
+                            </span>
+                        )}
+                        <button type="submit" className="btn btn--primary exercise__check" disabled={busy || !draft.trim() || !fits}>
                             {busy ? 'Проверяю…' : 'Проверить'}
                         </button>
                     </div>

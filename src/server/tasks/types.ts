@@ -7,6 +7,9 @@ import type { AnswerByType, ContentByType, Evaluation, ExerciseType } from '../e
 export const READY_TYPES = ['gap', 'choice', 'rephrase', 'translate', 'free'] as const satisfies readonly ExerciseType[];
 export type ReadyType = (typeof READY_TYPES)[number];
 
+/** Объём свободного ответа в символах. Здесь, а не в free.ts: рамки показывает и клиент. */
+export const FREE_LENGTH = { min: 150, max: 300 } as const;
+
 export type Generated<T extends ExerciseType> = {
     content: ContentByType[T];
     topic: string;

@@ -4,7 +4,7 @@ import type { FreeContent } from '../exercises/types';
 import { askJson, MODEL_GENERATE } from './claude';
 import { gradeOpen, parseOpenAnswer } from './grade';
 import { randomTopic } from './topics';
-import { TaskError, type Task } from './types';
+import { FREE_LENGTH, TaskError, type Task } from './types';
 import { variety } from './variety';
 
 const PROMPT_VERSION = 'free-gen-v1';
@@ -29,6 +29,7 @@ Make one free-answer task.
 - Avoid the target structure in prompt_en wherever another natural wording exists, so the question does not hand over the answer. Keep the English simple and clear.
 - Do not repeat the instructions (answer length, language) inside the prompt.
 - "instructions_ru": generic, must not name or describe the grammar, e.g. "Ответь по-английски в 2–4 предложениях."
+- "reference_en": one model answer of ${FREE_LENGTH.min}–${FREE_LENGTH.max} characters: the learner's answer must fit the same limit.
 Reply with only JSON: {"instructions_ru":"...","prompt_en":"...","reference_en":["one model answer"]}`;
 }
 
@@ -62,7 +63,12 @@ export const free: Task<'free'> = {
         return { content, topic, model: MODEL_GENERATE, promptVersion: PROMPT_VERSION };
     },
 
-    parseAnswer: parseOpenAnswer,
+    parseAnswer(raw) {
+        const answer = parseOpenAnswer(raw);
+        const n = answer.text.length;
+        if (n < FREE_LENGTH.min || n > FREE_LENGTH.max) throw new TaskError(`Нужно от ${FREE_LENGTH.min} до ${FREE_LENGTH.max} символов, сейчас ${n}`);
+        return answer;
+    },
 
     check: (unitId, content, answer) => gradeOpen(unitId, forGrade(content), answer.text),
 };
