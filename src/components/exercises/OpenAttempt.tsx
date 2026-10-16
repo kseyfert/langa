@@ -37,12 +37,14 @@ type Props = {
     targetName: string;
     /** Эталон: есть, когда задание закончено или разбор открыт. */
     references: string[];
+    /** Что заметить в задании (target_note_ru перевода) — приходит вместе с эталоном. */
+    note: string;
     /** Ждёт следующей попытки: всё, что подсказывает, как надо, скрыто. */
     concealed: boolean;
 };
 
 /** Разбор одной попытки открытого задания. */
-export function OpenAttempt({ label, answer, evaluation: ev, units, targetName, references, concealed }: Props) {
+export function OpenAttempt({ label, answer, evaluation: ev, units, targetName, references, note, concealed }: Props) {
     const v = VERDICT[ev.verdict];
     const t = ev.target;
     const name = (id: number) => units[id] ?? String(id);
@@ -68,6 +70,7 @@ export function OpenAttempt({ label, answer, evaluation: ev, units, targetName, 
         { label: 'Исправлено', text: same(ev.corrected_answer, answer) ? '' : ev.corrected_answer },
         { label: 'Носитель', text: ev.natural_version },
         ...references.map((r) => ({ label: 'Эталон', text: r })),
+        { label: 'Заметь', text: note },
     ].filter((b) => b.text);
 
     return (

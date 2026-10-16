@@ -34,6 +34,8 @@ export type TranslateContent = {
     source_ru: string;
     target_note_ru: string;
     reference_en: string[];
+    /** Как у RephraseContent. */
+    focus?: string[];
 };
 
 export type RephraseContent = {
@@ -68,7 +70,7 @@ export type ExerciseContent = ContentByType[ExerciseType];
 export type PublicContentByType = {
     gap: { instructions_ru: string; items: { text: string }[] };
     choice: { instructions_ru: string; items: { text: string; options: string[] }[] };
-    translate: Omit<TranslateContent, 'target_note_ru' | 'reference_en'>;
+    translate: Omit<TranslateContent, 'target_note_ru' | 'reference_en' | 'focus'>;
     rephrase: Omit<RephraseContent, 'reference_en' | 'focus' | 'start_with'>;
     free: Omit<FreeContent, 'reference_en'>;
 };

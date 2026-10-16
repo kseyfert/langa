@@ -69,7 +69,7 @@ export function publicContent(ex: Exercise): PublicContentByType[ExerciseType] {
             return { instructions_ru, items: items.map(({ text, options }) => ({ text, options })) };
         }
         case 'translate': {
-            const { target_note_ru, reference_en, ...rest } = ex.content;
+            const { target_note_ru, reference_en, focus, ...rest } = ex.content;
             return rest;
         }
         case 'rephrase': {

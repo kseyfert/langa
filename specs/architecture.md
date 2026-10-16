@@ -123,7 +123,7 @@ function nextExercise(states: Map<number, UnitState>, settings: UserSettings, se
 |---|---|
 | Прототип тренажёра (артефакт) | готов, служит эталоном логики и промптов (`reference/grammar-drill.html`) |
 | Каталог | готов: таблица `units` в Supabase, 145 юнитов, у всех есть `guide`; страница `/catalog` (`catalog-spec.md` §5) |
-| Задания | gap, choice, rephrase — настоящие (генерация и проверка через Claude, gap/choice проверяются локально); translate и free — заглушки (`model = 'mock'`), в выдачу не попадают (`READY_TYPES`) |
+| Задания | gap, choice, rephrase, translate — настоящие (генерация и проверка через Claude, gap/choice проверяются локально); free — заглушка (`model = 'mock'`), в выдачу не попадает (`READY_TYPES`) |
 | Хранилище и лог попыток | готово: таблицы `exercises`, `exercise_attempts` (`exercise-spec.md` §5) |
 | Модель ученика | готова: `src/server/learner/model.ts` — эталонная реализация из `rating-model.md`; показатели юнита собираются из лога при каждой загрузке каталога (кэша состояний нет) |
 | Планировщик | правила не формализованы, отложено (см. раздел 5). Юнит выбирает пользователь кнопкой ▶ в каталоге, тип — случайный из готовых или из временного селекта |
@@ -134,7 +134,7 @@ function nextExercise(states: Map<number, UnitState>, settings: UserSettings, se
 - Next.js 16 (App Router), React 19, TypeScript, Drizzle ORM + postgres-js, `@anthropic-ai/sdk`, `marked` (рендер `guide`). База — облачный Supabase (`DATABASE_URL`), ключи в `.env.local`. Тестов нет — сознательно.
 - Вместо API-роутов — server actions `src/app/actions.ts`: `startExercise(unitId, type|null)`, `checkExercise`, `revealExercise`. Ошибки возвращаются значением.
 - `src/server/catalog` — модуль доступа каталога. `src/server/exercises` — типы, схема и запись лога. `src/server/tasks` — один файл на тип (`Task`: generate / parseAnswer / check), `grade.ts` — проверка открытых ответов, `variety.ts` — разнообразие генерации, `claude.ts` — вызов модели (`askJson`, system с `cache_control`). `src/server/learner` — модель ученика и показатели для каталога.
-- `src/components/exercises` — UI заданий: общее для закрытых (`Exercise.css`, `useClosedCheck`, `CheckActions`), открытые — `OpenExercise` + `OpenAttempt`, обёртка типа (`RephraseExercise`).
+- `src/components/exercises` — UI заданий: общее для закрытых (`Exercise.css`, `useClosedCheck`, `CheckActions`), открытые — `OpenExercise` + `OpenAttempt`, обёртки типов (`RephraseExercise`, `TranslateExercise`).
 - Пользователь запускает prod-сервер (`npm start`): после `npm run build` его нужно перезапустить, иначе работает старый код.
 - Разовые проверки — временным скриптом `scripts/_x.mts` (`npx tsx --conditions=react-server --env-file=.env.local scripts/_x.mts`), потом удалить. Пробные генерации — прямым вызовом `rephrase.generate` / `check`, без записи в базу, чтобы не трогать рейтинг.
 
@@ -159,7 +159,7 @@ function nextExercise(states: Map<number, UnitState>, settings: UserSettings, se
 
 ### Прочее
 - Отметки «в работе», «прочитал теорию» и длина сессии — таблицы настроек пока нет.
-- Translate и free — настоящая генерация и проверка.
+- Free — настоящая генерация и проверка.
 - Пул заранее сгенерированных заданий, оспаривание проверки (`exercise-spec.md` §9).
 - Колонка `exercise_attempts.verdict` допускает null — можно сделать not null.
 - Срабатывание prompt caching в проверке не проверялось.

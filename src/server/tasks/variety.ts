@@ -2,18 +2,19 @@ import 'server-only';
 import { getUnit } from '../catalog';
 import { listExercises, type Exercise } from '../exercises';
 
-// Разнообразие заданий (gap, choice, rephrase): без него генератор по одному
+// Разнообразие заданий (gap, choice, rephrase, translate): без него генератор по одному
 // юниту каждый раз берёт те же глаголы и ситуации — по примеру на пункт guide.
 
 /** Сколько последних заданий юнита показывать модели как «уже было». */
 const RECENT = 5;
 const REPEAT = 'second item for this point: show the other side of the contrast or a different context';
 
-/** Готовые предложения из задания: ___ заменён верным ответом, у rephrase — эталон в скобках. */
+/** Готовые предложения из задания: ___ заменён верным ответом, у rephrase и translate — эталон в скобках. */
 function sentencesOf(ex: Exercise): string[] {
     if (ex.type === 'gap') return ex.content.items.map((i) => i.text.replace('___', `[${i.answers[0]}]`));
     if (ex.type === 'choice') return ex.content.items.map((i) => i.text.replace('___', `[${i.options[i.correct]}]`));
     if (ex.type === 'rephrase') return [`${ex.content.source_en} [${ex.content.reference_en[0] ?? ''}]`];
+    if (ex.type === 'translate') return [`${ex.content.source_ru} [${ex.content.reference_en[0] ?? ''}]`];
     return [];
 }
 
@@ -53,7 +54,7 @@ export type Variety = {
     prompt: string;
 };
 
-/** Блок разнообразия для задания из items предложений: 6 у gap и choice, 1 у rephrase. */
+/** Блок разнообразия для задания из items предложений: 6 у gap и choice, 1 у rephrase и translate. */
 export async function variety(unitId: number, items: number): Promise<Variety> {
     const [unit, recent] = await Promise.all([getUnit(unitId), listExercises({ unitId, limit: RECENT })]);
     // Заглушки (model = 'mock') — одно и то же выдуманное предложение, не практика.

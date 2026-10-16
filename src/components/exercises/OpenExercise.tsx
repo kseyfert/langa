@@ -20,7 +20,7 @@ type Props = {
 };
 
 /**
- * Открытое задание (rephrase, позже translate и free): ответ проверяет Claude.
+ * Открытое задание (rephrase, translate, позже free): ответ проверяет Claude.
  * После «верно, но без нужной конструкции» разбор скрыт, пока нет следующей
  * попытки или пока не нажат «Показать разбор» (exercise-spec §8).
  */
@@ -70,6 +70,8 @@ export function OpenExercise({ exerciseId, instructions, task, targetName }: Pro
 
     // Эталон — один: почти одинаковые варианты (а в старых заданиях их бывает по три) только шумят.
     const references = solution && 'reference_en' in solution.content ? solution.content.reference_en.slice(0, 1) : [];
+    // «Что заметить» есть только у перевода; как и эталон, приходит с разбором.
+    const note = solution && 'target_note_ru' in solution.content ? solution.content.target_note_ru : '';
     return (
         <div className="exercise">
             {instructions && <p className="exercise__instructions">{instructions}</p>}
@@ -85,6 +87,7 @@ export function OpenExercise({ exerciseId, instructions, task, targetName }: Pro
                     targetName={targetName}
                     // Эталон — один на задание: показывается в последнем разборе.
                     references={i === attempts.length - 1 ? references : []}
+                    note={i === attempts.length - 1 ? note : ''}
                     concealed={pending && i === attempts.length - 1}
                 />
             ))}
