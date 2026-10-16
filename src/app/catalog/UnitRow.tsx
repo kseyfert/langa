@@ -6,6 +6,7 @@ import { ChoiceExercise } from '@/components/exercises/ChoiceExercise';
 import { GapExercise } from '@/components/exercises/GapExercise';
 import { RephraseExercise } from '@/components/exercises/RephraseExercise';
 import { TranslateExercise } from '@/components/exercises/TranslateExercise';
+import { FreeExercise } from '@/components/exercises/FreeExercise';
 import { flash, jump } from '@/components/jump';
 import { MeterHold, MeterSpark } from '@/components/UnitMeter';
 import type { UnitRating } from '@/server/learner';
@@ -135,6 +136,7 @@ export function UnitRow({ id: unitId, number, title, summaryRu, guideHtml, deps,
                             {exercise.type === 'choice' && <ChoiceExercise key={exercise.id} exerciseId={exercise.id} content={exercise.content} />}
                             {exercise.type === 'rephrase' && <RephraseExercise key={exercise.id} exerciseId={exercise.id} content={exercise.content} targetName={`${number ?? '—'}. ${title}`} />}
                             {exercise.type === 'translate' && <TranslateExercise key={exercise.id} exerciseId={exercise.id} content={exercise.content} targetName={`${number ?? '—'}. ${title}`} />}
+                            {exercise.type === 'free' && <FreeExercise key={exercise.id} exerciseId={exercise.id} content={exercise.content} targetName={`${number ?? '—'}. ${title}`} />}
                         </>
                     )}
                 </div>

@@ -61,6 +61,9 @@ export function OpenAttempt({ label, answer, evaluation: ev, units, targetName, 
         ...ev.issues.map((x) => ({ ...x, comment: x.comment_ru, unit: null, unitId: null, score: null })),
     ].filter((f) => f.fragment || f.comment);
 
+    // Засчитано по целевому юниту, но правки есть — так и сказать, иначе «Верно» над списком ошибок путает.
+    const verdictText = ev.verdict === 'correct_target' && fixes.length ? 'Верно, есть другие ошибки' : v.text;
+
     const good = ev.others.filter((o) => o.status === 'correct');
     const notable = good.filter((o) => o.notable);
     const plain = good.filter((o) => !o.notable);
@@ -78,7 +81,7 @@ export function OpenAttempt({ label, answer, evaluation: ev, units, targetName, 
             {label && <p className="open__cap">{label}</p>}
             <div className="open__band">
                 <div>
-                    <p className={`open__verdict open--${v.mod}`}>{v.text}</p>
+                    <p className={`open__verdict open--${v.mod}`}>{verdictText}</p>
                     {/* Пока разбор скрыт, на месте итога — сам ответ: summary подсказал бы, как надо. */}
                     <p className="open__summary">{concealed ? answer : ev.summary_ru}</p>
                 </div>

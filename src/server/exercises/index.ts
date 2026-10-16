@@ -78,7 +78,7 @@ export function publicContent(ex: Exercise): PublicContentByType[ExerciseType] {
             return rest;
         }
         case 'free': {
-            const { reference_en, ...rest } = ex.content;
+            const { reference_en, focus, ...rest } = ex.content;
             return rest;
         }
     }

@@ -1,13 +1,20 @@
 import 'server-only';
 import { catalogForPrompt, getUnit, listUnits, unitForPrompt } from '../catalog';
-import type { OpenEvaluation, Verdict } from '../exercises/types';
+import type { OpenAnswer, OpenEvaluation, Verdict } from '../exercises/types';
 import { askJson, MODEL_GRADE } from './claude';
-import type { Checked } from './types';
+import { TaskError, type Checked } from './types';
 
 // Проверка открытых ответов (rephrase, translate, free) — gradePrompt и GRADE_SHAPE
 // прототипа с правками из specs/exercise-spec.md §7: без оспаривания, повторная
 // попытка проверяется как первая, юниты — по id из базы, целевой — с guide.
-const PROMPT_VERSION = 'grade-v2';
+const PROMPT_VERSION = 'grade-v3';
+
+/** Ответ на открытое задание: непустой текст. */
+export function parseOpenAnswer(raw: unknown): OpenAnswer {
+    const text = (raw as { text?: unknown } | null)?.text;
+    if (typeof text !== 'string' || !text.trim()) throw new TaskError('Ответ пустой');
+    return { text: text.trim() };
+}
 
 const GRADE_SHAPE = `{
  "verdict": "correct_target" | "correct_non_target" | "incorrect",
@@ -27,9 +34,10 @@ CATALOG:
 ${catalog}
 
 How to evaluate:
-- verdict "correct_target": grammatical, answers the task, meaning preserved, target structure used correctly.
+- The verdict is about the target structure. Errors outside the target unit go to other_units / other_issues and do not change the verdict.
+- verdict "correct_target": answers the task and the target structure is used correctly (target_unit.status "correct"), even if there are other errors.
 - verdict "correct_non_target": grammatical, answers the task and meaning preserved, but the learner avoided the target structure in a way that is still acceptable English.
-- verdict "incorrect": any grammar error, wrong meaning, or a wrong use of the target structure.
+- verdict "incorrect": the target structure is used wrongly or only partly right, or the answer does not do the task.
 - A grammatical answer that uses a structure wrong for the situation is an error of the target unit: target_unit.status "error", a low score, verdict "incorrect" — not correct_non_target and not other_issues.
 - If the target structure is not used and the answer has errors, target_unit.status is "not_used" and the verdict is "incorrect".
 - target_unit: how the target structure was handled.
@@ -43,7 +51,6 @@ Reply with only JSON:
 ${GRADE_SHAPE}`;
 }
 
-const VERDICTS: Verdict[] = ['correct_target', 'correct_non_target', 'incorrect'];
 const TARGET_STATUSES = ['correct', 'error', 'partial', 'not_used'] as const;
 const OTHER_STATUSES = ['correct', 'error', 'partial'] as const;
 
@@ -62,6 +69,17 @@ const obj = (v: unknown): Raw => (v && typeof v === 'object' ? (v as Raw) : {});
 const arr = (v: unknown): Raw[] => (Array.isArray(v) ? v.map(obj) : []);
 
 /**
+ * Вердикт — по целевому юниту (exercise-spec §4.1), не по ответу целиком: побочные ошибки
+ * уже снижают рейтинг своих юнитов и видны в правках, второй раз они задание не валят.
+ * Модель тут нужна только для «без конструкции»: грамотный обход или провал.
+ */
+function verdictOf(target: OpenEvaluation['target'], modelVerdict: unknown): Verdict {
+    if (target.status === 'correct') return 'correct_target';
+    if (target.status !== 'not_used') return 'incorrect';
+    return modelVerdict === 'correct_non_target' || modelVerdict === 'correct_target' ? 'correct_non_target' : 'incorrect';
+}
+
+/**
  * Ответ модели → OpenEvaluation (exercise-spec §4.1): чужие id уходят в issues,
  * целевой юнит из others выбрасывается, статусы и баллы приводятся к допустимым.
  */
@@ -74,10 +92,11 @@ function normalize(d: unknown, targetId: number, ids: Set<number>): OpenEvaluati
     const known = (x: Raw) => ids.has(Number(x.id));
     // Модель иногда дублирует ошибку юнита в other_issues — то же место ответа второй раз.
     const reported = [t, ...others.filter(known)].map((x) => str(x.fragment)).filter(Boolean);
+    const target = { status: tStatus, score: tStatus === 'not_used' ? null : score(t.score), ...fragment(t) };
     return {
-        verdict: oneOf(VERDICTS, o.verdict, 'incorrect'),
+        verdict: verdictOf(target, o.verdict),
         summary_ru: str(o.summary_ru),
-        target: { status: tStatus, score: tStatus === 'not_used' ? null : score(t.score), ...fragment(t) },
+        target,
         others: others
             .filter((x) => known(x) && Number(x.id) !== targetId)
             .map((x) => ({ unit_id: Number(x.id), status: oneOf(OTHER_STATUSES, x.status, 'partial'), score: score(x.score), notable: x.notable === true, ...fragment(x) })),

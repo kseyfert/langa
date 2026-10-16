@@ -7,16 +7,33 @@ export const MODEL_GRADE = process.env.CLAUDE_MODEL_GRADE || 'claude-sonnet-5-5'
 
 let client: Anthropic | null = null;
 
-/** Ответ модели целиком, иначе тело code fence, иначе от первой { / [ до последней } / ]. */
+/** Объекты и массивы верхнего уровня в тексте — по балансу скобок, без учёта скобок внутри строк. */
+function topLevelJson(text: string): string[] {
+    const found: string[] = [];
+    let depth = 0, start = -1, inStr = false, esc = false;
+    for (let i = 0; i < text.length; i++) {
+        const c = text[i];
+        if (inStr) {
+            if (esc) esc = false;
+            else if (c === '\\') esc = true;
+            else if (c === '"') inStr = false;
+        } else if (c === '"' && depth > 0) inStr = true;
+        else if (c === '{' || c === '[') { if (depth++ === 0) start = i; }
+        else if ((c === '}' || c === ']') && depth > 0 && --depth === 0) found.push(text.slice(start, i + 1));
+    }
+    return found;
+}
+
+/**
+ * Ответ модели целиком, иначе тело code fence, иначе последний разбираемый объект в тексте.
+ * Последний — потому что модель иногда пишет JSON, замечает ошибку («Wait — …») и присылает
+ * исправленный: верен второй.
+ */
 export function parseJsonLoose(text: string): unknown {
     const tries = [
         text.trim(),
         text.match(/```(?:json)?\s*([\s\S]*?)```/)?.[1]?.trim(),
-        (() => {
-            const start = text.search(/[{[]/);
-            const end = Math.max(text.lastIndexOf('}'), text.lastIndexOf(']'));
-            return start >= 0 && end > start ? text.slice(start, end + 1) : undefined;
-        })(),
+        ...topLevelJson(text).reverse(),
     ];
     for (const t of tries) {
         if (!t) continue;

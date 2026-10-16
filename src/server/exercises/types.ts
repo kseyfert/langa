@@ -50,9 +50,12 @@ export type RephraseContent = {
 
 export type FreeContent = {
     instructions_ru: string;
-    prompt_ru: string;
     prompt_en: string;
+    /** Только в старых заданиях: вопрос по-русски больше не генерируется, задание целиком на английском. */
+    prompt_ru?: string;
     reference_en: string[];
+    /** Как у RephraseContent. */
+    focus?: string[];
 };
 
 export type ContentByType = {
@@ -72,7 +75,7 @@ export type PublicContentByType = {
     choice: { instructions_ru: string; items: { text: string; options: string[] }[] };
     translate: Omit<TranslateContent, 'target_note_ru' | 'reference_en' | 'focus'>;
     rephrase: Omit<RephraseContent, 'reference_en' | 'focus' | 'start_with'>;
-    free: Omit<FreeContent, 'reference_en'>;
+    free: Omit<FreeContent, 'reference_en' | 'focus'>;
 };
 
 // --- Ответ и оценка попытки (раздел 4) ---
