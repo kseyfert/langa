@@ -2,11 +2,11 @@
    --radius-pill, --shadow-lift): виджет должен читаться как отдельная вещь
    на странице, как встроенное видео. Задания внутри — те же, что в строке юнита. */
 
-/* В сессии высота — по самому высокому заданию: gap из 6 пунктов влезает
-   целиком, между заданиями страница не прыгает. Только min-height, без
-   aspect-ratio: разбор ответа бывает длиннее — тогда рамка тянется вниз. */
+/* В сессии высота — с запасом под обычное задание, чтобы между заданиями
+   страница не прыгала. Только min-height, без aspect-ratio: choice из 6 пунктов
+   и разбор ответа бывают длиннее — тогда рамка тянется вниз. */
 .player {
-    --player-h: 700px;
+    --player-h: 560px;
     --strip-h: 72px;
     min-height: var(--player-h);
     display: grid; grid-template-rows: auto 1fr auto;
@@ -24,7 +24,9 @@
 
 /* Раскрытие и сворачивание — по высоте, содержимое обрезается рамкой.
    Ключевые кадры, а не transition: у рамки в сессии высота auto, а её не анимировать. */
-.player--opening { overflow: hidden; animation: player-open 360ms cubic-bezier(0.2, 0, 0, 1); }
+/* min-height снят на время раскрытия: иначе он держит рамку в полную высоту и анимации
+   не видно. forwards — чтобы до снятия класса рамка не провалилась на высоту содержимого. */
+.player--opening { overflow: hidden; min-height: 0; animation: player-open 360ms cubic-bezier(0.2, 0, 0, 1) forwards; }
 .player--closing { overflow: hidden; animation: player-close 300ms cubic-bezier(0.2, 0, 0, 1); }
 @keyframes player-open { from { height: var(--from); } to { height: var(--player-h); } }
 @keyframes player-close { from { height: var(--from); } to { height: var(--strip-h); } }
@@ -99,7 +101,9 @@
 /* Задание на всю ширину рамки, как в строке юнита: длинные пункты gap не
    переносятся лишний раз. Боковой отступ — тот же, что у нижней полосы. */
 .player__body { display: grid; place-items: center; padding: var(--s-4) var(--s-5); min-width: 0; }
-.player__exercise { width: 100%; }
+/* Задание прижато к верху: при разной длине заданий начало всегда на одном месте.
+   Ожидание и ошибка остаются по центру. */
+.player__exercise { width: 100%; align-self: start; }
 .player__body > .error { text-align: center; }
 /* Юнит задания — подписью, не заголовком: главное в рамке — само задание. */
 .player__unit { margin: 0 0 var(--s-3); font-size: var(--t-xs); font-weight: 500; color: var(--ink-soft); }
@@ -146,7 +150,6 @@
 .player__end:active { transform: scale(0.97); }
 
 @media (max-width: 640px) {
-    .player { --player-h: 560px; }
     .player--strip { gap: var(--s-3); }
     .player__body { padding: var(--s-4); }
     .seg__opt { padding-inline: 9px; }

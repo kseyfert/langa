@@ -8,7 +8,8 @@
     "start": "next start",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "import:units": "tsx scripts/import-units.ts"
+    "import:units": "tsx scripts/import-units.ts",
+    "test": "tsx --test 'src/**/*.test.ts'"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.134.0",

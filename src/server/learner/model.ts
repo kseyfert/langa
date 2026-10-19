@@ -21,7 +21,7 @@ export const CONFIG = {
   MEMORY_WEIGHT: { gap: 0.2, choice: 0.25, rephrase: 0.6, translate: 0.8, free: 1.0 } as Record<ExerciseType, number>,
   SUCCESS_THRESHOLD: 0.8,
   FAIL_THRESHOLD: 0.5,
-  PROMOTE_MIN_CREDIT: 0.5,
+  PROMOTE_MIN_CREDIT: 0.2,
   EASY_TYPES: ["gap", "choice"] as ExerciseType[],
   EASY_MAX_STAGE: 3,
   EARLY_FRACTION: 0.5,

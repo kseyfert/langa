@@ -1,9 +1,10 @@
 import 'server-only';
 import { asc, eq, ne } from 'drizzle-orm';
 import { db } from '../db/client';
-import { exerciseAttempts, exercises } from '../db/schema';
+import { exerciseAttempts, exercises, units } from '../db/schema';
 import { evidenceOf } from './evidence';
 import { CONFIG, interval, isMastered, level, newUnit, progress, update, type Evidence } from './model';
+import { nextExercise, type Plan } from './planner';
 
 /** Окно графика рейтинга: 4 недели, точка на день — при 80px это ~3px на день. */
 export const HISTORY_DAYS = 28;
@@ -80,4 +81,27 @@ export async function unitRatings(now = Date.now()): Promise<Map<number, UnitRat
     const ratings = new Map<number, UnitRating>();
     for (const [unitId, evs] of byUnit) ratings.set(unitId, rate(evs, now));
     return ratings;
+}
+
+/** Следующее задание сессии по планировщику; null — начатых юнитов нет. */
+export async function planNext(now = Date.now()): Promise<Plan | null> {
+    const real = ne(exercises.model, 'mock');   // заглушки в рейтинг не идут, см. unitRatings
+    const [unitRows, exerciseRows, attemptRows] = await Promise.all([
+        db().select({ id: units.id, position: units.position, started: units.started }).from(units),
+        db()
+            .select({ id: exercises.id, unitId: exercises.unitId, type: exercises.type, createdAt: exercises.createdAt })
+            .from(exercises)
+            .where(real),
+        db()
+            .select({ exerciseId: exerciseAttempts.exerciseId, at: exerciseAttempts.createdAt, evaluation: exerciseAttempts.evaluation })
+            .from(exerciseAttempts)
+            .innerJoin(exercises, eq(exercises.id, exerciseAttempts.exerciseId))
+            .where(real),
+    ]);
+    return nextExercise(
+        unitRows,
+        exerciseRows.map((e) => ({ ...e, createdAt: e.createdAt.getTime() })),
+        attemptRows.map((a) => ({ ...a, at: a.at.getTime() })),
+        now,
+    );
 }

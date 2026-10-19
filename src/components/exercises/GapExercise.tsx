@@ -1,6 +1,6 @@
 'use client';
 
-import { useId, useState, type FormEvent, type KeyboardEvent } from 'react';
+import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { Icon } from '@/components/Icon';
 import type { PublicContentByType } from '@/server/exercises/types';
 import { CheckActions } from './CheckActions';
@@ -13,6 +13,10 @@ export function GapExercise({ exerciseId, content, onDone }: { exerciseId: numbe
     const [values, setValues] = useState(() => content.items.map(() => ''));
     const { checked, error, busy, submit } = useClosedCheck(exerciseId, 'gap', onDone);
     const formId = useId();
+
+    const form = useRef<HTMLFormElement>(null);
+    // Сразу можно печатать в первый пропуск; прокрутку не трогаем — задание и так на виду.
+    useEffect(() => form.current?.querySelector<HTMLInputElement>('.gap__input')?.focus({ preventScroll: true }), []);
 
     const onSubmit = (e: FormEvent) => {
         e.preventDefault();
@@ -31,7 +35,7 @@ export function GapExercise({ exerciseId, content, onDone }: { exerciseId: numbe
 
     const result = checked?.evaluation;
     return (
-        <form id={formId} className="exercise" onSubmit={onSubmit}>
+        <form ref={form} id={formId} className="exercise" onSubmit={onSubmit}>
             {content.instructions_ru && <p className="exercise__instructions">{content.instructions_ru}</p>}
             <ol className="exercise__items">
                 {content.items.map((it, i) => {

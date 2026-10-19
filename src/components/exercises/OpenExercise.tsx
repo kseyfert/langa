@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useId, useState, useTransition, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, useTransition, type FormEvent, type ReactNode } from 'react';
 import { checkExercise, revealExercise } from '@/app/actions';
 import type { Exercise, OpenEvaluation } from '@/server/exercises/types';
 import { ExerciseActions } from './ExerciseActions';
@@ -44,6 +44,13 @@ export function OpenExercise({ exerciseId, instructions, task, targetName, lengt
     // Ждёт вторую попытку: разбор последней скрыт, форма снова открыта.
     const pending = retryRu != null && !solution;
     const showForm = !finished && (attempts.length === 0 || pending);
+
+    // Сразу можно писать: на старте и когда после «верно, но без конструкции» ждём новую попытку.
+    // Форма при этом не перемонтируется, поэтому autoFocus не годится.
+    const answer = useRef<HTMLTextAreaElement>(null);
+    useEffect(() => {
+        if (showForm) answer.current?.focus({ preventScroll: true });
+    }, [showForm, attempts.length]);
 
     // Считается то же, что уйдёт на проверку, — без пробелов по краям.
     const chars = draft.trim().length;
@@ -107,6 +114,7 @@ export function OpenExercise({ exerciseId, instructions, task, targetName, lengt
                 <form id={formId} className={`open__form${pending ? ' open__form--retry' : ''}`} onSubmit={submit}>
                     {pending && <p className="open__retry">{retryRu}</p>}
                     <textarea
+                        ref={answer}
                         className="input open__answer"
                         aria-label="Твой ответ"
                         placeholder={pending ? 'Ещё одна попытка' : 'Твой ответ на английском'}

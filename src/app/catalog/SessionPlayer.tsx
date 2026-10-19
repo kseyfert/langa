@@ -5,9 +5,10 @@ import { AnyExercise } from '@/components/exercises/AnyExercise';
 import { ActionsSlot } from '@/components/exercises/ExerciseActions';
 import type { ExerciseView } from '@/server/tasks';
 import { nextSessionExercise } from '@/app/actions';
+import { PLANNER_CONFIG } from '@/server/learner/planner';
 import './SessionPlayer.css';
 
-const TIMES = [5, 10, 15, 20, 30] as const;
+const TIMES = PLANNER_CONFIG.SESSION_OPTIONS;
 const DEFAULT_MIN = 15;
 
 // Длительность запоминается в браузере — удобство, а не данные.
@@ -166,7 +167,7 @@ export function SessionPlayer() {
 
     const frame = (cls: string, children: ReactNode) => (
         <section ref={box} aria-label="Сессия"
-            className={`player ${cls}${anim ? ` player--${anim.kind}ing` : ''}`}
+            className={`player ${cls}${anim ? ` player--${anim.kind === 'open' ? 'opening' : 'closing'}` : ''}`}
             style={anim ? ({ '--from': `${anim.from}px` } as CSSProperties) : undefined}
             onAnimationEnd={(e) => e.target === e.currentTarget && setAnim(null)}>
             {children}

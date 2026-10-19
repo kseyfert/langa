@@ -2,6 +2,7 @@
 
 import * as catalog from '@/server/catalog';
 import type { Exercise } from '@/server/exercises/types';
+import * as learner from '@/server/learner';
 import * as tasks from '@/server/tasks';
 
 // Ошибки возвращаются значением: брошенную из server action Next в проде прячет.
@@ -23,15 +24,13 @@ export async function startExercise(unitId: number, type: string | null = null):
     }
 }
 
-/**
- * Следующее задание сессии. Пока без планировщика: случайный тип по случайному
- * юниту из взятых в работу.
- */
+/** Следующее задание сессии: юнит и тип выбирает планировщик (specs/planner.md). */
 export async function nextSessionExercise(): Promise<Result<{ exercise: tasks.ExerciseView; targetName: string }>> {
     try {
-        const unit = await catalog.randomStartedUnit();
-        if (!unit) return { ok: false, error: 'Нет юнитов в работе. Отметь юнит в каталоге — наведи на его номер.' };
-        return { ok: true, exercise: await tasks.getRandom(unit.id), targetName: `${unit.number ?? '—'}. ${unit.title}` };
+        const plan = await learner.planNext();
+        if (!plan) return { ok: false, error: 'Нет юнитов в работе. Отметь юнит в каталоге — наведи на его номер.' };
+        const [unit, exercise] = await Promise.all([catalog.getUnit(plan.unitId), tasks.get(plan.unitId, plan.type)]);
+        return { ok: true, exercise, targetName: `${unit.number ?? '—'}. ${unit.title}` };
     } catch (e) {
         return fail(e, 'Не получилось составить задание');
     }
