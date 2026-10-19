@@ -1,6 +1,7 @@
 import { marked } from 'marked';
 import { listUnits, type Unit } from '@/server/catalog';
 import { unitRatings, type UnitRating } from '@/server/learner';
+import { SessionPlayer } from './SessionPlayer';
 import { UnitRow, type Dep } from './UnitRow';
 import './Catalog.css';
 
@@ -77,6 +78,8 @@ export default async function CatalogPage() {
                 )}
             </div>
 
+            {units.length > 0 && <SessionPlayer />}
+
             {units.length === 0 ? (
                 <p className="hint muted">
                     Каталог пуст. Загрузи юниты: npm run import:units -- файл.csv
@@ -99,6 +102,7 @@ export default async function CatalogPage() {
                                             guideHtml={u.guide.trim() ? marked.parse(u.guide, { async: false }) : null}
                                             deps={depsOf(u)}
                                             rating={ratings.get(u.id) ?? null}
+                                            started={u.started}
                                         />
                                     ))}
                                 </ul>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
+import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { Icon } from '@/components/Icon';
 import type { PublicContentByType } from '@/server/exercises/types';
 import { CheckActions } from './CheckActions';
@@ -9,9 +9,10 @@ import './Exercise.css';
 import './ChoiceExercise.css';
 
 /** Выбор варианта: варианты — переключателем под предложением, выбранный встаёт в пропуск. */
-export function ChoiceExercise({ exerciseId, content }: { exerciseId: number; content: PublicContentByType['choice'] }) {
+export function ChoiceExercise({ exerciseId, content, onDone }: { exerciseId: number; content: PublicContentByType['choice']; onDone?: (ok: boolean) => void }) {
     const [picked, setPicked] = useState<(number | null)[]>(() => content.items.map(() => null));
-    const { checked, error, busy, submit } = useClosedCheck(exerciseId, 'choice');
+    const { checked, error, busy, submit } = useClosedCheck(exerciseId, 'choice', onDone);
+    const formId = useId();
 
     const form = useRef<HTMLFormElement>(null);
 
@@ -42,7 +43,7 @@ export function ChoiceExercise({ exerciseId, content }: { exerciseId: number; co
 
     const result = checked?.evaluation;
     return (
-        <form ref={form} className="exercise" onSubmit={onSubmit}>
+        <form ref={form} id={formId} className="exercise" onSubmit={onSubmit}>
             {content.instructions_ru && <p className="exercise__instructions">{content.instructions_ru}</p>}
             <ol className="exercise__items">
                 {content.items.map((it, i) => {
@@ -81,7 +82,7 @@ export function ChoiceExercise({ exerciseId, content }: { exerciseId: number; co
                     );
                 })}
             </ol>
-            <CheckActions result={result} error={error} busy={busy} />
+            <CheckActions formId={formId} result={result} error={error} busy={busy} />
         </form>
     );
 }

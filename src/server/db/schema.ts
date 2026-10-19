@@ -24,6 +24,8 @@ export const units = pgTable(
         guide: text('guide').notNull().default(''),
         buildsOn: bigint('builds_on', { mode: 'number' }).array().notNull().default(sql`'{}'`),
         reviewed: boolean('reviewed').notNull().default(false),
+        // Взят ли юнит в работу.
+        started: boolean('started').notNull().default(false),
         updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
     },
     (t) => [unique().on(t.book, t.number), index('units_book_idx').on(t.book)],

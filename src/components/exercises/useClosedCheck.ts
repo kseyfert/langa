@@ -8,8 +8,11 @@ import type { ClosedEvaluation, ContentByType } from '@/server/exercises/types';
 type ClosedType = 'gap' | 'choice';
 type Checked<T extends ClosedType> = { evaluation: ClosedEvaluation; solution: ContentByType[T] };
 
-/** Проверка закрытого задания: одна попытка, после неё — оценка и задание с ключами. */
-export function useClosedCheck<T extends ClosedType>(exerciseId: number, type: T) {
+/**
+ * Проверка закрытого задания: одна попытка, после неё — оценка и задание с ключами.
+ * onDone — задание завершено; ok — все пункты верны.
+ */
+export function useClosedCheck<T extends ClosedType>(exerciseId: number, type: T, onDone?: (ok: boolean) => void) {
     const [checked, setChecked] = useState<Checked<T> | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [busy, startBusy] = useTransition();
@@ -25,6 +28,7 @@ export function useClosedCheck<T extends ClosedType>(exerciseId: number, type: T
                 return setError('Сервер вернул проверку не того вида');
             }
             setChecked({ evaluation: res.attempt.evaluation, solution: res.solution.content as ContentByType[T] });
+            onDone?.(res.attempt.evaluation.correct === res.attempt.evaluation.total);
             // Попытка изменила рейтинг юнита — перечитать страницу с сервера; состояние формы останется.
             router.refresh();
         });

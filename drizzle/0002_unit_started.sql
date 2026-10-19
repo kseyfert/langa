@@ -1,0 +1,1 @@
+ALTER TABLE "units" ADD COLUMN "started" boolean DEFAULT false NOT NULL;

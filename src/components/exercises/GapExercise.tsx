@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FormEvent, type KeyboardEvent } from 'react';
+import { useId, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { Icon } from '@/components/Icon';
 import type { PublicContentByType } from '@/server/exercises/types';
 import { CheckActions } from './CheckActions';
@@ -9,9 +9,10 @@ import './Exercise.css';
 import './GapExercise.css';
 
 /** Задание на пропуски: предложение с полем на месте ___, проверка — один раз. */
-export function GapExercise({ exerciseId, content }: { exerciseId: number; content: PublicContentByType['gap'] }) {
+export function GapExercise({ exerciseId, content, onDone }: { exerciseId: number; content: PublicContentByType['gap']; onDone?: (ok: boolean) => void }) {
     const [values, setValues] = useState(() => content.items.map(() => ''));
-    const { checked, error, busy, submit } = useClosedCheck(exerciseId, 'gap');
+    const { checked, error, busy, submit } = useClosedCheck(exerciseId, 'gap', onDone);
+    const formId = useId();
 
     const onSubmit = (e: FormEvent) => {
         e.preventDefault();
@@ -30,7 +31,7 @@ export function GapExercise({ exerciseId, content }: { exerciseId: number; conte
 
     const result = checked?.evaluation;
     return (
-        <form className="exercise" onSubmit={onSubmit}>
+        <form id={formId} className="exercise" onSubmit={onSubmit}>
             {content.instructions_ru && <p className="exercise__instructions">{content.instructions_ru}</p>}
             <ol className="exercise__items">
                 {content.items.map((it, i) => {
@@ -69,7 +70,7 @@ export function GapExercise({ exerciseId, content }: { exerciseId: number; conte
                     );
                 })}
             </ol>
-            <CheckActions result={result} error={error} busy={busy} />
+            <CheckActions formId={formId} result={result} error={error} busy={busy} />
         </form>
     );
 }

@@ -1,9 +1,10 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState, useTransition, type FormEvent, type ReactNode } from 'react';
+import { useId, useState, useTransition, type FormEvent, type ReactNode } from 'react';
 import { checkExercise, revealExercise } from '@/app/actions';
 import type { Exercise, OpenEvaluation } from '@/server/exercises/types';
+import { ExerciseActions } from './ExerciseActions';
 import { OpenAttempt } from './OpenAttempt';
 import './Exercise.css';
 import './OpenExercise.css';
@@ -19,6 +20,8 @@ type Props = {
     targetName: string;
     /** Рамки объёма ответа в символах: счётчик у кнопки, вне рамок проверить нельзя. */
     length?: { min: number; max: number };
+    /** Задание завершено; ok — принято. */
+    onDone?: (ok: boolean) => void;
 };
 
 /**
@@ -26,7 +29,7 @@ type Props = {
  * После «верно, но без нужной конструкции» разбор скрыт, пока нет следующей
  * попытки или пока не нажат «Показать разбор» (exercise-spec §8).
  */
-export function OpenExercise({ exerciseId, instructions, task, targetName, length }: Props) {
+export function OpenExercise({ exerciseId, instructions, task, targetName, length, onDone }: Props) {
     const [draft, setDraft] = useState('');
     const [attempts, setAttempts] = useState<Done[]>([]);
     const [units, setUnits] = useState<Record<number, string>>({});
@@ -36,6 +39,7 @@ export function OpenExercise({ exerciseId, instructions, task, targetName, lengt
     const [error, setError] = useState<string | null>(null);
     const [busy, startBusy] = useTransition();
     const router = useRouter();
+    const formId = useId();
 
     // Ждёт вторую попытку: разбор последней скрыт, форма снова открыта.
     const pending = retryRu != null && !solution;
@@ -61,6 +65,7 @@ export function OpenExercise({ exerciseId, instructions, task, targetName, lengt
             setFinished(res.status != null);
             setSolution(res.solution);
             setDraft('');
+            if (res.status) onDone?.(res.status === 'accepted');
             // Попытка изменила рейтинг юнита — перечитать страницу с сервера; состояние формы останется.
             router.refresh();
         });
@@ -99,7 +104,7 @@ export function OpenExercise({ exerciseId, instructions, task, targetName, lengt
             ))}
 
             {showForm && (
-                <form className={`open__form${pending ? ' open__form--retry' : ''}`} onSubmit={submit}>
+                <form id={formId} className={`open__form${pending ? ' open__form--retry' : ''}`} onSubmit={submit}>
                     {pending && <p className="open__retry">{retryRu}</p>}
                     <textarea
                         className="input open__answer"
@@ -118,7 +123,7 @@ export function OpenExercise({ exerciseId, instructions, task, targetName, lengt
                         autoCapitalize="off" spellCheck={false}
                     />
                     {error && <p className="error">{error}</p>}
-                    <div className="exercise__actions row">
+                    <ExerciseActions>
                         {pending && (
                             <button type="button" className="btn btn--quiet" disabled={busy} onClick={reveal}>
                                 Показать разбор
@@ -130,10 +135,10 @@ export function OpenExercise({ exerciseId, instructions, task, targetName, lengt
                                 {chars} / {length.min} — {length.max}
                             </span>
                         )}
-                        <button type="submit" className="btn btn--primary exercise__check" disabled={busy || !draft.trim() || !fits}>
+                        <button type="submit" form={formId} className="btn btn--primary exercise__check" disabled={busy || !draft.trim() || !fits}>
                             {busy ? 'Проверяю…' : 'Проверить'}
                         </button>
-                    </div>
+                    </ExerciseActions>
                 </form>
             )}
             {!showForm && error && <p className="error">{error}</p>}

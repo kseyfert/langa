@@ -1,5 +1,5 @@
 import 'server-only';
-import { asc, eq, and, inArray } from 'drizzle-orm';
+import { asc, eq, and, inArray, sql } from 'drizzle-orm';
 import { db } from '../db/client';
 import { units } from '../db/schema';
 
@@ -14,6 +14,7 @@ export type Unit = {
     guide: string;
     buildsOn: number[];
     reviewed: boolean;
+    started: boolean;
     updatedAt: string;
 };
 
@@ -30,6 +31,17 @@ export async function listUnits(book?: string): Promise<Unit[]> {
         .where(book ? eq(units.book, book) : undefined)
         .orderBy(asc(units.position));
     return rows.map(toUnit);
+}
+
+export async function setStarted(id: number, started: boolean): Promise<void> {
+    const rows = await db().update(units).set({ started }).where(eq(units.id, id)).returning({ id: units.id });
+    if (!rows.length) throw new Error(`Юнит ${id} не найден`);
+}
+
+/** Случайный юнит из взятых в работу; null — таких нет. */
+export async function randomStartedUnit(): Promise<Unit | null> {
+    const [row] = await db().select().from(units).where(eq(units.started, true)).orderBy(sql`random()`).limit(1);
+    return row ? toUnit(row) : null;
 }
 
 export async function getUnit(id: number): Promise<Unit> {

@@ -1,0 +1,157 @@
+/* Плеер сессии — сознательное отступление от «бумаги» (токены --radius-lg,
+   --radius-pill, --shadow-lift): виджет должен читаться как отдельная вещь
+   на странице, как встроенное видео. Задания внутри — те же, что в строке юнита. */
+
+/* В сессии высота — по самому высокому заданию: gap из 6 пунктов влезает
+   целиком, между заданиями страница не прыгает. Только min-height, без
+   aspect-ratio: разбор ответа бывает длиннее — тогда рамка тянется вниз. */
+.player {
+    --player-h: 700px;
+    --strip-h: 72px;
+    min-height: var(--player-h);
+    display: grid; grid-template-rows: auto 1fr auto;
+    background: var(--paper-lift);
+    border: var(--line); border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lift);
+}
+/* До старта — полоска: место под сессию не занято, пока её нет. Высота —
+   минимальная, а не точная: длинная ошибка переносится внутри полоски. */
+.player--strip {
+    min-height: var(--strip-h);
+    display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-3) var(--s-4); padding: var(--s-3);
+}
+.player--over { grid-template-rows: 1fr; place-items: center; }
+
+/* Раскрытие и сворачивание — по высоте, содержимое обрезается рамкой.
+   Ключевые кадры, а не transition: у рамки в сессии высота auto, а её не анимировать. */
+.player--opening { overflow: hidden; animation: player-open 360ms cubic-bezier(0.2, 0, 0, 1); }
+.player--closing { overflow: hidden; animation: player-close 300ms cubic-bezier(0.2, 0, 0, 1); }
+@keyframes player-open { from { height: var(--from); } to { height: var(--player-h); } }
+@keyframes player-close { from { height: var(--from); } to { height: var(--strip-h); } }
+
+.player__play {
+    flex: none; width: 48px; height: 48px; border-radius: 50%; border: 0; cursor: pointer;
+    display: grid; place-items: center; background: var(--speak); color: var(--paper-lift);
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--speak) 12%, transparent), 0 6px 18px color-mix(in srgb, var(--speak) 30%, transparent);
+    transition: transform 160ms cubic-bezier(0.2, 0, 0, 1), box-shadow 160ms;
+}
+.player__play:hover:not(:disabled) {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 7px color-mix(in srgb, var(--speak) 14%, transparent), 0 8px 22px color-mix(in srgb, var(--speak) 36%, transparent);
+}
+.player__play:active { transform: scale(0.97); }
+.player__play svg { width: 18px; height: 18px; margin-left: 3px; }
+.player__error { min-width: 0; }
+
+.player__wait { width: 44px; height: 44px; display: grid; place-items: center; }
+.player__wait::before {
+    content: ''; width: 44px; height: 44px; border-radius: 50%;
+    border: 3px solid var(--paper-deep); border-top-color: var(--speak);
+    animation: spinner 0.8s linear infinite;
+}
+
+/* Длительность: бегунок едет, а не перекрашивается — видно, откуда куда. */
+.seg { --n: 5; position: relative; display: grid; grid-template-columns: repeat(var(--n), 1fr); padding: var(--s-1); background: var(--paper-deep); border-radius: var(--radius-pill); }
+.seg__thumb {
+    position: absolute; top: var(--s-1); bottom: var(--s-1); left: var(--s-1);
+    width: calc((100% - 2 * var(--s-1)) / var(--n)); border-radius: var(--radius-pill);
+    background: var(--paper-lift); box-shadow: 0 1px 3px rgb(0 0 0 / 14%);
+    transform: translateX(calc(var(--i) * 100%));
+    transition: transform 240ms cubic-bezier(0.2, 0, 0, 1);
+}
+.seg__opt {
+    position: relative; z-index: 1; border: 0; background: none; cursor: pointer;
+    padding: 6px 14px; font: inherit; font-size: var(--t-sm); font-weight: 600; color: var(--ink-soft);
+    white-space: nowrap; font-variant-numeric: tabular-nums; transition: color 120ms;
+}
+.seg__opt small { font-weight: 500; font-size: var(--t-xs); margin-left: 2px; }
+.seg__opt--on { color: var(--ink); }
+.seg__opt:disabled { cursor: default; }
+
+/* Верхняя полоса: таймер, след ответов, «Завершить». */
+.player__top { display: flex; align-items: center; gap: var(--s-3); padding: var(--s-3); }
+.player__timer {
+    display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 14px 0 12px;
+    border-radius: var(--radius-pill); background: var(--paper-deep);
+    font-weight: 650; font-size: 0.9375rem; font-variant-numeric: tabular-nums;
+    transition: background 200ms, color 200ms;
+}
+.player__timer i { width: 7px; height: 7px; border-radius: 50%; background: var(--speak); animation: player-blink 2s ease-in-out infinite; }
+@keyframes player-blink { 50% { opacity: 0.25; } }
+/* Время вышло: таймер краснеет и считает дальше — сессию никто не обрывает. */
+.player__timer--over { background: var(--warn); color: var(--paper-lift); }
+.player__timer--over i { background: var(--paper-lift); }
+
+.player__trail { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; gap: var(--s-1); }
+.player__mark { width: 8px; height: 8px; border-radius: 50%; }
+.player__mark--ok { background: var(--done); }
+.player__mark--bad { background: var(--warn); }
+.player__mark--skip { box-shadow: inset 0 0 0 1.5px var(--rule); }
+.player__mark--now { width: 18px; border-radius: var(--s-1); background: var(--speak); }
+
+.player__finish {
+    height: 34px; padding: 0 var(--s-4); font: inherit; font-size: var(--t-sm); font-weight: 600;
+    border: var(--line); border-radius: var(--radius-pill); background: transparent; color: var(--ink); cursor: pointer;
+    transition: background 120ms;
+}
+.player__finish:hover { background: var(--paper-deep); }
+
+/* Задание на всю ширину рамки, как в строке юнита: длинные пункты gap не
+   переносятся лишний раз. Боковой отступ — тот же, что у нижней полосы. */
+.player__body { display: grid; place-items: center; padding: var(--s-4) var(--s-5); min-width: 0; }
+.player__exercise { width: 100%; }
+.player__body > .error { text-align: center; }
+/* Юнит задания — подписью, не заголовком: главное в рамке — само задание. */
+.player__unit { margin: 0 0 var(--s-3); font-size: var(--t-xs); font-weight: 500; color: var(--ink-soft); }
+
+/* Нижняя полоса: до ответа — «Пропустить», после — итог цветом и «Дальше».
+   Скругление своё: overflow у рамки открыт, фон сам не обрежется по углам. */
+.player__bottom {
+    display: flex; align-items: center; gap: var(--s-3); min-height: 68px;
+    padding: var(--s-3) var(--s-3) var(--s-3) var(--s-5);
+    border-top: var(--line); border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+    transition: background 200ms;
+}
+.player__bottom--ok { background: var(--done-bg); border-top-color: transparent; }
+.player__bottom--bad { background: var(--warn-bg); border-top-color: transparent; }
+/* Кнопки задания встают справа, в один ряд с «Пропустить». */
+.player__slot { margin-left: auto; display: flex; align-items: center; }
+.player__slot:empty { display: none; }
+.player__bottom > :last-child:not(.player__slot) { margin-left: auto; }
+.player__slot + .player__next { margin-left: var(--s-3); }
+.player__skip {
+    border: 0; background: none; padding: var(--s-2) var(--s-1); cursor: pointer;
+    font: inherit; font-size: var(--t-sm); font-weight: 600; color: var(--ink-soft);
+}
+.player__skip:hover { color: var(--ink); }
+.player__verdict { font-weight: 650; }
+.player__bottom--ok .player__verdict { color: var(--done); }
+.player__bottom--bad .player__verdict { color: var(--warn); }
+.player__next { height: 44px; padding: 0 26px; border: 0; border-radius: var(--radius-pill); cursor: pointer;
+    font: inherit; font-weight: 650; color: var(--paper-lift); background: var(--speak);
+    transition: filter 120ms, transform 120ms;
+}
+.player__next:hover { filter: brightness(1.12); }
+.player__next:active { transform: scale(0.97); }
+.player__bottom--ok .player__next { background: var(--done); }
+.player__bottom--bad .player__next { background: var(--warn); }
+
+/* Финал: время вышло — только кнопка, сбрасывающая плеер к началу. */
+.player__end {
+    height: 52px; padding: 0 var(--s-6); border: 0; border-radius: var(--radius-pill); cursor: pointer;
+    font: inherit; font-weight: 650; color: var(--paper-lift); background: var(--speak);
+    transition: filter 120ms, transform 120ms;
+}
+.player__end:hover { filter: brightness(1.12); }
+.player__end:active { transform: scale(0.97); }
+
+@media (max-width: 640px) {
+    .player { --player-h: 560px; }
+    .player--strip { gap: var(--s-3); }
+    .player__body { padding: var(--s-4); }
+    .seg__opt { padding-inline: 9px; }
+    .player__bottom { padding-left: var(--s-4); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .player__wait::before, .player__timer i { animation: none; }
+}

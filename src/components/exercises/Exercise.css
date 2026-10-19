@@ -20,3 +20,5 @@
 .exercise__check { margin-left: auto; }
 .exercise__score { margin: 0; font-size: var(--t-sm); color: var(--warn); }
 .exercise__score--done { color: var(--done); }
+/* Блок, вынесенный в нижнюю полосу плеера: там уже есть своя линейка — вторая не нужна. */
+.exercise__actions--slot { margin: 0; padding: 0; border-top: 0; flex-wrap: wrap; justify-content: flex-end; }

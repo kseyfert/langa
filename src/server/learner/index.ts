@@ -3,7 +3,7 @@ import { asc, eq, ne } from 'drizzle-orm';
 import { db } from '../db/client';
 import { exerciseAttempts, exercises } from '../db/schema';
 import { evidenceOf } from './evidence';
-import { CONFIG, interval, level, newUnit, progress, update, type Evidence } from './model';
+import { CONFIG, interval, isMastered, level, newUnit, progress, update, type Evidence } from './model';
 
 /** Окно графика рейтинга: 4 недели, точка на день — при 80px это ~3px на день. */
 export const HISTORY_DAYS = 28;
@@ -15,6 +15,7 @@ export type UnitRating = {
     stageMax: number;
     intervalDays: number;     // интервал текущей ступени — сколько дней тема держится
     progress: number;         // общий рейтинг, 0–100
+    mastered: boolean;        // прогресс дошёл до MASTERED_PROGRESS
     /** Рейтинг на конец каждого из HISTORY_DAYS дней, последний — на сейчас; null — практики ещё не было. */
     history: (number | null)[];
 };
@@ -43,6 +44,7 @@ function rate(evs: Evidence[], now: number): UnitRating {
         stageMax: CONFIG.LADDER_DAYS.length - 1,
         intervalDays: interval(s),
         progress: progress(s, now),
+        mastered: isMastered(s, now),
         history,
     };
 }

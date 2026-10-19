@@ -9,10 +9,14 @@
     transition: background 120ms;
 }
 .catalog__unit:hover, .catalog__unit--open { background: var(--paper-deep); }
+/* Юнит в работе: цвет — смысл (учится / освоен), поэтому держится и при
+   наведении, и в раскрытой строке. :hover повторён — он специфичнее модификатора. */
+.catalog__unit--learning, .catalog__unit--learning:hover { background: var(--learning-bg); }
+.catalog__unit--mastered, .catalog__unit--mastered:hover { background: var(--mastery-bg); }
 
 /* Сетка строки: номер | название и описание | показатели у правого края.
    Ряд 1 — название (+▶) и график, ряд 2 — описание и интервал с освоением. */
-.catalog__num { grid-column: 1; grid-row: 1; align-self: baseline; cursor: pointer; }
+.catalog__num { grid-column: 1; grid-row: 1; align-self: baseline; position: relative; }
 .catalog__titleline { grid-column: 2; grid-row: 1; align-self: baseline; }
 .catalog__summary { grid-column: 2; grid-row: 2; display: block; cursor: pointer; }
 .catalog__spark { grid-column: 3; grid-row: 1; align-self: center; }
@@ -84,6 +88,18 @@
 .guide blockquote { margin: 0; border-left: 2px solid var(--rule); padding-left: var(--s-3); color: var(--ink-soft); }
 /* Номер справа: однозначные и трёхзначные стоят по одной вертикали. */
 .catalog__num { font-size: var(--t-xs); color: var(--ink-soft); text-align: right; }
+
+/* Отметка «в работе» лежит поверх номера на всю его клетку и видна при наведении
+   на строку. Прозрачность, а не display: none — иначе до неё не дойти с клавиатуры. */
+.catalog__check {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: flex-end;
+    padding: 0; border: 0; background: none; cursor: pointer;
+    color: var(--ink-soft); opacity: 0;
+}
+.catalog__check[aria-checked='true'] { color: var(--speak); }
+.catalog__unit:hover .catalog__check, .catalog__check:focus-visible { opacity: 1; }
+.catalog__unit:hover .catalog__num-text, .catalog__num:has(:focus-visible) .catalog__num-text { visibility: hidden; }
 
 /* Книга — уровень между заголовком экрана и разделами: крупнее капители
    разделов, мельче h1. Линейка снизу отделяет книгу от её первого раздела. */
