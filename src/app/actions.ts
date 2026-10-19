@@ -36,6 +36,19 @@ export async function nextSessionExercise(): Promise<Result<{ exercise: tasks.Ex
     }
 }
 
+/**
+ * Заготовить задание, которое планировщик дал бы следующим. Не ждёт генерации:
+ * ответ сразу, заготовка доделывается на сервере и отдастся по «Дальше», если план не изменится.
+ */
+export async function prepareNextExercise(): Promise<void> {
+    try {
+        const plan = await learner.planNext();
+        if (plan) tasks.prepare(plan.unitId, plan.type);
+    } catch (e) {
+        console.error(e);   // заготовка — только ускорение
+    }
+}
+
 /** Проверить ответ на задание. */
 export async function checkExercise(exerciseId: number, answer: unknown): Promise<Result<tasks.CheckResult>> {
     try {
@@ -61,5 +74,16 @@ export async function setUnitStarted(unitId: number, started: boolean): Promise<
         return { ok: true };
     } catch (e) {
         return fail(e, 'Не получилось сохранить отметку');
+    }
+}
+
+/** Итог сессии по показанным в ней заданиям, по порядку показа. */
+export async function sessionSummary(exerciseIds: number[]): Promise<Result<{ units: (learner.SessionUnit & { name: string })[] }>> {
+    try {
+        const units = await learner.sessionSummary(exerciseIds);
+        const names = new Map((await catalog.getUnits(units.map((u) => u.unitId))).map((u) => [u.id, `${u.number ?? '—'}. ${u.title}`]));
+        return { ok: true, units: units.map((u) => ({ ...u, name: names.get(u.unitId) ?? `Юнит ${u.unitId}` })) };
+    } catch (e) {
+        return fail(e, 'Не получилось собрать итог');
     }
 }

@@ -4,8 +4,9 @@ import { useEffect, useRef, useState, useTransition, type CSSProperties, type Re
 import { AnyExercise } from '@/components/exercises/AnyExercise';
 import { ActionsSlot } from '@/components/exercises/ExerciseActions';
 import type { ExerciseView } from '@/server/tasks';
-import { nextSessionExercise } from '@/app/actions';
+import { nextSessionExercise, prepareNextExercise, sessionSummary } from '@/app/actions';
 import { PLANNER_CONFIG } from '@/server/learner/planner';
+import { SessionSummary } from './SessionSummary';
 import './SessionPlayer.css';
 
 const TIMES = PLANNER_CONFIG.SESSION_OPTIONS;
@@ -21,6 +22,7 @@ const saveMin = (m: number) => {
 };
 
 type Current = { exercise: ExerciseView; targetName: string };
+type Summary = Awaited<ReturnType<typeof sessionSummary>>;
 type Mark = 'ok' | 'bad' | 'skip';
 
 /** Время без знака: просроченное видно по красному таймеру. */
@@ -76,6 +78,9 @@ export function SessionPlayer() {
     const run = useRef(0);
     // Нижняя полоса, куда задание выносит свои кнопки; state, а не ref — чтобы задание перерисовалось, когда она появится.
     const [slot, setSlot] = useState<HTMLDivElement | null>(null);
+    // Задания сессии по порядку показа — для итога.
+    const seen = useRef<number[]>([]);
+    const [summary, setSummary] = useState<Summary | null>(null);
 
     // Из localStorage — после монтирования: на сервере его нет, иначе разойдётся гидратация.
     useEffect(() => setMin(readMin()), []);
@@ -103,21 +108,39 @@ export function SessionPlayer() {
         setOpen(kind === 'open');
     };
 
+    /**
+     * Показать задание и сразу заготовить следующее: пока решается это,
+     * сервер составляет то, что планировщик дал бы дальше.
+     */
+    const show = (c: Current) => {
+        seen.current.push(c.exercise.id);
+        setCurrent(c);
+        void prepareNextExercise();
+    };
+
     const fetchNext = () => {
         const id = run.current;
         startLoading(async () => {
             const res = await nextSessionExercise();
             if (id !== run.current) return;
             if (!res.ok) return setError(res.error);
-            setCurrent({ exercise: res.exercise, targetName: res.targetName });
+            show({ exercise: res.exercise, targetName: res.targetName });
         });
+    };
+
+    // Новый номер сессии: задание, которое ещё составляется, на экран итога уже не попадёт.
+    const end = () => {
+        const id = ++run.current;
+        setOver(true);
+        setSummary(null);
+        void sessionSummary([...seen.current]).then((res) => id === run.current && setSummary(res));
     };
 
     /** Следующее задание — или конец сессии, если время уже вышло. */
     const advance = () => {
         clear();
         if (box.current) pinToTop(box.current);
-        if (endAt != null && Date.now() > endAt) return setOver(true);
+        if (endAt != null && Date.now() > endAt) return end();
         fetchNext();
     };
 
@@ -127,6 +150,7 @@ export function SessionPlayer() {
         const id = run.current;
         setError(null);
         setMarks([]);
+        seen.current = [];
         resize('open');
         if (box.current) pinToTop(box.current);
         startLoading(async () => {
@@ -136,7 +160,7 @@ export function SessionPlayer() {
                 resize('close');
                 return setError(res.error);
             }
-            setCurrent({ exercise: res.exercise, targetName: res.targetName });
+            show({ exercise: res.exercise, targetName: res.targetName });
             setEndAt(Date.now() + min * 60_000);
         });
     };
@@ -149,6 +173,9 @@ export function SessionPlayer() {
     const onDone = (ok: boolean) => {
         setDone(ok);
         setMarks((m) => [...m, ok ? 'ok' : 'bad']);
+        // Ответ мог поменять план (побочная ошибка поднимает другой юнит) — заготовить заново.
+        // Время вышло — следующего задания не будет.
+        if (endAt != null && Date.now() <= endAt) void prepareNextExercise();
     };
 
     const finish = () => {
@@ -158,7 +185,11 @@ export function SessionPlayer() {
         setEndAt(null);
         setOver(false);
         setMarks([]);
+        setSummary(null);
     };
+
+    // «Завершить» посреди сессии — тоже через итог; не было ни одного задания — итогу не из чего быть.
+    const stop = () => (seen.current.length ? end() : finish());
 
     const pick = (m: number) => {
         setMin(m);
@@ -194,7 +225,20 @@ export function SessionPlayer() {
     }
 
     if (over) {
-        return frame('player--over', <button type="button" className="player__end" onClick={finish} autoFocus>Завершить</button>);
+        return frame('player--over', <>
+            <div className="player__body">
+                {summary == null ? (
+                    <span className="player__wait" role="status" aria-label="Считаю итог…" />
+                ) : summary.ok ? (
+                    <SessionSummary units={summary.units} />
+                ) : (
+                    <p className="error">{summary.error}</p>
+                )}
+            </div>
+            <div className="player__bottom">
+                <button type="button" className="player__next" onClick={finish} autoFocus>Завершить</button>
+            </div>
+        </>);
     }
 
     // До первого задания таймер стоит на полном времени: отсчёт начнётся с него.
@@ -210,7 +254,7 @@ export function SessionPlayer() {
                     {marks.map((m, i) => <span key={i} className={`player__mark player__mark--${m}`} />)}
                     {current && done == null && <span className="player__mark player__mark--now" />}
                 </div>
-                <button type="button" className="player__finish" onClick={finish}>Завершить</button>
+                <button type="button" className="player__finish" onClick={stop}>Завершить</button>
             </div>
 
             <div className="player__body">

@@ -1,9 +1,9 @@
 import 'server-only';
-import { asc, eq, ne } from 'drizzle-orm';
+import { asc, eq, inArray, ne } from 'drizzle-orm';
 import { db } from '../db/client';
 import { exerciseAttempts, exercises, units } from '../db/schema';
 import { evidenceOf } from './evidence';
-import { CONFIG, interval, isMastered, level, newUnit, progress, update, type Evidence } from './model';
+import { CONFIG, interval, isMastered, level, newUnit, progress, replay, update, type Evidence, type ExerciseType } from './model';
 import { nextExercise, type Plan } from './planner';
 
 /** Окно графика рейтинга: 4 недели, точка на день — при 80px это ~3px на день. */
@@ -50,12 +50,8 @@ function rate(evs: Evidence[], now: number): UnitRating {
     };
 }
 
-/**
- * Показатели всех юнитов, у которых есть практика. Лог — источник истины:
- * состояние каждый раз собирается заново из всех попыток. Юниты без практики
- * в результат не попадают.
- */
-export async function unitRatings(now = Date.now()): Promise<Map<number, UnitRating>> {
+/** Свидетельства по юнитам из всего лога, по времени. Заглушки типов (model = 'mock') всегда «верно» — их не берём. */
+async function loadEvidence(): Promise<Map<number, Evidence[]>> {
     const rows = await db()
         .select({
             at: exerciseAttempts.createdAt,
@@ -65,7 +61,6 @@ export async function unitRatings(now = Date.now()): Promise<Map<number, UnitRat
         })
         .from(exerciseAttempts)
         .innerJoin(exercises, eq(exercises.id, exerciseAttempts.exerciseId))
-        // Заглушки типов, которые ещё не сделаны, всегда «верно» — в рейтинг их не пускаем.
         .where(ne(exercises.model, 'mock'))
         .orderBy(asc(exerciseAttempts.createdAt));
 
@@ -77,10 +72,91 @@ export async function unitRatings(now = Date.now()): Promise<Map<number, UnitRat
             else byUnit.set(unitId, [ev]);
         }
     }
+    return byUnit;
+}
 
+/**
+ * Показатели всех юнитов, у которых есть практика. Лог — источник истины:
+ * состояние каждый раз собирается заново из всех попыток. Юниты без практики
+ * в результат не попадают.
+ */
+export async function unitRatings(now = Date.now()): Promise<Map<number, UnitRating>> {
     const ratings = new Map<number, UnitRating>();
-    for (const [unitId, evs] of byUnit) ratings.set(unitId, rate(evs, now));
+    for (const [unitId, evs] of await loadEvidence()) ratings.set(unitId, rate(evs, now));
     return ratings;
+}
+
+/** Три показателя юнита на момент at — как в строке каталога. */
+export type Snapshot = { progress: number; mastery: number; intervalDays: number };
+
+function snapshot(evs: Evidence[], at: number): Snapshot | null {
+    if (!evs.length) return null;
+    const s = replay(evs);
+    return { progress: progress(s, at), mastery: level(s, at), intervalDays: interval(s) };
+}
+
+/** Чем кончилось задание сессии; open — ответ был, но задание не завершено. */
+export type TaskOutcome = 'ok' | 'bad' | 'skip' | 'open';
+
+export type SessionUnit = {
+    unitId: number;
+    /** null — до сессии практики по юниту не было. */
+    before: Snapshot | null;
+    /** null — практики нет и после: все задания по юниту пропущены. */
+    after: Snapshot | null;
+    /** Задания по юниту: n — номер в сессии, с 1. */
+    tasks: { n: number; type: ExerciseType; outcome: TaskOutcome }[];
+    /** Номера заданий, где юнит оценён побочно. */
+    sideIn: number[];
+};
+
+/**
+ * Итог сессии по юнитам: целевые в порядке заданий, затем задетые побочно.
+ * «До» — на начало сессии из свидетельств до неё, «после» — сейчас.
+ */
+export async function sessionSummary(exerciseIds: number[], now = Date.now()): Promise<SessionUnit[]> {
+    if (!exerciseIds.length) return [];
+    const [exRows, attRows, all] = await Promise.all([
+        db()
+            .select({ id: exercises.id, unitId: exercises.unitId, type: exercises.type, status: exercises.status, createdAt: exercises.createdAt })
+            .from(exercises)
+            .where(inArray(exercises.id, exerciseIds)),
+        db()
+            .select({ exerciseId: exerciseAttempts.exerciseId, at: exerciseAttempts.createdAt, evaluation: exerciseAttempts.evaluation })
+            .from(exerciseAttempts)
+            .where(inArray(exerciseAttempts.exerciseId, exerciseIds)),
+        loadEvidence(),
+    ]);
+    const order = new Map(exerciseIds.map((id, i) => [id, i + 1]));
+    const session = exRows.map((e) => ({ ...e, n: order.get(e.id)!, attempts: attRows.filter((a) => a.exerciseId === e.id) }))
+        .sort((a, b) => a.n - b.n);
+
+    const units = new Map<number, SessionUnit>();
+    const unit = (unitId: number) => {
+        let u = units.get(unitId);
+        if (!u) units.set(unitId, (u = { unitId, before: null, after: null, tasks: [], sideIn: [] }));
+        return u;
+    };
+    for (const e of session) {
+        const outcome = e.status === 'accepted' ? 'ok' : e.status === 'failed' ? 'bad' : e.attempts.length ? 'open' : 'skip';
+        unit(e.unitId).tasks.push({ n: e.n, type: e.type, outcome });
+    }
+    for (const e of session) {
+        for (const a of e.attempts) {
+            for (const { unitId, ev } of evidenceOf({ at: a.at.getTime(), unitId: e.unitId, type: e.type, evaluation: a.evaluation })) {
+                const u = unit(unitId);
+                if (ev.role === 'side' && !u.sideIn.includes(e.n)) u.sideIn.push(e.n);
+            }
+        }
+    }
+
+    const startAt = Math.min(...session.map((e) => e.createdAt.getTime()));
+    for (const u of units.values()) {
+        const evs = all.get(u.unitId) ?? [];
+        u.before = snapshot(evs.filter((ev) => ev.at < startAt), startAt);
+        u.after = snapshot(evs, now);
+    }
+    return [...units.values()];
 }
 
 /** Следующее задание сессии по планировщику; null — начатых юнитов нет. */

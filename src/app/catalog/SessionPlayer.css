@@ -20,7 +20,8 @@
     min-height: var(--strip-h);
     display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-3) var(--s-4); padding: var(--s-3);
 }
-.player--over { grid-template-rows: 1fr; place-items: center; }
+/* Финал: итог сессии и «Завершить» внизу, верхней полосы уже нет. */
+.player--over { grid-template-rows: 1fr auto; }
 
 /* Раскрытие и сворачивание — по высоте, содержимое обрезается рамкой.
    Ключевые кадры, а не transition: у рамки в сессии высота auto, а её не анимировать. */
@@ -140,20 +141,32 @@
 .player__bottom--ok .player__next { background: var(--done); }
 .player__bottom--bad .player__next { background: var(--warn); }
 
-/* Финал: время вышло — только кнопка, сбрасывающая плеер к началу. */
-.player__end {
-    height: 52px; padding: 0 var(--s-6); border: 0; border-radius: var(--radius-pill); cursor: pointer;
-    font: inherit; font-weight: 650; color: var(--paper-lift); background: var(--speak);
-    transition: filter 120ms, transform 120ms;
+/* Итог сессии. Внутри — обычная «бумага»: таблица по design.md, линейки вместо плашек. */
+.summary { width: 100%; align-self: start; }
+.summary__title { margin: 0; font-size: var(--t-lg); font-weight: 650; }
+.summary__meta { margin: var(--s-1) 0 var(--s-4); font-size: var(--t-xs); }
+.summary__table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: var(--t-sm); }
+.summary__table th {
+    font-size: var(--t-xs); font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--ink-soft); text-align: right; padding: 0 0 var(--s-2); border-bottom: var(--line);
+    width: 108px;
 }
-.player__end:hover { filter: brightness(1.12); }
-.player__end:active { transform: scale(0.97); }
+.summary__table th:first-child { text-align: left; width: auto; }
+.summary__table td { padding: var(--s-3) 0; border-bottom: var(--line); vertical-align: baseline; }
+.summary__unit { display: block; font-weight: 550; }
+.summary__tasks { display: block; margin-top: var(--s-1); font-size: var(--t-xs); }
+.summary__num { text-align: right; white-space: nowrap; }
+.summary__num small { margin-left: 2px; font-size: 0.6875rem; }
+.summary__to { font-weight: 550; }
+.summary__to--up { color: var(--done); }
+.summary__to--down { color: var(--warn); }
 
 @media (max-width: 640px) {
     .player--strip { gap: var(--s-3); }
     .player__body { padding: var(--s-4); }
     .seg__opt { padding-inline: 9px; }
     .player__bottom { padding-left: var(--s-4); }
+    .summary__table th { width: 84px; }
 }
 @media (prefers-reduced-motion: reduce) {
     .player__wait::before, .player__timer i { animation: none; }

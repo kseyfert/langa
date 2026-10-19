@@ -9,7 +9,7 @@ import { free } from './free';
 import { gap } from './gap';
 import { rephrase } from './rephrase';
 import { translate } from './translate';
-import { READY_TYPES, TaskError, type Task } from './types';
+import { READY_TYPES, TaskError, type Generated, type Task } from './types';
 
 export { READY_TYPES, TaskError };
 
@@ -27,12 +27,27 @@ const view = (ex: Exercise): ExerciseView =>
     ({ id: ex.id, unitId: ex.unitId, type: ex.type, content: publicContent(ex) }) as ExerciseView;
 
 /**
- * Задание по юниту и типу. Сейчас всегда новое: тип составляет, здесь оно
- * пишется в лог. Позже здесь же — иногда отдать нерешённое из базы вместо
- * генерации; файлы типов это не затронет.
+ * Заготовка следующего задания сессии. Живёт в памяти сервера, а не в базе:
+ * задание в базе — это показанное задание, а непоказанная заготовка сбила бы
+ * планировщику «последнее показанное». Одна на сервер — пользователь один.
+ */
+let ahead: { unitId: number; type: ExerciseType; content: Promise<Generated<ExerciseType> | null> } | null = null;
+
+/** Начать составлять задание заранее. Такое же уже готовится — ничего не делать; другое — заменить. */
+export function prepare(unitId: number, type: ExerciseType): void {
+    if (ahead?.unitId === unitId && ahead.type === type) return;
+    // Неудача заготовки не ошибка: по «Дальше» задание составится обычным путём.
+    ahead = { unitId, type, content: taskOf(type).generate(unitId).catch(() => null) };
+}
+
+/**
+ * Задание по юниту и типу: заготовка, если она под эти юнит и тип, иначе
+ * новое. В лог пишется в момент выдачи — время задания и есть время показа.
  */
 export async function get(unitId: number, type: ExerciseType): Promise<ExerciseView> {
-    const g = await taskOf(type).generate(unitId);
+    const ready = ahead?.unitId === unitId && ahead.type === type ? ahead.content : null;
+    if (ready) ahead = null;
+    const g = (await ready) ?? (await taskOf(type).generate(unitId));
     const ex = await createExercise({ unitId, type, ...g });
     return view(ex);
 }
