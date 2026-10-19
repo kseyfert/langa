@@ -2,6 +2,7 @@ import { marked } from 'marked';
 import { listUnits, type Unit } from '@/server/catalog';
 import { unitRatings, type UnitRating } from '@/server/learner';
 import { SessionPlayer } from './SessionPlayer';
+import { UnitMap, type MapSection } from './UnitMap';
 import { UnitRow, type Dep } from './UnitRow';
 import './Catalog.css';
 
@@ -59,6 +60,15 @@ export default async function CatalogPage() {
         });
 
     const books = groupByBook(units);
+    // Статус — тот же, что красит строку юнита (UnitRow): в работе / освоен.
+    const mapSections: MapSection[] = books.flatMap((b) => b.sections).map((s) => ({
+        key: s.key,
+        name: s.name,
+        units: s.units.map((u) => ({
+            id: u.id, number: u.number, title: u.title,
+            status: !u.started ? 'idle' : ratings.get(u.id)?.mastered ? 'mastered' : 'learning',
+        })),
+    }));
     // Счётчики — по уникальным названиям: разорванная книга остаётся одной книгой.
     const bookCount = new Set(units.map((u) => u.book)).size;
     const sections = new Set(units.map((u) => `${u.book}/${u.section}`)).size;
@@ -79,6 +89,7 @@ export default async function CatalogPage() {
             </div>
 
             {units.length > 0 && <SessionPlayer />}
+            {units.length > 0 && <UnitMap sections={mapSections} />}
 
             {units.length === 0 ? (
                 <p className="hint muted">

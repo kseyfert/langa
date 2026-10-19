@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useEffect, useId, useRef, useState, useTransition } from 'react';
 import { Icon } from '@/components/Icon';
 import { AnyExercise } from '@/components/exercises/AnyExercise';
@@ -47,6 +48,7 @@ export function UnitRow({ id: unitId, number, title, summaryRu, guideHtml, deps,
 
     const [type, setType] = useState('');
     const [started, setStarted] = useState(startedInit);
+    const router = useRouter();
     const toggle = () => setOpen((v) => !v);
 
     const play = () =>
@@ -66,7 +68,7 @@ export function UnitRow({ id: unitId, number, title, summaryRu, guideHtml, deps,
         if (!res.ok) {
             setStarted(!next);
             setError(res.error);
-        }
+        } else router.refresh();   // карта юнитов наверху строится на сервере
     };
 
     // Пришли по ссылке с другой страницы (из выдачи поиска): браузер уже
