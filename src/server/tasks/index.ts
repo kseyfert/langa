@@ -1,7 +1,7 @@
 import 'server-only';
 import { getUnits } from '../catalog';
 import {
-    addAttempt, createExercise, getExercise, isOpenEvaluation, publicContent,
+    addAttempt, createExercise, getExercise, isOpenEvaluation, publicContent, statusOf,
     type Attempt, type Exercise, type ExerciseStatus, type ExerciseType, type PublicContentByType,
 } from '../exercises';
 import { choice } from './choice';
@@ -73,11 +73,11 @@ export async function check(exerciseId: number, rawAnswer: unknown): Promise<Che
     const ex = await getExercise(exerciseId);
     const task = taskOf(ex.type);
     // Завершённое задание отклонит и addAttempt, но проверять до него — значит не платить за проверку зря.
-    if (ex.status) throw new TaskError('Задание уже завершено');
+    if (statusOf(ex.attempts)) throw new TaskError('Задание уже завершено');
     const answer = task.parseAnswer(rawAnswer, ex.content);
     const checked = await task.check(ex.unitId, ex.content, answer);
     const attempt = await addAttempt(exerciseId, { answer, ...checked });
-    const after = await getExercise(exerciseId);
+    const status = statusOf([attempt]);
     const ev = attempt.evaluation;
     const named = isOpenEvaluation(ev) ? await getUnits([ex.unitId, ...ev.others.map((o) => o.unit_id)]) : [];
     // Текст формирует сервер, а не модель (exercise-spec §8): так в нём нет подсказки, как надо.
@@ -87,8 +87,8 @@ export async function check(exerciseId: number, rawAnswer: unknown): Promise<Che
         : null;
     return {
         attempt,
-        status: after.status,
-        solution: after.status ? after : null,
+        status,
+        solution: status ? ex : null,
         retryRu,
         units: Object.fromEntries(named.map((u) => [u.id, unitName(u)])),
     };

@@ -2,6 +2,7 @@ import 'server-only';
 import { asc, eq, inArray, ne } from 'drizzle-orm';
 import { db } from '../db/client';
 import { exerciseAttempts, exercises, units } from '../db/schema';
+import { statusOf } from '../exercises';
 import { evidenceOf } from './evidence';
 import { CONFIG, interval, isMastered, level, newUnit, progress, replay, update, type Evidence, type ExerciseType } from './model';
 import { nextExercise, type Plan } from './planner';
@@ -118,11 +119,11 @@ export async function sessionSummary(exerciseIds: number[], now = Date.now()): P
     if (!exerciseIds.length) return [];
     const [exRows, attRows, all] = await Promise.all([
         db()
-            .select({ id: exercises.id, unitId: exercises.unitId, type: exercises.type, status: exercises.status, createdAt: exercises.createdAt })
+            .select({ id: exercises.id, unitId: exercises.unitId, type: exercises.type, createdAt: exercises.createdAt })
             .from(exercises)
             .where(inArray(exercises.id, exerciseIds)),
         db()
-            .select({ exerciseId: exerciseAttempts.exerciseId, at: exerciseAttempts.createdAt, evaluation: exerciseAttempts.evaluation })
+            .select({ exerciseId: exerciseAttempts.exerciseId, seq: exerciseAttempts.seq, at: exerciseAttempts.createdAt, evaluation: exerciseAttempts.evaluation })
             .from(exerciseAttempts)
             .where(inArray(exerciseAttempts.exerciseId, exerciseIds)),
         loadEvidence(),
@@ -138,7 +139,8 @@ export async function sessionSummary(exerciseIds: number[], now = Date.now()): P
         return u;
     };
     for (const e of session) {
-        const outcome = e.status === 'accepted' ? 'ok' : e.status === 'failed' ? 'bad' : e.attempts.length ? 'open' : 'skip';
+        const status = statusOf(e.attempts);
+        const outcome = status === 'accepted' ? 'ok' : status === 'failed' ? 'bad' : e.attempts.length ? 'open' : 'skip';
         unit(e.unitId).tasks.push({ n: e.n, type: e.type, outcome });
     }
     for (const e of session) {

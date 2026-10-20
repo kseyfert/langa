@@ -1,8 +1,8 @@
 import { sql } from 'drizzle-orm';
 import { bigint, boolean, check, index, integer, jsonb, pgTable, text, timestamp, unique } from 'drizzle-orm/pg-core';
 import {
-    EXERCISE_STATUSES, EXERCISE_TYPES, VERDICTS,
-    type Answer, type Evaluation, type ExerciseContent, type ExerciseStatus, type ExerciseType, type Verdict,
+    EXERCISE_TYPES, VERDICTS,
+    type Answer, type Evaluation, type ExerciseContent, type ExerciseType, type Verdict,
 } from '../exercises/types';
 
 /** check по списку значений: text + check, а не pg enum — новое значение добавляется простой миграцией. */
@@ -40,18 +40,14 @@ export const exercises = pgTable(
         unitId: bigint('unit_id', { mode: 'number' }).notNull().references(() => units.id, { onDelete: 'restrict' }),
         type: text('type').$type<ExerciseType>().notNull(),
         content: jsonb('content').$type<ExerciseContent>().notNull(),
-        status: text('status').$type<ExerciseStatus>(),
-        targetScore: integer('target_score'),
         topic: text('topic').notNull(),
         model: text('model').notNull(),
         promptVersion: text('prompt_version').notNull(),
         createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-        finishedAt: timestamp('finished_at', { withTimezone: true }),
     },
     (t) => [
         index('exercises_unit_created_idx').on(t.unitId, t.createdAt),
         check('exercises_type_check', sql`${t.type} in (${oneOf(EXERCISE_TYPES)})`),
-        check('exercises_status_check', sql`${t.status} in (${oneOf(EXERCISE_STATUSES)})`),
     ],
 );
 

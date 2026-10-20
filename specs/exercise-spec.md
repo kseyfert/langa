@@ -148,13 +148,12 @@ type ClosedEvaluation = {
 | `unit_id` | bigint, FK → `units.id` | целевой юнит |
 | `type` | text | `gap` / `choice` / `rephrase` / `translate` / `free` |
 | `content` | jsonb | содержимое задания по типу (раздел 3) |
-| `status` | text, null | `accepted` / `failed` по последней проверенной попытке; `null`, если последняя попытка — `correct_non_target` или попыток не было |
-| `target_score` | integer, null | балл целевого юнита в последней попытке: для открытых типов 0–100 из оценки (null, если конструкция не использована), для gap/choice — процент верных. Для просмотра |
 | `topic` | text | тема контекста, выбранная для генерации |
 | `model` | text | модель, которая генерировала задание |
 | `prompt_version` | text | версия промпта генерации, например `gen-v1` |
 | `created_at` | timestamptz | |
-| `finished_at` | timestamptz, null | когда задание получило статус |
+
+Статуса в таблице нет: он выводится из последней попытки (`statusOf`) — `accepted` / `failed` по её оценке, `null`, если она `correct_non_target` или попыток не было. Завершённое задание попыток не принимает, поэтому последняя попытка его и определяет.
 
 ### 5.2. `exercise_attempts` — одна попытка
 
@@ -174,12 +173,11 @@ type ClosedEvaluation = {
 
 ### 5.3. Ограничения
 
-- `type`, `status`, `verdict` — `text` + `check` со списком значений (не pg enum: новое значение — простая миграция).
+- `type`, `verdict` — `text` + `check` со списком значений (не pg enum: новое значение — простая миграция).
 - Внешние ключи `on delete restrict`: юниты не удаляются, лог тоже.
 - Индекс `exercises (unit_id, created_at)` — история по юниту и чтение лога моделью ученика.
 - `enable row level security` на обеих таблицах, как у `units`: читает и пишет только сервер.
 - Форму `content`, `answer`, `evaluation` по типу база не проверяет: это делает валидация перед записью. В Drizzle поля типизированы через `.$type<…>()`.
-- `status`, `target_score`, `finished_at` — производные от попыток. Их пересчитывает одна функция при записи попытки, в той же транзакции.
 
 ### 5.4. Модуль доступа
 
@@ -187,10 +185,11 @@ type ClosedEvaluation = {
 
 | Функция | Что делает |
 |---|---|
-| `createExercise({ unitId, type, content, topic, model, promptVersion })` | новая строка, `status = null` |
+| `createExercise({ unitId, type, content, topic, model, promptVersion })` | новая строка |
 | `getExercise(id)` | задание со всеми попытками по `seq` |
 | `publicContent(exercise)` | содержимое без ключей (`answers`, `correct`, `reference_en`, `target_note_ru`), без `explain_ru` (объяснение пункта раскрывает ответ), без `focus` (называет грамматику) и `start_with` — только это уходит клиенту до проверки |
-| `addAttempt(exerciseId, { answer, evaluation, model, promptVersion })` | в транзакции: блокирует строку задания; отказ, если задание уже `accepted` / `failed` (у gap/choice поэтому одна попытка) или вид оценки не подходит к типу; `seq = max + 1`; пересчёт `status`, `target_score`, `finished_at` |
+| `addAttempt(exerciseId, { answer, evaluation, model, promptVersion })` | в транзакции: блокирует строку задания; отказ, если последняя попытка уже дала `accepted` / `failed` (у gap/choice поэтому одна попытка) или вид оценки не подходит к типу; `seq = max + 1` |
+| `statusOf(attempts)` | статус задания по последней попытке |
 | `listExercises({ unitId?, limit })` | история для просмотра, новые сверху |
 
 ## 6. Воркфлоу одного задания
@@ -202,10 +201,10 @@ type ClosedEvaluation = {
                  └──────────────────────── новая попытка ◀──┘      или «Показать разбор» / уйти
 ```
 
-1. **Генерация.** Вход: `unit_id`, `type`. Сервер берёт юнит из каталога (`unitForPrompt`: книга, раздел, номер, название, `guide`), выбирает тему из списка тем, собирает промпт генерации (раздел 7), вызывает Claude, валидирует содержимое. Создаётся строка `exercises` со `status = null`. Ключи ответов (`answers`, `correct`, `reference_en`, `target_note_ru`) клиенту до проверки не отдаются.
+1. **Генерация.** Вход: `unit_id`, `type`. Сервер берёт юнит из каталога (`unitForPrompt`: книга, раздел, номер, название, `guide`), выбирает тему из списка тем, собирает промпт генерации (раздел 7), вызывает Claude, валидирует содержимое. Создаётся строка `exercises`, статус — `null`. Ключи ответов (`answers`, `correct`, `reference_en`, `target_note_ru`) клиенту до проверки не отдаются.
 2. **Ответ.** Пользователь отправляет ответ, создаётся попытка `seq = N`.
 3. **Проверка.**
-    - gap/choice — локально по ключу: `accepted`, если все пункты верны, иначе `failed`; `target_score` — процент верных. Попытка одна.
+    - gap/choice — локально по ключу: `accepted`, если все пункты верны, иначе `failed`. Попытка одна.
     - открытые типы — промпт проверки (раздел 7), ответ модели валидируется и сохраняется в попытку.
 4. **Ветвление по вердикту** (открытые типы):
     - `correct_target` → `accepted`, задание закончено.

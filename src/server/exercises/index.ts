@@ -1,5 +1,5 @@
 import 'server-only';
-import { asc, desc, eq, max } from 'drizzle-orm';
+import { asc, desc, eq } from 'drizzle-orm';
 import { db } from '../db/client';
 import { exerciseAttempts, exercises } from '../db/schema';
 import {
@@ -13,11 +13,9 @@ export * from './types';
 type ExerciseRow = typeof exercises.$inferSelect;
 type AttemptRow = typeof exerciseAttempts.$inferSelect;
 
-const iso = (d: Date | null) => (d ? d.toISOString() : null);
-
 function toExercise(r: ExerciseRow): Exercise {
     // Пару type ↔ content гарантирует валидация при записи, а не база.
-    return { ...r, createdAt: r.createdAt.toISOString(), finishedAt: iso(r.finishedAt) } as Exercise;
+    return { ...r, createdAt: r.createdAt.toISOString() } as Exercise;
 }
 
 function toAttempt(r: AttemptRow): Attempt {
@@ -84,17 +82,16 @@ export function publicContent(ex: Exercise): PublicContentByType[ExerciseType] {
     }
 }
 
-/** Статус и балл задания по оценке последней попытки — specs/exercise-spec.md §5.1, §6. */
-function outcome(evaluation: Evaluation): { status: ExerciseStatus | null; targetScore: number | null } {
-    if (!isOpenEvaluation(evaluation)) {
-        const { correct, total } = evaluation;
-        return {
-            status: correct === total ? 'accepted' : 'failed',
-            targetScore: total ? Math.round((correct / total) * 100) : null,
-        };
-    }
-    const status = { correct_target: 'accepted', incorrect: 'failed', correct_non_target: null } as const;
-    return { status: status[evaluation.verdict], targetScore: evaluation.target.score };
+/**
+ * Статус задания по оценке последней попытки — specs/exercise-spec.md §6. Не хранится:
+ * завершённое задание новых попыток не принимает, так что последняя попытка его и определяет.
+ */
+export function statusOf(attempts: readonly { seq: number; evaluation: Evaluation }[]): ExerciseStatus | null {
+    const last = attempts.reduce<(typeof attempts)[number] | null>((a, b) => (a && a.seq > b.seq ? a : b), null);
+    if (!last) return null;
+    const ev = last.evaluation;
+    if (!isOpenEvaluation(ev)) return ev.correct === ev.total ? 'accepted' : 'failed';
+    return ({ correct_target: 'accepted', incorrect: 'failed', correct_non_target: null } as const)[ev.verdict];
 }
 
 /**
@@ -107,8 +104,8 @@ function verdictOf(evaluation: Evaluation): Verdict {
 }
 
 /**
- * Записывает попытку и пересчитывает статус задания — в одной транзакции,
- * со строкой задания под блокировкой, чтобы две попытки не взяли один seq.
+ * Записывает попытку — в транзакции, со строкой задания под блокировкой,
+ * чтобы две попытки не взяли один seq и не прошли мимо завершения.
  */
 export async function addAttempt(
     exerciseId: number,
@@ -117,18 +114,20 @@ export async function addAttempt(
     return db().transaction(async (tx) => {
         const [ex] = await tx.select().from(exercises).where(eq(exercises.id, exerciseId)).for('update');
         if (!ex) throw new Error(`Задание ${exerciseId} не найдено`);
-        if (ex.status) throw new Error(`Задание ${exerciseId} уже завершено`);
         if (isClosed(ex.type) === isOpenEvaluation(input.evaluation)) {
             throw new Error(`Оценка не подходит к типу задания ${ex.type}`);
         }
 
-        const [{ last }] = await tx
-            .select({ last: max(exerciseAttempts.seq) })
+        const last = await tx
+            .select({ seq: exerciseAttempts.seq, evaluation: exerciseAttempts.evaluation })
             .from(exerciseAttempts)
-            .where(eq(exerciseAttempts.exerciseId, exerciseId));
+            .where(eq(exerciseAttempts.exerciseId, exerciseId))
+            .orderBy(desc(exerciseAttempts.seq))
+            .limit(1);
         // Отдельной проверки «у gap/choice одна попытка» не нужно: их оценка
         // всегда даёт статус, а в завершённое задание попытка не пишется.
-        const seq = (last ?? 0) + 1;
+        if (statusOf(last)) throw new Error(`Задание ${exerciseId} уже завершено`);
+        const seq = (last[0]?.seq ?? 0) + 1;
 
         const [row] = await tx
             .insert(exerciseAttempts)
@@ -139,13 +138,6 @@ export async function addAttempt(
                 verdict: verdictOf(input.evaluation),
             })
             .returning();
-
-        const { status, targetScore } = outcome(input.evaluation);
-        await tx
-            .update(exercises)
-            .set({ status, targetScore, finishedAt: status ? row.createdAt : null })
-            .where(eq(exercises.id, exerciseId));
-
         return toAttempt(row);
     });
 }

@@ -7,8 +7,8 @@ export type ExerciseType = (typeof EXERCISE_TYPES)[number];
 export const CLOSED_TYPES = ['gap', 'choice'] as const satisfies readonly ExerciseType[];
 export const isClosed = (t: ExerciseType) => (CLOSED_TYPES as readonly string[]).includes(t);
 
-export const EXERCISE_STATUSES = ['accepted', 'failed'] as const;
-export type ExerciseStatus = (typeof EXERCISE_STATUSES)[number];
+/** Статус задания — не хранится, выводится из последней попытки (exercises/index.ts, statusOf). */
+export type ExerciseStatus = 'accepted' | 'failed';
 
 export const VERDICTS = ['correct_target', 'correct_non_target', 'incorrect'] as const;
 export type Verdict = (typeof VERDICTS)[number];
@@ -130,13 +130,10 @@ export const isOpenEvaluation = (e: Evaluation): e is OpenEvaluation => 'verdict
 type ExerciseBase = {
     id: number;
     unitId: number;
-    status: ExerciseStatus | null;
-    targetScore: number | null;
     topic: string;
     model: string;
     promptVersion: string;
     createdAt: string;
-    finishedAt: string | null;
 };
 
 /** Задание; type и content связаны: по type TypeScript знает форму content. */
