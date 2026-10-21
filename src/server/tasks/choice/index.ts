@@ -1,35 +1,11 @@
 import 'server-only';
-import { unitForPrompt } from '../catalog';
-import type { ChoiceContent, ClosedEvaluation } from '../exercises/types';
-import { askJson, MODEL_GENERATE } from './claude';
-import { randomTopic } from './topics';
-import { TaskError, type Task } from './types';
-import { variety } from './variety';
-
-const PROMPT_VERSION = 'choice-gen-v4';
-
-// Текст — genPrompt прототипа, шапка та же, что у gap (specs/exercise-spec.md §7).
-// Отличие от эталона: пропуск в предложении обязателен — в него подставляется выбранный вариант.
-function prompt(unit: string, topic: string, varietyRules: string): string {
-    return `You write grammar practice for a Russian-speaking adult learner of English (around B2).
-
-Target unit:
-${unit}
-
-Practise only the grammar described for this unit. Do not touch topics listed under "Не входит в юнит": they belong to other units.
-Context theme: ${topic}. Use natural, varied, everyday English; avoid textbook clichés. Random seed: ${Math.random().toString(36).slice(2, 8)}.
-All *_ru fields are in Russian.
-
-${varietyRules}
-
-Make a multiple-choice exercise of exactly 6 items.
-- Each "text" is one natural sentence with exactly one blank written as ___ (three underscores).
-- The gap must contain the whole verb form that the unit tests, including auxiliaries (do/does/am/is/are/have/will...), in every option. Never put an auxiliary outside the gap.
-- For questions, the options include the subject: "___ a receipt?" → options "Do you need", "Are you needing".
-- The correct option must not be guessable from the words around the gap without knowing the unit's rule.
-- 2 or 3 options; exactly one is correct in context. Distractors are typical mistakes of Russian speakers on this unit. Vary the position of the correct option.
-Reply with only JSON: {"instructions_ru":"...","items":[{"text":"...","options":["...","..."],"correct":0,"explain_ru":"one short sentence why"}]}`;
-}
+import { getUnit } from '../../catalog';
+import type { ChoiceContent, ClosedEvaluation } from '../../exercises/types';
+import { askJson, MODEL_GENERATE } from '../claude';
+import { prompts, seed, unitValues } from '../prompt';
+import { randomTopic } from '../topics';
+import { TaskError, type Task } from '../types';
+import { plan, recent } from '../variety';
 
 const isStr = (v: unknown): v is string => typeof v === 'string';
 
@@ -61,10 +37,17 @@ export const choice: Task<'choice'> = {
     type: 'choice',
 
     async generate(unitId) {
+        const p = prompts('choice', ['generate', 'focus-repeat']);
         const topic = randomTopic();
-        const [unit, v] = await Promise.all([unitForPrompt(unitId), variety(unitId, 6)]);
-        const content = normalize(await askJson(prompt(unit, topic, v.prompt), MODEL_GENERATE), v.focus);
-        return { content, topic, model: MODEL_GENERATE, promptVersion: PROMPT_VERSION };
+        const [unit, used] = await Promise.all([getUnit(unitId), recent(unitId)]);
+        const focus = plan(unit.guide, 6, (point) => p.fill('focus-repeat', { point }));
+        const prompt = p.fill('generate', {
+            ...unitValues(unit), topic, seed: seed(),
+            focus: focus.map((f, i) => `${i + 1}. ${f}`).join('\n'),
+            recent: used.map((s) => `- ${s}`).join('\n'),
+        });
+        const content = normalize(await askJson(prompt, MODEL_GENERATE), focus);
+        return { content, topic, model: MODEL_GENERATE, promptVersion: p.version };
     },
 
     parseAnswer(raw, content) {

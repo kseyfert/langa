@@ -65,14 +65,6 @@ export async function getUnits(ids: number[]): Promise<Unit[]> {
     return rows.map(toUnit);
 }
 
-export async function unitForPrompt(id: number): Promise<string> {
-    const u = await getUnit(id);
-    const head = `${u.book} · ${u.section} · Unit ${u.number ?? '—'}: ${u.title}`;
-    // Пока описания не сгенерированы, в промпт идёт однострочное summary_ru.
-    const body = u.guide.trim() || u.summaryRu;
-    return body ? `${head}\n\n${body}` : head;
-}
-
 export async function catalogForPrompt(ids: number[]): Promise<string> {
     const list = await getUnits(ids);
     return list.map((u) => `${u.id}. ${u.title}`).join('\n');
