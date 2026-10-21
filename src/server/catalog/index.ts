@@ -18,6 +18,7 @@ export type Unit = {
     buildsOn: number[];
     reviewed: boolean;
     started: boolean;
+    excludeAsSide: boolean;
     updatedAt: string;
 };
 

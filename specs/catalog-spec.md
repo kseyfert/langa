@@ -44,6 +44,7 @@ create table public.units (
   builds_on    bigint[]  not null default '{}',    -- id юнитов, которые желательно знать до этого
   reviewed     boolean   not null default false,   -- описание сверено с книгой
   started      boolean   not null default false,   -- взят в работу
+  exclude_as_side boolean not null default false, -- не предлагать проверке как побочный
   updated_at   timestamptz not null default now(),
   unique (workspace_id, position),
   unique (workspace_id, book, number)
@@ -83,6 +84,7 @@ alter table public.units enable row level security;
 | `guide` | markdown, целиком уходит в промпт генерации и проверки заданий. Формат определим вместе с генерацией описаний |
 | `builds_on` | id юнитов (любой книги той же области), которые желательно знать до этого. Только прямые зависимости, обычно 0–3 |
 | `reviewed` | `true`, когда описание сверено с книгой |
+| `exclude_as_side` | `true` — юнит-обобщение (например, на различение юнитов 1–6): в каталог проверки не идёт, побочным в оценке не бывает — его ошибки должны лечь на частные юниты. Целевым юнит быть может. Действует только на новые проверки, история не пересчитывается |
 
 ## 4. Типы и модуль доступа
 
@@ -102,6 +104,7 @@ export type Unit = {
   buildsOn: number[];
   reviewed: boolean;
   started: boolean;
+  excludeAsSide: boolean;
   updatedAt: string;
 };
 ```
@@ -119,7 +122,7 @@ export type Unit = {
 | `unitForPrompt(id)` | текст для промпта генерации: книга, раздел, номер, название, `guide` (пока `guide` пуст — `summary_ru`) |
 | `catalogForPrompt(ids)` | компактный список `id. title` для промпта проверки — только переданные юниты, в порядке `position` |
 
-`catalogForPrompt` принимает список id, а не книгу. По решению из `architecture.md` проверка получает только юниты, по которым пользователь прочёл теорию. Пока этой отметки нет, передаются все юниты той же книги той же области.
+`catalogForPrompt` принимает список id, а не книгу. По решению из `architecture.md` проверка получает только юниты, по которым пользователь прочёл теорию. Пока этой отметки нет, передаются все юниты той же книги той же области, кроме `exclude_as_side`.
 
 ## 5. Страницы каталога
 

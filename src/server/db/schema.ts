@@ -36,6 +36,8 @@ export const units = pgTable(
         reviewed: boolean('reviewed').notNull().default(false),
         // Взят ли юнит в работу.
         started: boolean('started').notNull().default(false),
+        // Не предлагать проверке как побочный: юнит-обобщение, его ошибки должны лечь на частные юниты.
+        excludeAsSide: boolean('exclude_as_side').notNull().default(false),
         updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
     },
     (t) => [

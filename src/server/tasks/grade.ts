@@ -81,14 +81,16 @@ function verdictOf(target: OpenEvaluation['target'], modelVerdict: unknown): Ver
 
 /**
  * Ответ модели → OpenEvaluation (exercise-spec §4.1): чужие id уходят в issues,
- * целевой юнит из others выбрасывается, статусы и баллы приводятся к допустимым.
+ * целевой юнит и юниты с exclude_as_side из others выбрасываются, статусы и баллы
+ * приводятся к допустимым.
  */
-function normalize(d: unknown, targetId: number, ids: Set<number>): OpenEvaluation {
+function normalize(d: unknown, targetId: number, ids: Set<number>, excluded: Set<number>): OpenEvaluation {
     const o = obj(d);
     const t = obj(o.target_unit);
     const tStatus = oneOf(TARGET_STATUSES, t.status, 'partial');
     const fragment = (x: Raw) => ({ fragment: str(x.fragment), fix: str(x.fix), comment_ru: str(x.comment_ru) });
-    const others = arr(o.other_units);
+    // В каталоге промпта исключённых нет, но модель может назвать их id по памяти — такие просто выбрасываем.
+    const others = arr(o.other_units).filter((x) => !excluded.has(Number(x.id)));
     const known = (x: Raw) => ids.has(Number(x.id));
     // Модель иногда дублирует ошибку юнита в other_issues — то же место ответа второй раз.
     const reported = [t, ...others.filter(known)].map((x) => str(x.fragment)).filter(Boolean);
@@ -113,7 +115,9 @@ function normalize(d: unknown, targetId: number, ids: Set<number>): OpenEvaluati
 export async function gradeOpen(unitId: number, task: string, answer: string): Promise<Checked> {
     const unit = await getUnit(unitId);
     const book = await listUnits(unit.workspaceId, unit.book);
-    const ids = book.map((u) => u.id);
+    // Целевой юнит идёт в промпт отдельно, поэтому каталог от его флага не зависит и одинаков для всей книги — кэшируется.
+    const ids = book.filter((u) => !u.excludeAsSide).map((u) => u.id);
+    const excluded = new Set(book.filter((u) => u.excludeAsSide).map((u) => u.id));
     const user = `TARGET UNIT:
 ${await unitForPrompt(unitId)}
 
@@ -121,5 +125,5 @@ ${task}
 
 LEARNER ANSWER: "${answer}"`;
     const raw = await askJson(user, MODEL_GRADE, system(await catalogForPrompt(ids)));
-    return { evaluation: normalize(raw, unitId, new Set(ids)), model: MODEL_GRADE, promptVersion: PROMPT_VERSION };
+    return { evaluation: normalize(raw, unitId, new Set(ids), excluded), model: MODEL_GRADE, promptVersion: PROMPT_VERSION };
 }

@@ -1,0 +1,1 @@
+ALTER TABLE "units" ADD COLUMN "exclude_as_side" boolean DEFAULT false NOT NULL;
