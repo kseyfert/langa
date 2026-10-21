@@ -1,5 +1,5 @@
 import 'server-only';
-import { asc, eq, inArray, ne } from 'drizzle-orm';
+import { and, asc, eq, inArray, ne } from 'drizzle-orm';
 import { db } from '../db/client';
 import { exerciseAttempts, exercises, units } from '../db/schema';
 import { statusOf } from '../exercises';
@@ -161,20 +161,23 @@ export async function sessionSummary(exerciseIds: number[], now = Date.now()): P
     return [...units.values()];
 }
 
-/** Следующее задание сессии по планировщику; null — начатых юнитов нет. */
-export async function planNext(now = Date.now()): Promise<Plan | null> {
-    const real = ne(exercises.model, 'mock');   // заглушки в рейтинг не идут, см. unitRatings
+/** Следующее задание сессии в рабочей области по планировщику; null — начатых юнитов в ней нет. */
+export async function planNext(workspaceId: number, now = Date.now()): Promise<Plan | null> {
+    // Заглушки в рейтинг не идут (см. unitRatings); задания других областей планировщику не нужны.
+    const scope = and(ne(exercises.model, 'mock'), eq(units.workspaceId, workspaceId));
     const [unitRows, exerciseRows, attemptRows] = await Promise.all([
-        db().select({ id: units.id, position: units.position, started: units.started }).from(units),
+        db().select({ id: units.id, position: units.position, started: units.started }).from(units).where(eq(units.workspaceId, workspaceId)),
         db()
             .select({ id: exercises.id, unitId: exercises.unitId, type: exercises.type, createdAt: exercises.createdAt })
             .from(exercises)
-            .where(real),
+            .innerJoin(units, eq(units.id, exercises.unitId))
+            .where(scope),
         db()
             .select({ exerciseId: exerciseAttempts.exerciseId, at: exerciseAttempts.createdAt, evaluation: exerciseAttempts.evaluation })
             .from(exerciseAttempts)
             .innerJoin(exercises, eq(exercises.id, exerciseAttempts.exerciseId))
-            .where(real),
+            .innerJoin(units, eq(units.id, exercises.unitId))
+            .where(scope),
     ]);
     return nextExercise(
         unitRows,

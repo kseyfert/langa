@@ -1,16 +1,16 @@
 # Модуль «Каталог»: спецификация
 
-Часть тренажёра грамматики (см. `architecture.md`). Каталог хранит юниты книг: названия, порядок, описание для генерации заданий и зависимости. Остальные модули ссылаются на юниты только по `id`.
+Часть тренажёра грамматики (см. `architecture.md`). Каталог хранит юниты книг: названия, порядок, описание для генерации заданий и зависимости. Юниты сгруппированы по рабочим областям: каждый юнит принадлежит одной области, в области может быть несколько книг. Остальные модули ссылаются на юниты только по `id`.
 
 ## 1. Что входит в модуль
 
-- Таблица `units` в Supabase Postgres: схема в Drizzle, миграция через drizzle-kit.
+- Таблицы `workspaces` и `units` в Supabase Postgres: схема в Drizzle, миграция через drizzle-kit.
 - Серверный модуль доступа: чтение юнитов и их представления для промптов.
-- Страница просмотра каталога.
+- Список рабочих областей и страница области.
 
 Не входит: интерфейс правки каталога (правка через Supabase Table Editor), прогресс пользователя, отметки «в работе» и «прочитал теорию» — это другие модули.
 
-Позже, отдельными шагами: импорт оглавления EGU5 из `data/egu5-units.csv`, генерация описаний (`summary_ru`, `guide`, `builds_on`) через Claude API.
+Юниты и области заводятся и правятся в Supabase Table Editor; скрипта импорта нет.
 
 ## 2. Подключение
 
@@ -24,22 +24,32 @@
 Источник истины — схема Drizzle в TypeScript. Миграция должна дать в базе следующее:
 
 ```sql
+create table public.workspaces (
+  id           bigint generated always as identity primary key,
+  name         text      not null,                 -- "Grammar In Use"; позже — настройки области
+  created_at   timestamptz not null default now(),
+  updated_at   timestamptz not null default now()
+);
+
 create table public.units (
   id           bigint generated always as identity primary key,
+  workspace_id bigint    not null references public.workspaces (id) on delete restrict,
   book         text      not null,                 -- "English Grammar in Use"
   section      text      not null,                 -- "Present and past", точно как в книге
   number       integer,                            -- номер в книге; null для своих юнитов вне книги
-  position     integer   not null unique,          -- общий порядок всех юнитов, шаг 10
+  position     integer   not null,                 -- порядок юнитов области, шаг 10
   title        text      not null,                 -- точно как в книге
   summary_ru   text      not null default '',      -- одна строка для интерфейса
   guide        text      not null default '',      -- markdown для промптов генерации и проверки
   builds_on    bigint[]  not null default '{}',    -- id юнитов, которые желательно знать до этого
   reviewed     boolean   not null default false,   -- описание сверено с книгой
+  started      boolean   not null default false,   -- взят в работу
   updated_at   timestamptz not null default now(),
-  unique (book, number)
+  unique (workspace_id, position),
+  unique (workspace_id, book, number)
 );
 
-create index units_book_idx on public.units (book);
+create index units_workspace_book_idx on public.units (workspace_id, book);
 
 -- updated_at при любой правке, в том числе из Table Editor
 create or replace function public.touch_updated_at() returns trigger
@@ -47,8 +57,11 @@ language plpgsql as $$ begin new.updated_at = now(); return new; end $$;
 
 create trigger units_touch before update on public.units
 for each row execute function public.touch_updated_at();
+create trigger workspaces_touch before update on public.workspaces
+for each row execute function public.touch_updated_at();
 
--- приложение однопользовательское, читает каталог только сервер
+-- читает каталог только сервер
+alter table public.workspaces enable row level security;
 alter table public.units enable row level security;
 ```
 
@@ -60,21 +73,25 @@ alter table public.units enable row level security;
 
 | Поле | Правило |
 |---|---|
+| `workspace_id` | рабочая область юнита. Номер и позиция уникальны в пределах области; сессия и планировщик работают внутри одной области |
 | `id` | выдаёт база, никогда не меняется и не переиспользуется. На него ссылаются лог попыток и состояния модели ученика. Юниты не удаляются (при необходимости можно добавить флаг архива) |
 | `book`, `section` | строки, точно как в книге. Отдельных таблиц книг и разделов нет; порядок разделов выводится из `position` их юнитов |
-| `number` | номер из оглавления; пара `(book, number)` уникальна. `null` — свой юнит, которого нет в книге |
-| `position` | глобальный уникальный порядок, шаг 10. Книга EGU5 занимает 10–1450 (`number × 10`). Свой юнит между 190 и 200 получает 195. Порядок между книгами значения не имеет, он только для отображения |
+| `number` | номер из оглавления; `(workspace_id, book, number)` уникальна. `null` — свой юнит, которого нет в книге |
+| `position` | порядок внутри области, уникален в ней, шаг 10. Книга EGU5 занимает 10–1450 (`number × 10`). Свой юнит между 190 и 200 получает 195. Порядок книг в области задают позиции их юнитов |
 | `title` | точно как в оглавлении, не переводится и не сокращается |
 | `summary_ru` | одна строка по-русски, о чём юнит. Для списка юнитов в интерфейсе |
 | `guide` | markdown, целиком уходит в промпт генерации и проверки заданий. Формат определим вместе с генерацией описаний |
-| `builds_on` | id юнитов (любой книги), которые желательно знать до этого. Только прямые зависимости, обычно 0–3 |
+| `builds_on` | id юнитов (любой книги той же области), которые желательно знать до этого. Только прямые зависимости, обычно 0–3 |
 | `reviewed` | `true`, когда описание сверено с книгой |
 
 ## 4. Типы и модуль доступа
 
 ```ts
+export type Workspace = { id: number; name: string };
+
 export type Unit = {
   id: number;
+  workspaceId: number;
   book: string;
   section: string;
   number: number | null;
@@ -84,6 +101,7 @@ export type Unit = {
   guide: string;
   buildsOn: number[];
   reviewed: boolean;
+  started: boolean;
   updatedAt: string;
 };
 ```
@@ -92,37 +110,41 @@ export type Unit = {
 
 | Функция | Что делает |
 |---|---|
-| `listUnits(book?)` | юниты в порядке `position` |
+| `listWorkspaces()` | рабочие области по `id` |
+| `getWorkspace(id)` | область или `null` |
+| `listUnits(workspaceId, book?)` | юниты области в порядке `position` |
+| `setStarted(id, started)` | взять юнит в работу или снять отметку |
 | `getUnit(id)` | юнит или ошибка «не найден» |
 | `getUnits(ids)` | несколько юнитов по id, в порядке `position` |
-| `findByNumber(book, number)` | юнит по номеру в книге или `null` |
-| `searchUnits(query)` | по номеру, названию, `summary_ru`, разделу; без учёта регистра |
 | `unitForPrompt(id)` | текст для промпта генерации: книга, раздел, номер, название, `guide` (пока `guide` пуст — `summary_ru`) |
 | `catalogForPrompt(ids)` | компактный список `id. title` для промпта проверки — только переданные юниты, в порядке `position` |
 
-`catalogForPrompt` принимает список id, а не книгу. По решению из `architecture.md` проверка получает только юниты, по которым пользователь прочёл теорию. Пока этой отметки нет, передаются все юниты книги.
+`catalogForPrompt` принимает список id, а не книгу. По решению из `architecture.md` проверка получает только юниты, по которым пользователь прочёл теорию. Пока этой отметки нет, передаются все юниты той же книги той же области.
 
-## 5. Страница каталога
+## 5. Страницы каталога
 
-`/catalog` — просмотр, без правки. Вид — по `design.md`.
+Просмотр, без правки. Вид — по `design.md`. `/` перенаправляет на `/catalog`.
 
-- Заголовок «Каталог», под ним строка `.muted .mono`: сколько юнитов, разделов, книг.
+`/catalog` — список рабочих областей: заголовок «Каталог», строки через линейку — название (вес 550) и справа `.mono --t-xs` «юнитов N · в работе N · освоено N» (статусы — как на карте юнитов). Строка целиком ведёт в область. Пустой список: «Рабочих областей пока нет. Заведи первую в Supabase Table Editor: таблица workspaces.»
+
+`/workspace/<id>` — одна область; несуществующий id — 404. Пункт «Каталог» в шапке подсвечен и здесь.
+
+- Заголовок — название области, под ним строка `.muted .mono`: сколько юнитов, разделов, книг. Ниже плеер сессии (задания только из этой области) и карта юнитов.
 - Группировка в порядке `position`: книга (`--t-lg`) → раздел (капитель) → строки через линейку. Группа — подряд идущие юниты: юнит другой книги разрывает книгу, и её заголовок появляется снова.
 - Строка: номер (`.mono`), название (вес 550) и сразу за ним ▶ «Задание» и временный селект типа, ниже `summary_ru` (`.muted --t-xs`). У правого края — показатели юнита (`design.md`, «Показатели юнита в строке»): график рейтинга за 4 недели (точка на конец каждого дня, последняя — на момент загрузки), интервал в днях и полоса освоения. Без практики — пусто.
 - Клик по названию раскрывает строку: `builds_on` ссылками на строки юнитов (`#unit-<id>`, переход с подсветкой) и `guide`, отрендеренный на сервере (`marked`).
 - Задание открывается под строкой, закрывается крестиком. После проверки страница перечитывается с сервера (`router.refresh`) — показатели обновляются.
-- `/` перенаправляет на `/catalog`.
-- Пустой каталог: «Каталог пуст. Загрузи юниты: npm run import:units -- файл.csv».
+- Пустая область: «Юнитов пока нет. Добавь их в Supabase Table Editor: таблица units, workspace_id = N.»
 
 ## 6. Подключение к модулю заданий
 
 - Генерация задания берёт описание юнита через `unitForPrompt(unitId)` вместо прежней однострочной `desc`.
 - Проверка получает каталог через `catalogForPrompt(ids)`; модель в ответе ссылается на эти `id`.
-- В прототипе (`reference/grammar-drill.html`) юниты идентифицировались номером в книге. При переносе номера переводятся в `id` через `findByNumber("English Grammar in Use", number)`. Совпадение `id` и `number` после импорта не предполагать.
+- В прототипе (`reference/grammar-drill.html`) юниты идентифицировались номером в книге. Совпадение `id` и `number` не предполагать.
 
 ## 7. Шаги и критерии готовности
 
 1. **Каркас** — Next.js + TypeScript, стили и шрифты по `design.md`, Drizzle, `.env.example`. Готово: `npm run dev` поднимает приложение.
 2. **Миграция** — таблица, триггер, RLS. Готово: таблица видна в Supabase.
 3. **Модуль доступа.** Готово: функции из раздела 4 работают на базе.
-4. **Страница каталога.** Готово: `/catalog` показывает юниты из базы (или пустое состояние).
+4. **Страницы каталога.** Готово: `/catalog` показывает области, `/workspace/<id>` — юниты области (или пустое состояние).

@@ -24,10 +24,10 @@ export async function startExercise(unitId: number, type: string | null = null):
     }
 }
 
-/** Следующее задание сессии: юнит и тип выбирает планировщик (specs/planner.md). */
-export async function nextSessionExercise(): Promise<Result<{ exercise: tasks.ExerciseView; targetName: string }>> {
+/** Следующее задание сессии в рабочей области: юнит и тип выбирает планировщик (specs/planner.md). */
+export async function nextSessionExercise(workspaceId: number): Promise<Result<{ exercise: tasks.ExerciseView; targetName: string }>> {
     try {
-        const plan = await learner.planNext();
+        const plan = await learner.planNext(workspaceId);
         if (!plan) return { ok: false, error: 'Нет юнитов в работе. Отметь юнит в каталоге — наведи на его номер.' };
         const [unit, exercise] = await Promise.all([catalog.getUnit(plan.unitId), tasks.get(plan.unitId, plan.type)]);
         return { ok: true, exercise, targetName: `${unit.number ?? '—'}. ${unit.title}` };
@@ -40,9 +40,9 @@ export async function nextSessionExercise(): Promise<Result<{ exercise: tasks.Ex
  * Заготовить задание, которое планировщик дал бы следующим. Не ждёт генерации:
  * ответ сразу, заготовка доделывается на сервере и отдастся по «Дальше», если план не изменится.
  */
-export async function prepareNextExercise(): Promise<void> {
+export async function prepareNextExercise(workspaceId: number): Promise<void> {
     try {
-        const plan = await learner.planNext();
+        const plan = await learner.planNext(workspaceId);
         if (plan) tasks.prepare(plan.unitId, plan.type);
     } catch (e) {
         console.error(e);   // заготовка — только ускорение

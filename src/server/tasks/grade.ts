@@ -112,7 +112,7 @@ function normalize(d: unknown, targetId: number, ids: Set<number>): OpenEvaluati
 /** Проверить открытый ответ. task — описание задания для модели, с эталоном. */
 export async function gradeOpen(unitId: number, task: string, answer: string): Promise<Checked> {
     const unit = await getUnit(unitId);
-    const book = await listUnits(unit.book);
+    const book = await listUnits(unit.workspaceId, unit.book);
     const ids = book.map((u) => u.id);
     const user = `TARGET UNIT:
 ${await unitForPrompt(unitId)}

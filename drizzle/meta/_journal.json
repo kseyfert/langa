@@ -29,6 +29,13 @@
       "when": 1792500407605,
       "tag": "0003_exercise_status_derived",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792502144729,
+      "tag": "0004_workspaces",
+      "breakpoints": true
     }
   ]
 }

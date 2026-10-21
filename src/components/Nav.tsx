@@ -3,14 +3,15 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-const ITEMS = [{ href: '/catalog', label: 'Каталог' }];
+// match — разделы, где пункт подсвечен: область открывается из каталога и остаётся его частью.
+const ITEMS = [{ href: '/catalog', label: 'Каталог', match: ['/catalog', '/workspace'] }];
 
 export function Nav() {
     const path = usePathname();
     return (
         <nav className="steps" aria-label="Разделы">
             {ITEMS.map((it) => {
-                const now = path === it.href || path.startsWith(`${it.href}/`);
+                const now = it.match.some((m) => path === m || path.startsWith(`${m}/`));
                 return (
                     <Link
                         key={it.href}

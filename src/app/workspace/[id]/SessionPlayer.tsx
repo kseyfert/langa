@@ -60,7 +60,7 @@ const PLAY = <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><pa
  * краснеет и считает дальше, а следующее задание после этого уже не берётся —
  * сессия заканчивается финальным экраном.
  */
-export function SessionPlayer() {
+export function SessionPlayer({ workspaceId }: { workspaceId: number }) {
     const [min, setMin] = useState(DEFAULT_MIN);
     const [endAt, setEndAt] = useState<number | null>(null);
     const [now, setNow] = useState(0);
@@ -115,13 +115,13 @@ export function SessionPlayer() {
     const show = (c: Current) => {
         seen.current.push(c.exercise.id);
         setCurrent(c);
-        void prepareNextExercise();
+        void prepareNextExercise(workspaceId);
     };
 
     const fetchNext = () => {
         const id = run.current;
         startLoading(async () => {
-            const res = await nextSessionExercise();
+            const res = await nextSessionExercise(workspaceId);
             if (id !== run.current) return;
             if (!res.ok) return setError(res.error);
             show({ exercise: res.exercise, targetName: res.targetName });
@@ -154,7 +154,7 @@ export function SessionPlayer() {
         resize('open');
         if (box.current) pinToTop(box.current);
         startLoading(async () => {
-            const res = await nextSessionExercise();
+            const res = await nextSessionExercise(workspaceId);
             if (id !== run.current) return;
             if (!res.ok) {
                 resize('close');
@@ -175,7 +175,7 @@ export function SessionPlayer() {
         setMarks((m) => [...m, ok ? 'ok' : 'bad']);
         // Ответ мог поменять план (побочная ошибка поднимает другой юнит) — заготовить заново.
         // Время вышло — следующего задания не будет.
-        if (endAt != null && Date.now() <= endAt) void prepareNextExercise();
+        if (endAt != null && Date.now() <= endAt) void prepareNextExercise(workspaceId);
     };
 
     const finish = () => {

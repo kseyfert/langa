@@ -1,10 +1,13 @@
 import 'server-only';
-import { asc, eq, and, inArray } from 'drizzle-orm';
+import { and, asc, eq, inArray } from 'drizzle-orm';
 import { db } from '../db/client';
-import { units } from '../db/schema';
+import { units, workspaces } from '../db/schema';
+
+export type Workspace = { id: number; name: string };
 
 export type Unit = {
     id: number;
+    workspaceId: number;
     book: string;
     section: string;
     number: number | null;
@@ -24,11 +27,22 @@ function toUnit(r: Row): Unit {
     return { ...r, updatedAt: r.updatedAt.toISOString() };
 }
 
-export async function listUnits(book?: string): Promise<Unit[]> {
+export async function listWorkspaces(): Promise<Workspace[]> {
+    return db().select({ id: workspaces.id, name: workspaces.name }).from(workspaces).orderBy(asc(workspaces.id));
+}
+
+/** Рабочая область или null, если её нет. */
+export async function getWorkspace(id: number): Promise<Workspace | null> {
+    const [row] = await db().select({ id: workspaces.id, name: workspaces.name }).from(workspaces).where(eq(workspaces.id, id));
+    return row ?? null;
+}
+
+/** Юниты области в порядке position; с book — только этой книги. */
+export async function listUnits(workspaceId: number, book?: string): Promise<Unit[]> {
     const rows = await db()
         .select()
         .from(units)
-        .where(book ? eq(units.book, book) : undefined)
+        .where(and(eq(units.workspaceId, workspaceId), book ? eq(units.book, book) : undefined))
         .orderBy(asc(units.position));
     return rows.map(toUnit);
 }
@@ -48,27 +62,6 @@ export async function getUnits(ids: number[]): Promise<Unit[]> {
     if (!ids.length) return [];
     const rows = await db().select().from(units).where(inArray(units.id, ids)).orderBy(asc(units.position));
     return rows.map(toUnit);
-}
-
-export async function findByNumber(book: string, number: number): Promise<Unit | null> {
-    const [row] = await db()
-        .select()
-        .from(units)
-        .where(and(eq(units.book, book), eq(units.number, number)));
-    return row ? toUnit(row) : null;
-}
-
-/** Запрос из одних цифр — номер юнита; иначе подстрока в названии, описании или разделе. */
-export async function searchUnits(query: string): Promise<Unit[]> {
-    const q = query.trim();
-    if (!q) return listUnits();
-    // Юнитов сотни, а не тысячи: фильтр в памяти проще, чем ilike по трём полям с экранированием.
-    const all = await listUnits();
-    if (/^\d+$/.test(q)) return all.filter((u) => u.number === Number(q));
-    const needle = q.toLowerCase();
-    return all.filter((u) =>
-        [u.title, u.summaryRu, u.section].some((s) => s.toLowerCase().includes(needle)),
-    );
 }
 
 export async function unitForPrompt(id: number): Promise<string> {

@@ -8,6 +8,15 @@ import {
 /** check по списку значений: text + check, а не pg enum — новое значение добавляется простой миграцией. */
 const oneOf = (values: readonly string[]) => sql.raw(values.map((v) => `'${v}'`).join(', '));
 
+// Рабочая область — владелец юнитов и граница их уникальности (specs/catalog-spec.md §3).
+// Триггер updated_at и RLS дописаны в миграцию руками.
+export const workspaces = pgTable('workspaces', {
+    id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
+    name: text('name').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 // Поля и правила — specs/catalog-spec.md §3. Триггер updated_at и RLS
 // дописаны в миграцию руками: drizzle-kit их не генерирует.
 export const units = pgTable(
@@ -15,10 +24,11 @@ export const units = pgTable(
     {
         // mode: 'number' — 145 юнитов не дорастут до 2^53, а bigint не сериализуется в JSON.
         id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
+        workspaceId: bigint('workspace_id', { mode: 'number' }).notNull().references(() => workspaces.id, { onDelete: 'restrict' }),
         book: text('book').notNull(),
         section: text('section').notNull(),
         number: integer('number'),
-        position: integer('position').notNull().unique(),
+        position: integer('position').notNull(),
         title: text('title').notNull(),
         summaryRu: text('summary_ru').notNull().default(''),
         guide: text('guide').notNull().default(''),
@@ -28,7 +38,11 @@ export const units = pgTable(
         started: boolean('started').notNull().default(false),
         updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
     },
-    (t) => [unique().on(t.book, t.number), index('units_book_idx').on(t.book)],
+    (t) => [
+        unique('units_workspace_position_unique').on(t.workspaceId, t.position),
+        unique('units_workspace_book_number_unique').on(t.workspaceId, t.book, t.number),
+        index('units_workspace_book_idx').on(t.workspaceId, t.book),
+    ],
 );
 
 // Поля и правила — specs/exercise-spec.md §5. RLS дописан в миграцию руками.
