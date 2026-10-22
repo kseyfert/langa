@@ -1,5 +1,6 @@
 // Evals на Langfuse Experiments (architecture.md, «Evals»):
 //   npm run eval -- <набор> <область> [--repeat N] [--report]
+// При --repeat N у каждого score — ещё средние по повторам и их min/max: разброс — шум модели.
 // Случаи — evals/<область>/<набор>.yaml, это источник истины: перед прогоном они
 // синхронизируются в датасет Langfuse <область>/<набор>. Прогон — эксперимент на нём,
 // итог — в терминал; с --report — ещё подробный отчёт в evals/reports/ (калибровка судьи).
@@ -70,15 +71,47 @@ async function sync(lf: LangfuseClient, name: string, data: CaseFile) {
     return ds.items.filter((x) => x.status === 'ACTIVE').sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
 }
 
-const scoresOf = (results: ExperimentItemResult[]) => {
-    const by = new Map<string, number[]>();
-    for (const r of results) for (const e of r.evaluations) if (typeof e.value === 'number') by.set(e.name, [...(by.get(e.name) ?? []), e.value]);
-    return by;
-};
+/** Номер повтора — прохода по всем случаям; пишется в metadata элемента прогона. */
+const repeatOf = (r: ExperimentItemResult) => (r.item.metadata as { repeat?: number } | undefined)?.repeat ?? 1;
 
-/** Оценки уровня прогона — средние по каждому score. */
-const averages = async ({ itemResults }: { itemResults: ExperimentItemResult[] }): Promise<Evaluation[]> =>
-    [...scoresOf(itemResults)].map(([name, vs]) => ({ name, value: vs.reduce((a, b) => a + b, 0) / vs.length, comment: `среднее по ${vs.length} заданиям` }));
+const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
+
+/**
+ * По каждому score: общее среднее и среднее каждого повтора. Разброс повторов — шум модели:
+ * разница версий промпта меньше него — не улучшение.
+ */
+type Stat = { name: string; mean: number; n: number; byRepeat: number[] };
+
+function stats(results: ExperimentItemResult[], repeat: number): Stat[] {
+    const by = new Map<string, { all: number[]; byRepeat: number[][] }>();
+    for (const r of results) {
+        for (const e of r.evaluations) {
+            if (typeof e.value !== 'number') continue;
+            const s = by.get(e.name) ?? { all: [], byRepeat: Array.from({ length: repeat }, () => []) };
+            s.all.push(e.value);
+            s.byRepeat[repeatOf(r) - 1].push(e.value);
+            by.set(e.name, s);
+        }
+    }
+    return [...by].map(([name, s]) => ({ name, mean: mean(s.all), n: s.all.length, byRepeat: s.byRepeat.map((xs) => (xs.length ? mean(xs) : NaN)) }));
+}
+
+const f2 = (x: number) => (Number.isNaN(x) ? ' —  ' : x.toFixed(2));
+/** min и max по повторам; повтор без оценок этого score (NaN) не в счёт. */
+const range = (s: Stat) => {
+    const xs = s.byRepeat.filter((x) => !Number.isNaN(x));
+    return xs.length ? { min: Math.min(...xs), max: Math.max(...xs) } : { min: NaN, max: NaN };
+};
+const spread = (s: Stat) => `повторы ${s.byRepeat.map(f2).join(' / ')} · min ${f2(range(s).min)} · max ${f2(range(s).max)}`;
+
+/** Оценки уровня прогона: общее среднее по каждому score, при повторах — ещё среднее каждого повтора. */
+const averages = (repeat: number) => async ({ itemResults }: { itemResults: ExperimentItemResult[] }): Promise<Evaluation[]> =>
+    stats(itemResults, repeat).flatMap((s) => [
+        { name: s.name, value: s.mean, comment: repeat > 1 ? spread(s) : `среднее по ${s.n} заданиям` },
+        ...(repeat > 1
+            ? s.byRepeat.flatMap((value, k) => (Number.isNaN(value) ? [] : [{ name: `${s.name}/repeat-${k + 1}`, value, comment: `среднее повтора ${k + 1}` }]))
+            : []),
+    ]);
 
 async function main() {
     const { suite, area, repeat, report } = args();
@@ -100,19 +133,21 @@ async function main() {
             name, runName,
             description: `Генерация ${v.prompt}, судья ${v.judge}`,
             metadata: { prompt_version: v.prompt, judge_version: v.judge, repeat },
-            data: Array.from({ length: repeat }, () => items).flat(),
+            // Копия элемента датасета на повтор: id тот же (связь с датасетом), metadata — с номером.
+            data: Array.from({ length: repeat }, (_, k) => items.map((it) => ({ ...it, metadata: { ...(it.metadata as object), repeat: k + 1 } }))).flat(),
             task: ({ input }) => s.task(input as gapGenerate.Input),
             evaluators: s.evaluators,
-            runEvaluators: [averages],
+            runEvaluators: [averages(repeat)],
             maxConcurrency: CONCURRENCY,
         });
         const units = await unitNames(data);
-        summary(result.itemResults, units, result.runEvaluations);
+        const st = stats(result.itemResults, repeat);
+        summary(result.itemResults, units, st, repeat);
         console.log(`\n${result.experimentUrl ?? '(ссылка не получена)'}`);
         if (report) {
             const file = `evals/reports/${suite}_${area}_${at.replace(' ', '_').replace(':', '')}.md`;
             fs.mkdirSync('evals/reports', { recursive: true });
-            fs.writeFileSync(file, markdown({ name, runName, versions: v, repeat, url: result.experimentUrl }, result, units, s.reportItem));
+            fs.writeFileSync(file, markdown({ name, runName, versions: v, repeat, url: result.experimentUrl }, result.itemResults, st, units, s.reportItem));
             console.log(`Отчёт: ${file}`);
         }
     } finally {
@@ -129,9 +164,17 @@ const unitNames = async (data: CaseFile): Promise<Units> =>
 // Не r.input: в результате элемента SDK его не заполняет, хотя тип обещает.
 const inputOf = (r: ExperimentItemResult) => r.item.input as gapGenerate.Input;
 
-function summary(results: ExperimentItemResult[], units: Units, run: Evaluation[]) {
-    console.log('\nСредние');
-    for (const e of run) console.log(`  ${e.name.padEnd(22)} ${(e.value as number).toFixed(2)}`);
+function summary(results: ExperimentItemResult[], units: Units, st: Stat[], repeat: number) {
+    const W = 22;
+    if (repeat > 1) {
+        console.log(`\n${'Средние'.padEnd(W + 2)} общее  min    max    ${Array.from({ length: repeat }, (_, k) => `#${k + 1}`.padEnd(6)).join(' ')}`);
+        for (const s of st) {
+            console.log(`  ${s.name.padEnd(W)} ${f2(s.mean)}   ${f2(range(s).min)}   ${f2(range(s).max)}   ${s.byRepeat.map(f2).join('   ')}`);
+        }
+    } else {
+        console.log('\nСредние');
+        for (const s of st) console.log(`  ${s.name.padEnd(W)} ${f2(s.mean)}`);
+    }
 
     const bad = results.flatMap((r) => {
         const input = inputOf(r);
@@ -139,11 +182,11 @@ function summary(results: ExperimentItemResult[], units: Units, run: Evaluation[
         // Судья упал — его оценок нет вовсе; это тоже проблема задания, а не тишина.
         const noJudge = !('error' in (r.output as gapGenerate.Output)) && !r.evaluations.some((e) => e.name.startsWith('judge_'));
         if (noJudge) problems.push({ item: 0, issue: 'судья не дал оценок (ошибка — выше)' });
-        return problems.length ? [{ unit: units.get(input.unit_id) ?? `юнит ${input.unit_id}`, topic: input.topic, problems }] : [];
+        return problems.length ? [{ unit: units.get(input.unit_id) ?? `юнит ${input.unit_id}`, topic: input.topic, at: repeat > 1 ? ` · повтор ${repeatOf(r)}` : '', problems }] : [];
     });
     console.log(`\nПроблемы: ${bad.length} заданий из ${results.length}`);
     for (const b of bad) {
-        console.log(`  ${b.unit} · ${b.topic}`);
+        console.log(`  ${b.unit} · ${b.topic}${b.at}`);
         for (const p of b.problems.sort((x, y) => x.item - y.item)) console.log(`    ${p.item ? `пункт ${p.item}` : 'задание'}: ${p.issue}`);
     }
 }
@@ -151,7 +194,8 @@ function summary(results: ExperimentItemResult[], units: Units, run: Evaluation[
 /** Отчёт прогона: шапка с версиями и средними, затем каждое задание целиком — вид пункта задаёт набор. */
 function markdown(
     run: { name: string; runName: string; versions: { prompt: string; judge: string }; repeat: number; url?: string },
-    result: { itemResults: ExperimentItemResult[]; runEvaluations: Evaluation[] },
+    results: ExperimentItemResult[],
+    st: Stat[],
     units: Units,
     item: (r: ExperimentItemResult) => string,
 ): string {
@@ -159,16 +203,21 @@ function markdown(
         `# ${run.name} — ${run.runName}`, '',
         `- генерация: ${run.versions.prompt}`,
         `- судья: ${run.versions.judge}`,
-        `- заданий: ${result.itemResults.length} (повторов: ${run.repeat})`,
+        `- заданий: ${results.length} (повторов: ${run.repeat})`,
         `- Langfuse: ${run.url ?? '—'}`, '',
-        '| score | среднее |', '|---|---|',
-        ...result.runEvaluations.map((e) => `| ${e.name} | ${(e.value as number).toFixed(2)} |`),
+        ...(run.repeat > 1
+            ? [
+                `| score | среднее | min | max | ${Array.from({ length: run.repeat }, (_, k) => `повтор ${k + 1}`).join(' | ')} |`,
+                `|---|---|---|---|${'---|'.repeat(run.repeat)}`,
+                ...st.map((s) => `| ${s.name} | ${f2(s.mean)} | ${f2(range(s).min)} | ${f2(range(s).max)} | ${s.byRepeat.map(f2).join(' | ')} |`),
+            ]
+            : ['| score | среднее |', '|---|---|', ...st.map((s) => `| ${s.name} | ${f2(s.mean)} |`)]),
     ];
-    const items = result.itemResults.map((r) => {
+    const items = results.map((r) => {
         const input = inputOf(r);
         const meta = r.item.metadata as { case?: string } | undefined;
         return [
-            `## ${units.get(input.unit_id) ?? `юнит ${input.unit_id}`} · ${input.topic}`, '',
+            `## ${units.get(input.unit_id) ?? `юнит ${input.unit_id}`} · ${input.topic}${run.repeat > 1 ? ` · повтор ${repeatOf(r)}` : ''}`, '',
             `случай \`${meta?.case ?? '—'}\` · трейс \`${r.traceId ?? '—'}\``, '',
             item(r),
         ].join('\n');
