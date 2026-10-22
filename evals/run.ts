@@ -1,8 +1,8 @@
 // Evals на Langfuse Experiments (architecture.md, «Evals»):
-//   npm run eval -- <набор> <область> [--repeat N]
+//   npm run eval -- <набор> <область> [--repeat N] [--report]
 // Случаи — evals/<область>/<набор>.yaml, это источник истины: перед прогоном они
 // синхронизируются в датасет Langfuse <область>/<набор>. Прогон — эксперимент на нём,
-// итог — в терминал.
+// итог — в терминал; с --report — ещё подробный отчёт в evals/reports/ (калибровка судьи).
 import fs from 'node:fs';
 import { LangfuseClient, type Evaluation, type ExperimentItemResult } from '@langfuse/client';
 import { LangfuseSpanProcessor } from '@langfuse/otel';
@@ -25,9 +25,9 @@ function args() {
     const r = rest.indexOf('--repeat');
     const repeat = r >= 0 ? Number(rest[r + 1]) : 1;
     if (!(suite in SUITES) || !area || !Number.isInteger(repeat) || repeat < 1) {
-        throw new Error(`npm run eval -- <${Object.keys(SUITES).join('|')}> <область> [--repeat N]`);
+        throw new Error(`npm run eval -- <${Object.keys(SUITES).join('|')}> <область> [--repeat N] [--report]`);
     }
-    return { suite: suite as SuiteName, area, repeat };
+    return { suite: suite as SuiteName, area, repeat, report: rest.includes('--report') };
 }
 
 async function readCases(area: string, suite: string): Promise<CaseFile> {
@@ -81,7 +81,7 @@ const averages = async ({ itemResults }: { itemResults: ExperimentItemResult[] }
     [...scoresOf(itemResults)].map(([name, vs]) => ({ name, value: vs.reduce((a, b) => a + b, 0) / vs.length, comment: `среднее по ${vs.length} заданиям` }));
 
 async function main() {
-    const { suite, area, repeat } = args();
+    const { suite, area, repeat, report } = args();
     const s = SUITES[suite];
     const name = `${area}/${suite}`;
     const data = await readCases(area, suite);
@@ -93,7 +93,8 @@ async function main() {
     try {
         const items = await sync(lf, name, data);
         const v = s.versions();
-        const runName = `${v.prompt} · ${v.judge} · ${new Date().toISOString().slice(0, 16).replace('T', ' ')}`;
+        const at = new Date().toISOString().slice(0, 16).replace('T', ' ');
+        const runName = `${v.prompt} · ${v.judge} · ${at}`;
         console.log(`${name}: ${items.length} случаев × ${repeat} — ${runName}`);
         const result = await lf.experiment.run({
             name, runName,
@@ -105,22 +106,35 @@ async function main() {
             runEvaluators: [averages],
             maxConcurrency: CONCURRENCY,
         });
-        await report(result.itemResults, data, result.runEvaluations);
+        const units = await unitNames(data);
+        summary(result.itemResults, units, result.runEvaluations);
         console.log(`\n${result.experimentUrl ?? '(ссылка не получена)'}`);
+        if (report) {
+            const file = `evals/reports/${suite}_${area}_${at.replace(' ', '_').replace(':', '')}.md`;
+            fs.mkdirSync('evals/reports', { recursive: true });
+            fs.writeFileSync(file, markdown({ name, runName, versions: v, repeat, url: result.experimentUrl }, result, units, s.reportItem));
+            console.log(`Отчёт: ${file}`);
+        }
     } finally {
         await lf.shutdown();
         await sdk.shutdown();
     }
 }
 
-async function report(results: ExperimentItemResult[], data: CaseFile, run: Evaluation[]) {
+type Units = Map<number, string>;
+
+const unitNames = async (data: CaseFile): Promise<Units> =>
+    new Map((await getUnits(data.cases.map((c) => c.unit_id))).map((u) => [u.id, `${u.number}. ${u.title}`]));
+
+// Не r.input: в результате элемента SDK его не заполняет, хотя тип обещает.
+const inputOf = (r: ExperimentItemResult) => r.item.input as gapGenerate.Input;
+
+function summary(results: ExperimentItemResult[], units: Units, run: Evaluation[]) {
     console.log('\nСредние');
     for (const e of run) console.log(`  ${e.name.padEnd(22)} ${(e.value as number).toFixed(2)}`);
 
-    const units = new Map((await getUnits(data.cases.map((c) => c.unit_id))).map((u) => [u.id, `${u.number}. ${u.title}`]));
     const bad = results.flatMap((r) => {
-        // Не r.input: в результате элемента SDK его не заполняет, хотя тип обещает.
-        const input = r.item.input as gapGenerate.Input;
+        const input = inputOf(r);
         const problems = r.evaluations.flatMap((e) => (e.metadata as { problems?: gapGenerate.Problem[] } | undefined)?.problems ?? []);
         // Судья упал — его оценок нет вовсе; это тоже проблема задания, а не тишина.
         const noJudge = !('error' in (r.output as gapGenerate.Output)) && !r.evaluations.some((e) => e.name.startsWith('judge_'));
@@ -132,6 +146,34 @@ async function report(results: ExperimentItemResult[], data: CaseFile, run: Eval
         console.log(`  ${b.unit} · ${b.topic}`);
         for (const p of b.problems.sort((x, y) => x.item - y.item)) console.log(`    ${p.item ? `пункт ${p.item}` : 'задание'}: ${p.issue}`);
     }
+}
+
+/** Отчёт прогона: шапка с версиями и средними, затем каждое задание целиком — вид пункта задаёт набор. */
+function markdown(
+    run: { name: string; runName: string; versions: { prompt: string; judge: string }; repeat: number; url?: string },
+    result: { itemResults: ExperimentItemResult[]; runEvaluations: Evaluation[] },
+    units: Units,
+    item: (r: ExperimentItemResult) => string,
+): string {
+    const head = [
+        `# ${run.name} — ${run.runName}`, '',
+        `- генерация: ${run.versions.prompt}`,
+        `- судья: ${run.versions.judge}`,
+        `- заданий: ${result.itemResults.length} (повторов: ${run.repeat})`,
+        `- Langfuse: ${run.url ?? '—'}`, '',
+        '| score | среднее |', '|---|---|',
+        ...result.runEvaluations.map((e) => `| ${e.name} | ${(e.value as number).toFixed(2)} |`),
+    ];
+    const items = result.itemResults.map((r) => {
+        const input = inputOf(r);
+        const meta = r.item.metadata as { case?: string } | undefined;
+        return [
+            `## ${units.get(input.unit_id) ?? `юнит ${input.unit_id}`} · ${input.topic}`, '',
+            `случай \`${meta?.case ?? '—'}\` · трейс \`${r.traceId ?? '—'}\``, '',
+            item(r),
+        ].join('\n');
+    });
+    return [head.join('\n'), ...items].join('\n\n').replace(/\n{3,}/g, '\n\n') + '\n';
 }
 
 main().then(() => process.exit(0), (e) => {

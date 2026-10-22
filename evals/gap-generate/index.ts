@@ -1,4 +1,4 @@
-import type { Evaluation, Evaluator } from '@langfuse/client';
+import type { Evaluation, Evaluator, ExperimentItemResult } from '@langfuse/client';
 import { getUnit } from '../../src/server/catalog';
 import type { GapContent } from '../../src/server/exercises/types';
 import { askJson } from '../../src/server/tasks/claude';
@@ -56,12 +56,6 @@ function leak(it: Item): string | undefined {
     return found && `ответ «${found}» уже есть в предложении`;
 }
 
-function unclean(it: Item): string | undefined {
-    const n = it.answers.map(norm);
-    if (n.some((a) => !a)) return 'пустой ответ в answers';
-    if (new Set(n).size !== n.length) return 'повтор в answers';
-}
-
 export const codeChecks: Evaluator = async ({ output }) => {
     const o = output as Output;
     if ('error' in o) {
@@ -73,11 +67,10 @@ export const codeChecks: Evaluator = async ({ output }) => {
     return [
         { name: 'valid_items', value: kept / ITEMS, comment: short[0]?.issue, metadata: { problems: short } },
         share('answer_not_in_text', items, leak),
-        share('answers_clean', items, unclean),
     ];
 };
 
-type Verdict = {
+export type Verdict = {
     rule: boolean; missing_answers: string[]; guessable: boolean;
     aux_inside: boolean; focus_match: boolean; explain_ok: boolean; note_ru: string;
 };
@@ -122,13 +115,51 @@ export const judge: Evaluator = async ({ input, output }) => {
         call: 'judge', type: 'gap', promptVersion: p.version, unitId: unit_id, workspaceId: unit.workspaceId,
     });
     const vs = verdicts(raw, items.length);
-    return CRITERIA.map(([name, pass, issue]) => share(name, items, (_, i) => {
+    const scores = CRITERIA.map(([name, pass, issue]) => share(name, items, (_, i) => {
         const v = vs[i];
         if (pass(v)) return;
         // Пояснение судьи — к первому проваленному критерию пункта, чтобы не повторять его в каждом.
         const first = CRITERIA.find(([, ok]) => !ok(v))![0] === name;
         return first && v.note_ru ? `${issue(v)} — ${v.note_ru}` : issue(v);
     }, name === 'judge_key_complete' ? (ps) => ps.map((x) => `пункт ${x.item}: ${x.issue}`).join('\n') : undefined));
+    // Вердикты целиком — для отчёта калибровки судьи. Один раз, в первом score, а не в каждом.
+    scores[0].metadata = { ...(scores[0].metadata as object), verdicts: vs };
+    return scores;
 };
+
+const verdictsOf = (r: ExperimentItemResult): Verdict[] | undefined =>
+    (r.evaluations.find((e) => e.name === CRITERIA[0][0])?.metadata as { verdicts?: Verdict[] } | undefined)?.verdicts;
+
+const code = (s: string) => `\`${s.replace(/`/g, "'")}\``;
+/** Поле вердикта; проваленное — жирным, чтобы при калибровке взгляд цеплялся за него. */
+const field = (name: string, value: unknown, ok: boolean) => (ok ? `${name}: ${JSON.stringify(value)}` : `**${name}: ${JSON.stringify(value)}**`);
+
+/** Раздел отчёта по заданию: каждый пункт и вердикт судьи по нему целиком. */
+export function reportItem(r: ExperimentItemResult): string {
+    const o = r.output as Output;
+    if ('error' in o) return `Ошибка генерации: ${o.error}`;
+    const vs = verdictsOf(r);
+    const out = vs ? [] : ['Судья не дал оценок.', ''];
+    o.content.items.forEach((it, i) => {
+        const v = vs?.[i];
+        out.push(`### Пункт ${i + 1}`, '',
+            `- text: ${code(it.text)}`,
+            `- answers: ${it.answers.map(code).join(', ')}`,
+            `- focus: ${o.content.focus?.[i] || '—'}`,
+            `- explain_ru: ${it.explain_ru || '—'}`);
+        if (v) {
+            out.push(`- судья: ${[
+                field('rule', v.rule, v.rule),
+                field('missing_answers', v.missing_answers, !v.missing_answers.length),
+                field('guessable', v.guessable, !v.guessable),
+                field('aux_inside', v.aux_inside, v.aux_inside),
+                field('focus_match', v.focus_match, v.focus_match),
+                field('explain_ok', v.explain_ok, v.explain_ok),
+            ].join(' · ')}`, `- note_ru: ${v.note_ru || '—'}`);
+        }
+        out.push('');
+    });
+    return out.join('\n').trimEnd();
+}
 
 export const evaluators = [codeChecks, judge];

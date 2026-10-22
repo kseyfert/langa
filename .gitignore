@@ -18,3 +18,6 @@ yarn-error.log*
 
 ecosystem.config.js
 ecosystem.config.cjs
+
+# Отчёты прогонов evals — для калибровки судьи, не для git.
+/evals/reports
