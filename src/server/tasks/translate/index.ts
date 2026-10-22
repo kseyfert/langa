@@ -35,7 +35,10 @@ export const translate: Task<'translate'> = {
             focus: focus[0] ?? '',
             recent: used.map((s) => `- ${s}`).join('\n'),
         });
-        const content = { ...normalize(await askJson(prompt, MODEL_GENERATE)), focus };
+        const raw = await askJson(prompt, MODEL_GENERATE, undefined, {
+            call: 'generate', type: 'translate', promptVersion: p.version, unitId, workspaceId: unit.workspaceId,
+        });
+        const content = { ...normalize(raw), focus };
         return { content, topic, model: MODEL_GENERATE, promptVersion: p.version };
     },
 

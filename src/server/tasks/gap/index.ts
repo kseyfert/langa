@@ -39,20 +39,26 @@ function normalize(d: unknown, plan: string[]): GapContent {
 export const norm = (s: string) =>
     s.toLowerCase().replace(/[’‘`]/g, "'").replace(/\s+/g, ' ').replace(/^[\s"]+|[\s".,!?]+$/g, '').trim();
 
-export const gap: Task<'gap'> = {
+/** Тема и недавние задания извне — для evals. Приложение их не передаёт: тема случайная, недавние — из лога. */
+export type GapOptions = { topic?: string; recent?: string[] };
+
+export const gap = {
     type: 'gap',
 
-    async generate(unitId) {
+    async generate(unitId: number, opts: GapOptions = {}) {
         const p = prompts('gap', ['generate', 'focus-repeat']);
-        const topic = randomTopic();
-        const [unit, used] = await Promise.all([getUnit(unitId), recent(unitId)]);
+        const topic = opts.topic ?? randomTopic();
+        const [unit, used] = await Promise.all([getUnit(unitId), opts.recent ?? recent(unitId)]);
         const focus = plan(unit.guide, 6, (point) => p.fill('focus-repeat', { point }));
         const prompt = p.fill('generate', {
             ...unitValues(unit), topic, seed: seed(),
             focus: focus.map((f, i) => `${i + 1}. ${f}`).join('\n'),
             recent: used.map((s) => `- ${s}`).join('\n'),
         });
-        const content = normalize(await askJson(prompt, MODEL_GENERATE), focus);
+        const raw = await askJson(prompt, MODEL_GENERATE, undefined, {
+            call: 'generate', type: 'gap', promptVersion: p.version, unitId, workspaceId: unit.workspaceId,
+        });
+        const content = normalize(raw, focus);
         return { content, topic, model: MODEL_GENERATE, promptVersion: p.version };
     },
 
@@ -72,4 +78,4 @@ export const gap: Task<'gap'> = {
         const evaluation: ClosedEvaluation = { items, correct: items.filter((i) => i.correct).length, total: items.length };
         return { evaluation, model: null, promptVersion: null };
     },
-};
+} satisfies Task<'gap'>;

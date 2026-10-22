@@ -1,0 +1,134 @@
+import type { Evaluation, Evaluator } from '@langfuse/client';
+import { getUnit } from '../../src/server/catalog';
+import type { GapContent } from '../../src/server/exercises/types';
+import { askJson } from '../../src/server/tasks/claude';
+import { gap, norm } from '../../src/server/tasks/gap';
+import { prompts, promptsIn, unitValues } from '../../src/server/tasks/prompt';
+
+// Evals генерации gap (architecture.md, «Evals»): настоящая генерация без записи в базу,
+// оценки кодом и судьёй. Ключ gap проверяется локально — неполный ключ, пункт не по юниту
+// или угадываемый ответ прямо портят рейтинг.
+
+const ITEMS = 6;
+const JUDGE_MODEL = 'claude-opus-5-5';
+const judgePrompts = () => promptsIn('evals/gap-generate', ['judge']);
+
+export type Input = { unit_id: number; topic: string };
+export type Output = { content: GapContent } | { error: string };
+/** Что не так в пункте (item 0 — во всём задании). Лежит в metadata score и идёт в итог прогона. */
+export type Problem = { item: number; issue: string };
+
+type Item = GapContent['items'][number];
+
+/** Версии в имени и metadata прогона: сравнивать имеет смысл прогоны с одной версией судьи. */
+export const versions = () => ({ prompt: prompts('gap', ['generate', 'focus-repeat']).version, judge: judgePrompts().version });
+
+export async function task(input: Input): Promise<Output> {
+    try {
+        // Тема из случая, недавних заданий нет: случай воспроизводим и не зависит от лога.
+        const g = await gap.generate(input.unit_id, { topic: input.topic, recent: [] });
+        return { content: g.content };
+    } catch (e) {
+        // Сбой генерации — тоже результат прогона (valid_items 0), а не выпавший случай.
+        return { error: e instanceof Error ? e.message : String(e) };
+    }
+}
+
+/** Доля пунктов, где проверка прошла; что не прошло — в problems. */
+function share(name: string, items: Item[], fail: (it: Item, i: number) => string | undefined, comment?: (p: Problem[]) => string): Evaluation {
+    const problems = items.flatMap((it, i) => {
+        const issue = fail(it, i);
+        return issue ? [{ item: i + 1, issue }] : [];
+    });
+    return { name, value: (items.length - problems.length) / items.length, comment: comment?.(problems), metadata: { problems } };
+}
+
+const words = (s: string) => ` ${norm(s).replace(/[^a-z' ]+/g, ' ').replace(/\s+/g, ' ').trim()} `;
+
+/**
+ * Ответ, который уже стоит в предложении. Пропуск и подсказка в скобках за ним не в счёт:
+ * базовое слово в скобках бывает и ответом (look → look). Короткие служебные слова
+ * (a, the, in, is) есть почти в любом предложении — их не проверяем.
+ */
+function leak(it: Item): string | undefined {
+    const around = words(it.text.replace(/___\s*(\([^)]*\))?/, ' '));
+    const found = it.answers.find((a) => norm(a).length > 3 && around.includes(words(a)));
+    return found && `ответ «${found}» уже есть в предложении`;
+}
+
+function unclean(it: Item): string | undefined {
+    const n = it.answers.map(norm);
+    if (n.some((a) => !a)) return 'пустой ответ в answers';
+    if (new Set(n).size !== n.length) return 'повтор в answers';
+}
+
+export const codeChecks: Evaluator = async ({ output }) => {
+    const o = output as Output;
+    if ('error' in o) {
+        return { name: 'valid_items', value: 0, comment: o.error, metadata: { problems: [{ item: 0, issue: `генерация не удалась: ${o.error}` }] } };
+    }
+    const items = o.content.items;
+    const kept = Math.min(items.length, ITEMS);
+    const short = kept < ITEMS ? [{ item: 0, issue: `валидацию прошли ${items.length} пунктов из ${ITEMS}` }] : [];
+    return [
+        { name: 'valid_items', value: kept / ITEMS, comment: short[0]?.issue, metadata: { problems: short } },
+        share('answer_not_in_text', items, leak),
+        share('answers_clean', items, unclean),
+    ];
+};
+
+type Verdict = {
+    rule: boolean; missing_answers: string[]; guessable: boolean;
+    aux_inside: boolean; focus_match: boolean; explain_ok: boolean; note_ru: string;
+};
+
+/** Ответ судьи строго по схеме: иначе оценки не ставятся, а не угадываются. */
+function verdicts(raw: unknown, n: number): Verdict[] {
+    const list = (raw as { items?: unknown } | null)?.items;
+    if (!Array.isArray(list) || list.length !== n) throw new Error(`судья: ожидалось ${n} пунктов`);
+    return list.map((v, i) => {
+        const o = (v ?? {}) as Record<string, unknown>;
+        const bools = ['rule', 'guessable', 'aux_inside', 'focus_match', 'explain_ok'] as const;
+        const ok = bools.every((k) => typeof o[k] === 'boolean')
+            && Array.isArray(o.missing_answers) && o.missing_answers.every((a) => typeof a === 'string')
+            && typeof o.note_ru === 'string';
+        if (!ok) throw new Error(`судья: пункт ${i + 1} не по схеме`);
+        return o as Verdict;
+    });
+}
+
+const quote = (xs: string[]) => xs.map((a) => `«${a}»`).join(', ');
+
+/** Критерии судьи: score — доля прошедших пунктов. */
+const CRITERIA: [name: string, pass: (v: Verdict) => boolean, issue: (v: Verdict) => string][] = [
+    ['judge_rule', (v) => v.rule, () => 'не решается правилом юнита'],
+    ['judge_key_complete', (v) => !v.missing_answers.length, (v) => `нет в answers: ${quote(v.missing_answers)}`],
+    ['judge_not_guessable', (v) => !v.guessable, () => 'угадывается без правила'],
+    ['judge_aux_inside', (v) => v.aux_inside, () => 'вспомогательный глагол вне пропуска'],
+    ['judge_focus', (v) => v.focus_match, () => 'не по своему пункту focus'],
+    ['judge_explain', (v) => v.explain_ok, () => 'explain_ru неверен'],
+];
+
+/** LLM-судья: один вызов на задание, вердикт по каждому пункту. */
+export const judge: Evaluator = async ({ input, output }) => {
+    const o = output as Output;
+    if ('error' in o) return [];
+    const { unit_id } = input as Input;
+    const p = judgePrompts();
+    const unit = await getUnit(unit_id);
+    const { items, focus } = o.content;
+    const shown = items.map((it, i) => ({ index: i + 1, text: it.text, answers: it.answers, explain_ru: it.explain_ru, focus: focus?.[i] ?? '' }));
+    const raw = await askJson(p.fill('judge', { ...unitValues(unit), items: JSON.stringify(shown, null, 1) }), JUDGE_MODEL, undefined, {
+        call: 'judge', type: 'gap', promptVersion: p.version, unitId: unit_id, workspaceId: unit.workspaceId,
+    });
+    const vs = verdicts(raw, items.length);
+    return CRITERIA.map(([name, pass, issue]) => share(name, items, (_, i) => {
+        const v = vs[i];
+        if (pass(v)) return;
+        // Пояснение судьи — к первому проваленному критерию пункта, чтобы не повторять его в каждом.
+        const first = CRITERIA.find(([, ok]) => !ok(v))![0] === name;
+        return first && v.note_ru ? `${issue(v)} — ${v.note_ru}` : issue(v);
+    }, name === 'judge_key_complete' ? (ps) => ps.map((x) => `пункт ${x.item}: ${x.issue}`).join('\n') : undefined));
+};
+
+export const evaluators = [codeChecks, judge];

@@ -1,0 +1,48 @@
+# Evals генерации gap для рабочей области Grammar In Use.
+# Источник истины — этот файл: запуск синхронизирует его в датасет Langfuse
+# grammar-in-use/gap-generate (новые и изменённые случаи — upsert, удалённые — в архив).
+# topic — из src/server/tasks/topics.ts.
+workspace_id: 1
+cases:
+  - id: present-continuous-simple
+    unit_id: 3     # 3. Present continuous and present simple 1 (I am doing and I do)
+    topic: работа в IT
+  - id: present-perfect-past
+    unit_id: 13    # 13. Present perfect and past 1 (I have done and I did)
+    topic: путешествия
+  - id: future-time-clauses
+    unit_id: 25    # 25. when I do and when I've done, if and when
+    topic: переезд и жильё
+  - id: must-cant
+    unit_id: 28    # 28. must and can't
+    topic: соседи
+  - id: mustnt-neednt
+    unit_id: 32    # 32. must, mustn't, needn't
+    topic: визит к врачу
+  - id: if-i-do-if-i-did
+    unit_id: 38    # 38. if I do … and if I did …
+    topic: деньги и банк
+  - id: if-i-had-known
+    unit_id: 40    # 40. if I had known … , I wish I had known …
+    topic: горы и походы
+  - id: passive-2
+    unit_id: 43    # 43. Passive 2 (be done / been done / being done)
+    topic: город и транспорт
+  - id: indirect-questions
+    unit_id: 50    # 50. Questions 2 (do you know where … ? / he asked me where …)
+    topic: покупки
+  - id: auxiliary-verbs
+    unit_id: 51    # 51. Auxiliary verbs (have/do/can etc.), I think so / I hope so etc.
+    topic: друзья и выходные
+  - id: ing-or-to
+    unit_id: 56    # 56. Verb + -ing or to … 1 (remember, regret etc.)
+    topic: учёба
+  - id: a-an-the
+    unit_id: 72    # 72. a/an and the
+    topic: еда и кафе
+  - id: adverb-word-order
+    unit_id: 110   # 110. Word order 2: adverbs with the verb
+    topic: спорт и тренировки
+  - id: at-on-in-time
+    unit_id: 121   # 121. at/on/in (time)
+    topic: праздники

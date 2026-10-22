@@ -35,7 +35,10 @@ export const free: Task<'free'> = {
             recent: used.map((s) => `- ${s}`).join('\n'),
             min: String(FREE_LENGTH.min), max: String(FREE_LENGTH.max),
         });
-        const content = { ...normalize(await askJson(prompt, MODEL_GENERATE)), focus };
+        const raw = await askJson(prompt, MODEL_GENERATE, undefined, {
+            call: 'generate', type: 'free', promptVersion: p.version, unitId, workspaceId: unit.workspaceId,
+        });
+        const content = { ...normalize(raw), focus };
         return { content, topic, model: MODEL_GENERATE, promptVersion: p.version };
     },
 

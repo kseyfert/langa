@@ -89,6 +89,8 @@ export async function gradeOpen(type: 'rephrase' | 'translate' | 'free', unitId:
     const excluded = new Set(book.filter((u) => u.excludeAsSide).map((u) => u.id));
     const system = p.fill('grade-system', { catalog: await catalogForPrompt(ids) });
     const user = p.fill('grade-user', { ...unitValues(unit), ...task, answer });
-    const raw = await askJson(user, MODEL_GRADE, system);
+    const raw = await askJson(user, MODEL_GRADE, system, {
+        call: 'grade', type, promptVersion: p.version, unitId, workspaceId: unit.workspaceId,
+    });
     return { evaluation: normalize(raw, unitId, new Set(ids), excluded), model: MODEL_GRADE, promptVersion: p.version };
 }

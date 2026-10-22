@@ -1,4 +1,5 @@
 import 'server-only';
+import { propagateAttributes } from '@langfuse/tracing';
 import { getUnits } from '../catalog';
 import {
     addAttempt, createExercise, getExercise, isOpenEvaluation, publicContent, statusOf,
@@ -75,7 +76,11 @@ export async function check(exerciseId: number, rawAnswer: unknown): Promise<Che
     // Завершённое задание отклонит и addAttempt, но проверять до него — значит не платить за проверку зря.
     if (statusOf(ex.attempts)) throw new TaskError('Задание уже завершено');
     const answer = task.parseAnswer(rawAnswer, ex.content);
-    const checked = await task.check(ex.unitId, ex.content, answer);
+    // Номер будущей попытки — как в addAttempt. Через контекст, а не параметром: трейсу Langfuse
+    // их нужно знать внутри проверки, а самой проверке они ни к чему.
+    const seq = (ex.attempts.at(-1)?.seq ?? 0) + 1;
+    const checked = await propagateAttributes({ metadata: { exercise_id: exerciseId, seq } },
+        () => task.check(ex.unitId, ex.content, answer));
     const attempt = await addAttempt(exerciseId, { answer, ...checked });
     const status = statusOf([attempt]);
     const ev = attempt.evaluation;
