@@ -1,9 +1,10 @@
+import fs from 'node:fs';
 import type { Evaluation, Evaluator, ExperimentItemResult } from '@langfuse/client';
 import { getUnit } from '../../src/server/catalog';
 import type { GapContent } from '../../src/server/exercises/types';
 import { askJson } from '../../src/server/tasks/claude';
 import { gap } from '../../src/server/tasks/gap';
-import { prompts, promptsIn, unitValues } from '../../src/server/tasks/prompt';
+import { prompts, promptSet, unitValues } from '../../src/server/tasks/prompt';
 
 // Evals генерации gap (architecture.md, «Evals»): настоящая генерация без записи в базу,
 // оценки кодом и судьёй. Ключ gap проверяется локально — неполный ключ, пункт не по юниту
@@ -11,7 +12,8 @@ import { prompts, promptsIn, unitValues } from '../../src/server/tasks/prompt';
 
 const ITEMS = 6;
 const JUDGE_MODEL = 'claude-opus-5-5';
-const judgePrompts = () => promptsIn('evals/gap-generate', ['judge']);
+const JUDGE = 'evals/gap-generate/judge.md';
+const judgePrompts = () => promptSet([{ name: 'judge' as const, file: JUDGE, text: fs.readFileSync(JUDGE, 'utf8') }]);
 
 export type Input = { unit_id: number; topic: string };
 export type Output = { content: GapContent } | { error: string };

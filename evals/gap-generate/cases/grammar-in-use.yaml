@@ -1,4 +1,4 @@
-# Evals генерации gap для рабочей области Grammar In Use.
+# Случаи набора gap-generate для рабочей области Grammar In Use (имя файла — область).
 # Источник истины — этот файл: запуск синхронизирует его в датасет Langfuse
 # grammar-in-use/gap-generate (новые и изменённые случаи — upsert, удалённые — в архив).
 # topic — из src/server/tasks/topics.ts.

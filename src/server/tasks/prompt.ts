@@ -6,7 +6,6 @@ import type { Unit } from '../catalog';
 // Тексты промптов — md-файлы в папке типа (exercise-spec §7). Путь от корня проекта,
 // а не от модуля: сборка Next переносит модули в .next, а md остаются в src.
 // Читаются при каждом вызове — правка файла действует без перезапуска.
-const TASKS = 'src/server/tasks';
 
 export type Values = Record<string, string>;
 
@@ -15,9 +14,8 @@ type Template = { version: string; body: string };
 /** {{name}} — подставляется как есть, даже пустым; {{name?}} — необязательный. */
 const PLACEHOLDER = /\{\{(\w+)(\??)\}\}/g;
 
-/** file — от корня проекта. */
-function read(file: string): Template {
-    const text = fs.readFileSync(path.join(process.cwd(), file), 'utf8');
+/** file — только для сообщений об ошибке. */
+function parse(file: string, text: string): Template {
     const m = text.match(/^---\nversion: (\S+)\n---\n([\s\S]*?)\n*$/);
     if (!m) throw new Error(`${file}: в начале файла нет версии`);
     return { version: m[1], body: m[2] };
@@ -45,11 +43,16 @@ function fill(file: string, body: string, values: Values): string {
  * Файлы одного вызова модели из папки типа. Версия у них общая — она пишется в задание
  * или попытку; разные версии в одном вызове — ошибка.
  */
-export const prompts = <N extends string>(type: string, names: readonly [N, ...N[]]) => promptsIn(`${TASKS}/${type}`, names);
+export const prompts = <N extends string>(type: string, names: readonly [N, ...N[]]) => promptSet(names.map((name) => ({
+    name,
+    file: `src/server/tasks/${type}/${name}.md`,
+    // Подпапка задана литералом: по нему Turbopack трассирует только src/server/tasks, а не весь проект.
+    text: fs.readFileSync(path.join(process.cwd(), 'src/server/tasks', type, `${name}.md`), 'utf8'),
+})));
 
-/** То же для любой папки от корня проекта — промпты evals. */
-export function promptsIn<N extends string>(dir: string, names: readonly [N, ...N[]]) {
-    const files = names.map((n) => ({ name: n, file: `${dir}/${n}.md`, ...read(`${dir}/${n}.md`) }));
+/** Набор из уже прочитанных файлов — для промптов вне src/server/tasks (evals читают свои сами). */
+export function promptSet<N extends string>(sources: { name: N; file: string; text: string }[]) {
+    const files = sources.map((f) => ({ ...f, ...parse(f.file, f.text) }));
     const version = files[0].version;
     const odd = files.find((f) => f.version !== version);
     if (odd) throw new Error(`${odd.file}: версия ${odd.version}, а у ${files[0].file} — ${version}`);

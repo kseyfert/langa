@@ -1,9 +1,11 @@
 // Evals на Langfuse Experiments (architecture.md, «Evals»):
-//   npm run eval -- <набор> <область> [--repeat N] [--report]
+//   npm run eval -- <набор> <область> [--repeat N] [--report] [--dry-run]
+// Всё про набор — в его папке evals/<набор>/: index.ts (задача и оценщики), judge.md,
+// cases/<область>.yaml — случаи, источник истины: перед прогоном они синхронизируются
+// в датасет Langfuse <область>/<набор>. Прогон — эксперимент на нём, итог — в терминал;
+// с --report — ещё подробный отчёт в evals/reports/ (калибровка судьи).
 // При --repeat N у каждого score — ещё средние по повторам и их min/max: разброс — шум модели.
-// Случаи — evals/<область>/<набор>.yaml, это источник истины: перед прогоном они
-// синхронизируются в датасет Langfuse <область>/<набор>. Прогон — эксперимент на нём,
-// итог — в терминал; с --report — ещё подробный отчёт в evals/reports/ (калибровка судьи).
+// --dry-run — только прочитать случаи и сверить юниты с базой, без Langfuse и вызовов модели.
 import fs from 'node:fs';
 import { LangfuseClient, type Evaluation, type ExperimentItemResult } from '@langfuse/client';
 import { LangfuseSpanProcessor } from '@langfuse/otel';
@@ -26,13 +28,16 @@ function args() {
     const r = rest.indexOf('--repeat');
     const repeat = r >= 0 ? Number(rest[r + 1]) : 1;
     if (!(suite in SUITES) || !area || !Number.isInteger(repeat) || repeat < 1) {
-        throw new Error(`npm run eval -- <${Object.keys(SUITES).join('|')}> <область> [--repeat N] [--report]`);
+        throw new Error(`npm run eval -- <${Object.keys(SUITES).join('|')}> <область> [--repeat N] [--report] [--dry-run]`);
     }
-    return { suite: suite as SuiteName, area, repeat, report: rest.includes('--report') };
+    return { suite: suite as SuiteName, area, repeat, report: rest.includes('--report'), dryRun: rest.includes('--dry-run') };
 }
 
+const casesFile = (suite: string, area: string) => `evals/${suite}/cases/${area}.yaml`;
+
 async function readCases(area: string, suite: string): Promise<CaseFile> {
-    const file = `evals/${area}/${suite}.yaml`;
+    const file = casesFile(suite, area);
+    if (!fs.existsSync(file)) throw new Error(`Нет случаев: ${file}`);
     const data = parse(fs.readFileSync(file, 'utf8')) as CaseFile;
     const ids = new Set(data.cases.map((c) => c.id));
     if (ids.size !== data.cases.length) throw new Error(`${file}: повторяются id случаев`);
@@ -45,12 +50,12 @@ async function readCases(area: string, suite: string): Promise<CaseFile> {
 }
 
 /** Датасет повторяет yaml: случаи — upsert по id, пропавшие из файла — в архив, а не удаляются. */
-async function sync(lf: LangfuseClient, name: string, data: CaseFile) {
+async function sync(lf: LangfuseClient, name: string, file: string, data: CaseFile) {
     try {
         await lf.api.datasets.get(name);
     } catch (e) {
         if ((e as { statusCode?: number }).statusCode !== 404) throw e;
-        await lf.api.datasets.create({ name, description: `Случаи — evals/${name}.yaml` });
+        await lf.api.datasets.create({ name, description: `Случаи — ${file}` });
     }
     // id элемента уникален на весь проект Langfuse — отсюда префикс датасета.
     const itemId = (c: Case) => `${name}:${c.id}`;
@@ -114,17 +119,23 @@ const averages = (repeat: number) => async ({ itemResults }: { itemResults: Expe
     ]);
 
 async function main() {
-    const { suite, area, repeat, report } = args();
+    const { suite, area, repeat, report, dryRun } = args();
     const s = SUITES[suite];
     const name = `${area}/${suite}`;
     const data = await readCases(area, suite);
+    if (dryRun) {
+        const units = await unitNames(data);
+        console.log(`${casesFile(suite, area)} → датасет ${name}: ${data.cases.length} случаев, юниты из области ${data.workspace_id}`);
+        for (const c of data.cases) console.log(`  ${c.id.padEnd(28)} ${units.get(c.unit_id)} · ${c.topic}`);
+        return;
+    }
 
     // Скрипт короткоживущий: свой NodeSDK и shutdown в конце, иначе трейсы не успеют уйти.
     const sdk = new NodeSDK({ serviceName: 'langa-evals', spanProcessors: [new LangfuseSpanProcessor()] });
     sdk.start();
     const lf = new LangfuseClient();
     try {
-        const items = await sync(lf, name, data);
+        const items = await sync(lf, name, casesFile(suite, area), data);
         const v = s.versions();
         const at = new Date().toISOString().slice(0, 16).replace('T', ' ');
         const runName = `${v.prompt} · ${v.judge} · ${at}`;
