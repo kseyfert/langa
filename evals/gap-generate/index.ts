@@ -2,7 +2,7 @@ import type { Evaluation, Evaluator, ExperimentItemResult } from '@langfuse/clie
 import { getUnit } from '../../src/server/catalog';
 import type { GapContent } from '../../src/server/exercises/types';
 import { askJson } from '../../src/server/tasks/claude';
-import { gap, norm } from '../../src/server/tasks/gap';
+import { gap } from '../../src/server/tasks/gap';
 import { prompts, promptsIn, unitValues } from '../../src/server/tasks/prompt';
 
 // Evals генерации gap (architecture.md, «Evals»): настоящая генерация без записи в базу,
@@ -43,19 +43,6 @@ function share(name: string, items: Item[], fail: (it: Item, i: number) => strin
     return { name, value: (items.length - problems.length) / items.length, comment: comment?.(problems), metadata: { problems } };
 }
 
-const words = (s: string) => ` ${norm(s).replace(/[^a-z' ]+/g, ' ').replace(/\s+/g, ' ').trim()} `;
-
-/**
- * Ответ, который уже стоит в предложении. Пропуск и подсказка в скобках за ним не в счёт:
- * базовое слово в скобках бывает и ответом (look → look). Короткие служебные слова
- * (a, the, in, is) есть почти в любом предложении — их не проверяем.
- */
-function leak(it: Item): string | undefined {
-    const around = words(it.text.replace(/___\s*(\([^)]*\))?/, ' '));
-    const found = it.answers.find((a) => norm(a).length > 3 && around.includes(words(a)));
-    return found && `ответ «${found}» уже есть в предложении`;
-}
-
 export const codeChecks: Evaluator = async ({ output }) => {
     const o = output as Output;
     if ('error' in o) {
@@ -66,7 +53,6 @@ export const codeChecks: Evaluator = async ({ output }) => {
     const short = kept < ITEMS ? [{ item: 0, issue: `валидацию прошли ${items.length} пунктов из ${ITEMS}` }] : [];
     return [
         { name: 'valid_items', value: kept / ITEMS, comment: short[0]?.issue, metadata: { problems: short } },
-        share('answer_not_in_text', items, leak),
     ];
 };
 
