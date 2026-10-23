@@ -106,7 +106,7 @@
 .player__veil {
     grid-row: 2 / 4; grid-column: 1; z-index: 1;
     border-radius: 0 0 var(--radius-lg) var(--radius-lg);
-    background: color-mix(in srgb, var(--paper-lift), transparent 5%);
+    background: color-mix(in srgb, var(--paper-lift), transparent 95%);
     backdrop-filter: blur(5px);
 }
 
