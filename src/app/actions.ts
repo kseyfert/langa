@@ -1,5 +1,6 @@
 'use server';
 
+import { refresh } from 'next/cache';
 import * as catalog from '@/server/catalog';
 import type { Exercise } from '@/server/exercises/types';
 import * as learner from '@/server/learner';
@@ -71,18 +72,27 @@ export async function revealExercise(exerciseId: number): Promise<Result<{ solut
 export async function setUnitStarted(unitId: number, started: boolean): Promise<Result<object>> {
     try {
         await catalog.setStarted(unitId, started);
+        // От отметки зависят карта и рейтинги всех юнитов (побочные свидетельства) — страница
+        // перерисовывается в ответе на само действие, без отдельного router.refresh().
+        refresh();
         return { ok: true };
     } catch (e) {
         return fail(e, 'Не получилось сохранить отметку');
     }
 }
 
-/** Итог сессии по показанным в ней заданиям, по порядку показа. */
-export async function sessionSummary(exerciseIds: number[]): Promise<Result<{ units: (learner.SessionUnit & { name: string })[] }>> {
+/** Итог сессии: count — все задания сессии, units — только юниты с изменившимися шкалами, по position. */
+export async function sessionSummary(exerciseIds: number[]): Promise<Result<{ count: number; units: (learner.SessionUnit & { name: string })[] }>> {
     try {
         const units = await learner.sessionSummary(exerciseIds);
-        const names = new Map((await catalog.getUnits(units.map((u) => u.unitId))).map((u) => [u.id, `${u.number ?? '—'}. ${u.title}`]));
-        return { ok: true, units: units.map((u) => ({ ...u, name: names.get(u.unitId) ?? `Юнит ${u.unitId}` })) };
+        // getUnits отдаёт юниты по position — в этом порядке и строки итога.
+        const order = await catalog.getUnits(units.map((u) => u.unitId));
+        const byId = new Map(units.map((u) => [u.unitId, u]));
+        return {
+            ok: true,
+            count: exerciseIds.length,
+            units: order.map((c) => ({ ...byId.get(c.id)!, name: `${c.number ?? '—'}. ${c.title}` })),
+        };
     } catch (e) {
         return fail(e, 'Не получилось собрать итог');
     }

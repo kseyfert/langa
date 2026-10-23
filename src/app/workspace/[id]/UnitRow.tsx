@@ -1,6 +1,5 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { useEffect, useId, useRef, useState, useTransition } from 'react';
 import { Icon } from '@/components/Icon';
 import { AnyExercise } from '@/components/exercises/AnyExercise';
@@ -48,7 +47,6 @@ export function UnitRow({ id: unitId, number, title, summaryRu, guideHtml, deps,
 
     const [type, setType] = useState('');
     const [started, setStarted] = useState(startedInit);
-    const router = useRouter();
     const toggle = () => setOpen((v) => !v);
 
     const play = () =>
@@ -68,7 +66,7 @@ export function UnitRow({ id: unitId, number, title, summaryRu, guideHtml, deps,
         if (!res.ok) {
             setStarted(!next);
             setError(res.error);
-        } else router.refresh();   // карта юнитов наверху строится на сервере
+        }
     };
 
     // Пришли по ссылке с другой страницы (из выдачи поиска): браузер уже
@@ -114,10 +112,12 @@ export function UnitRow({ id: unitId, number, title, summaryRu, guideHtml, deps,
                 </select>
             </span>
             {summaryRu && <span className="catalog__summary hint muted" onClick={toggle}>{summaryRu}</span>}
-            {rating && (
+            {/* Рейтинг неначатого юнита (решал из каталога или когда-то начинал) — бледно
+                и только в раскрытой строке: он есть, но юнит не в работе. */}
+            {rating && (started || open) && (
                 <>
-                    <MeterSpark rating={rating} className="catalog__spark" />
-                    <MeterHold rating={rating} className="catalog__hold" />
+                    <MeterSpark rating={rating} className={`catalog__spark${started ? '' : ' catalog__meter--idle'}`} />
+                    <MeterHold rating={rating} className={`catalog__hold${started ? '' : ' catalog__meter--idle'}`} />
                 </>
             )}
             <div className="catalog__more" id={id} inert={!open}>

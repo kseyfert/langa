@@ -67,13 +67,15 @@ export function nextExercise(
     if (!candidates.length) return null;
 
     const exById = new Map(exercises.map((e) => [e.id, e]));
+    const startedIds = new Set(candidates.map((u) => u.id));
+    const isStarted = (id: number) => startedIds.has(id);
     const attempted = new Set<number>();
     const histories = new Map<number, Evidence[]>();
     for (const a of [...attempts].sort((x, y) => x.at - y.at)) {
         const ex = exById.get(a.exerciseId);
         if (!ex) continue;
         attempted.add(ex.unitId);
-        for (const { unitId, ev } of evidenceOf({ at: a.at, unitId: ex.unitId, type: ex.type, evaluation: a.evaluation })) {
+        for (const { unitId, ev } of evidenceOf({ at: a.at, unitId: ex.unitId, type: ex.type, evaluation: a.evaluation }, isStarted)) {
             const list = histories.get(unitId);
             if (list) list.push(ev);
             else histories.set(unitId, [ev]);

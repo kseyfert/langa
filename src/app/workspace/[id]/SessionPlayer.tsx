@@ -283,7 +283,7 @@ export function SessionPlayer({ workspaceId }: { workspaceId: number }) {
                 {summary == null ? (
                     <span className="player__wait" role="status" aria-label="Считаю итог…" />
                 ) : summary.ok ? (
-                    <SessionSummary units={summary.units} />
+                    <SessionSummary count={summary.count} units={summary.units} />
                 ) : (
                     <p className="error">{summary.error}</p>
                 )}

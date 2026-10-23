@@ -51,8 +51,15 @@ function rate(evs: Evidence[], now: number): UnitRating {
     };
 }
 
+/** Отметка «в работе» — текущая: от неё зависят побочные свидетельства всего лога (evidenceOf). */
+async function startedCheck(): Promise<(unitId: number) => boolean> {
+    const rows = await db().select({ id: units.id }).from(units).where(eq(units.started, true));
+    const ids = new Set(rows.map((r) => r.id));
+    return (id) => ids.has(id);
+}
+
 /** Свидетельства по юнитам из всего лога, по времени. Заглушки типов (model = 'mock') всегда «верно» — их не берём. */
-async function loadEvidence(): Promise<Map<number, Evidence[]>> {
+async function loadEvidence(isStarted: (unitId: number) => boolean): Promise<Map<number, Evidence[]>> {
     const rows = await db()
         .select({
             at: exerciseAttempts.createdAt,
@@ -67,7 +74,7 @@ async function loadEvidence(): Promise<Map<number, Evidence[]>> {
 
     const byUnit = new Map<number, Evidence[]>();
     for (const r of rows) {
-        for (const { unitId, ev } of evidenceOf({ ...r, at: r.at.getTime() })) {
+        for (const { unitId, ev } of evidenceOf({ ...r, at: r.at.getTime() }, isStarted)) {
             const list = byUnit.get(unitId);
             if (list) list.push(ev);
             else byUnit.set(unitId, [ev]);
@@ -83,7 +90,7 @@ async function loadEvidence(): Promise<Map<number, Evidence[]>> {
  */
 export async function unitRatings(now = Date.now()): Promise<Map<number, UnitRating>> {
     const ratings = new Map<number, UnitRating>();
-    for (const [unitId, evs] of await loadEvidence()) ratings.set(unitId, rate(evs, now));
+    for (const [unitId, evs] of await loadEvidence(await startedCheck())) ratings.set(unitId, rate(evs, now));
     return ratings;
 }
 
@@ -111,12 +118,16 @@ export type SessionUnit = {
     sideIn: number[];
 };
 
+/** Шкалы в том виде, как их показывает итог: изменение, не видное глазу, изменением не считается. */
+const shown = (s: Snapshot | null) => (s ? [Math.round(s.progress), Math.round(s.mastery), s.intervalDays] : []).join();
+
 /**
- * Итог сессии по юнитам: целевые в порядке заданий, затем задетые побочно.
- * «До» — на начало сессии из свидетельств до неё, «после» — сейчас.
+ * Итог сессии: юниты, у которых сдвинулась хоть одна из трёх шкал, — целевые и задетые
+ * побочно, порядок не задан. «До» — на начало сессии из свидетельств до неё, «после» — сейчас.
  */
 export async function sessionSummary(exerciseIds: number[], now = Date.now()): Promise<SessionUnit[]> {
     if (!exerciseIds.length) return [];
+    const isStarted = await startedCheck();
     const [exRows, attRows, all] = await Promise.all([
         db()
             .select({ id: exercises.id, unitId: exercises.unitId, type: exercises.type, createdAt: exercises.createdAt })
@@ -126,7 +137,7 @@ export async function sessionSummary(exerciseIds: number[], now = Date.now()): P
             .select({ exerciseId: exerciseAttempts.exerciseId, seq: exerciseAttempts.seq, at: exerciseAttempts.createdAt, evaluation: exerciseAttempts.evaluation })
             .from(exerciseAttempts)
             .where(inArray(exerciseAttempts.exerciseId, exerciseIds)),
-        loadEvidence(),
+        loadEvidence(isStarted),
     ]);
     const order = new Map(exerciseIds.map((id, i) => [id, i + 1]));
     const session = exRows.map((e) => ({ ...e, n: order.get(e.id)!, attempts: attRows.filter((a) => a.exerciseId === e.id) }))
@@ -145,7 +156,7 @@ export async function sessionSummary(exerciseIds: number[], now = Date.now()): P
     }
     for (const e of session) {
         for (const a of e.attempts) {
-            for (const { unitId, ev } of evidenceOf({ at: a.at.getTime(), unitId: e.unitId, type: e.type, evaluation: a.evaluation })) {
+            for (const { unitId, ev } of evidenceOf({ at: a.at.getTime(), unitId: e.unitId, type: e.type, evaluation: a.evaluation }, isStarted)) {
                 const u = unit(unitId);
                 if (ev.role === 'side' && !u.sideIn.includes(e.n)) u.sideIn.push(e.n);
             }
@@ -158,7 +169,7 @@ export async function sessionSummary(exerciseIds: number[], now = Date.now()): P
         u.before = snapshot(evs.filter((ev) => ev.at < startAt), startAt);
         u.after = snapshot(evs, now);
     }
-    return [...units.values()];
+    return [...units.values()].filter((u) => shown(u.before) !== shown(u.after));
 }
 
 /** Следующее задание сессии в рабочей области по планировщику; null — начатых юнитов в ней нет. */

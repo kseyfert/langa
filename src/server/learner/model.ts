@@ -149,7 +149,8 @@ export function update(prev: UnitState, ev: Evidence, c: Config = CONFIG): UnitS
   let E = u.M;
   const p = expected(E, ev.type, c);
   const K = ev.role === "target" ? c.K_TARGET : c.K_SIDE;
-  const delta = K * (clamp(ev.r, 0, 1) - p);
+  // A side unit can only be penalised: its evidence never raises mastery.
+  const delta = ev.role === "target" ? K * (clamp(ev.r, 0, 1) - p) : Math.min(0, K * (clamp(ev.r, 0, 1) - p));
   E = delta > 0 ? Math.max(E, Math.min(E + delta, c.LEVEL_CAP[ev.type])) : E + delta;
   u.M = clamp(E, 0, 100);
 
@@ -159,18 +160,19 @@ export function update(prev: UnitState, ev: Evidence, c: Config = CONFIG): UnitS
     const elapsed = u.dueFrom == null ? Infinity : (ev.at - u.dueFrom) / DAY_MS;
     u.day = { key, stage0: u.stage, wasDue: elapsed >= c.EARLY_FRACTION * interval(u, c), items: [], sideDropApplied: false, scheduleFrom: ev.at };
   }
-  u.day.scheduleFrom = ev.at;
   if (ev.role === "target") {
+    u.day.scheduleFrom = ev.at;
     u.day.items.push({ w: c.MEMORY_WEIGHT[ev.type], r: ev.r, p, easy: c.EASY_TYPES.includes(ev.type) });
   } else if (ev.r < c.FAIL_THRESHOLD && !u.day.sideDropApplied) {
     u.day.sideDropApplied = true;
+    u.day.scheduleFrom = ev.at;                   // the drop restarts the interval from the error
     u.day.stage0 = Math.max(0, u.day.stage0 - c.SIDE_ERROR_STAGE_DROP);
   }
   if (u.dueFrom == null) u.dueFrom = ev.at;
   applyDay(u, c);
 
-  // A side-unit error is not a practice of that unit: it lowers mastery but does not refresh memory.
-  if (ev.role === "target" || ev.r >= c.FAIL_THRESHOLD) u.lastSeen = ev.at;
+  // A side use is not a practice of that unit: it never refreshes memory.
+  if (ev.role === "target") u.lastSeen = ev.at;
   return u;
 }
 

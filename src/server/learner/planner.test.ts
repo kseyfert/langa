@@ -51,7 +51,7 @@ function makeLog() {
             const evs: Evidence[] = [];
             for (const a of attempts) {
                 const ex = exercises.find((e) => e.id === a.exerciseId)!;
-                for (const { unitId: u, ev } of evidenceOf({ at: a.at, unitId: ex.unitId, type: ex.type, evaluation: a.evaluation })) if (u === unitId) evs.push(ev);
+                for (const { unitId: u, ev } of evidenceOf({ at: a.at, unitId: ex.unitId, type: ex.type, evaluation: a.evaluation }, () => true)) if (u === unitId) evs.push(ev);
             }
             return replay(evs);
         },

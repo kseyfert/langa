@@ -1,5 +1,5 @@
 import { isOpenEvaluation, type Evaluation, type ExerciseType } from '../exercises/types';
-import { targetResult, type Evidence } from './model';
+import { CONFIG, targetResult, type Evidence } from './model';
 
 /** Попытка из лога — всё, что нужно для свидетельств. */
 export type LoggedAttempt = { at: number; unitId: number; type: ExerciseType; evaluation: Evaluation };
@@ -7,8 +7,9 @@ export type LoggedAttempt = { at: number; unitId: number; type: ExerciseType; ev
 /**
  * Свидетельства одной попытки — specs/rating-model.md §3.1. Каждая попытка
  * сама по себе: статус задания и предыдущие попытки не учитываются.
+ * isStarted — текущая отметка «в работе»: побочные свидетельства бывают только у начатых юнитов.
  */
-export function evidenceOf(a: LoggedAttempt): { unitId: number; ev: Evidence }[] {
+export function evidenceOf(a: LoggedAttempt, isStarted: (unitId: number) => boolean): { unitId: number; ev: Evidence }[] {
     const out: { unitId: number; ev: Evidence }[] = [];
     const push = (unitId: number, role: Evidence['role'], r: number) =>
         out.push({ unitId, ev: { at: a.at, role, type: a.type, r } });
@@ -28,11 +29,12 @@ export function evidenceOf(a: LoggedAttempt): { unitId: number; ev: Evidence }[]
         if (r != null) push(a.unitId, 'target', r);
     }
 
-    // Побочные: ошибки и «частично» всегда, верные — только отмеченные notable.
+    // Побочные — только штраф (§3.4): ошибка или «частично» ниже порога провала у начатого юнита.
+    // Удачные (и notable) и «частично» с высоким баллом юнит не улучшают — их не берём.
     for (const o of e.others) {
-        if (o.unit_id === a.unitId) continue;
-        if (o.status === 'error' || o.status === 'partial') push(o.unit_id, 'side', o.score != null ? o.score / 100 : 0.3);
-        else if (o.notable) push(o.unit_id, 'side', o.score != null ? o.score / 100 : 1);
+        if (o.unit_id === a.unitId || o.status === 'correct' || !isStarted(o.unit_id)) continue;
+        const r = o.score != null ? o.score / 100 : 0.3;
+        if (r < CONFIG.FAIL_THRESHOLD) push(o.unit_id, 'side', r);
     }
     return out;
 }

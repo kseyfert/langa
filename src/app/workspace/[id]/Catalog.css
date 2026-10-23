@@ -46,6 +46,8 @@
 .catalog__summary { grid-column: 2; grid-row: 2; display: block; cursor: pointer; }
 .catalog__spark { grid-column: 3; grid-row: 1; align-self: center; }
 .catalog__hold { grid-column: 3; grid-row: 2; align-self: center; }
+/* Отключённое бледнеет на месте (design.md): рейтинг юнита не в работе. */
+.catalog__meter--idle { opacity: 0.4; }
 .catalog__title {
     font: inherit; font-weight: 550; color: inherit; text-align: left;
     background: none; border: 0; padding: 0; cursor: pointer;
