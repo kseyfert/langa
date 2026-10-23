@@ -126,7 +126,19 @@
 
 /* Задание на всю ширину рамки, как в строке юнита: длинные пункты gap не
    переносятся лишний раз. Боковой отступ — тот же, что у нижней полосы. */
-.player__body { display: grid; place-items: center; padding: var(--s-4) var(--s-5); min-width: 0; }
+.player__body { position: relative; display: grid; place-items: center; padding: var(--s-4) var(--s-5); min-width: 0; }
+/* Копирование картинкой — в нижнем отступе задания, слева: мелко, чтобы не спорить с заданием.
+   Видно только при наведении; обёртка с полями — зона наведения с запасом вокруг значка,
+   а клик по полям ничего не копирует. Итог копирования виден, даже если мышь ушла.
+   С клавиатуры не достаётся: только для мыши. */
+.player__copy { position: absolute; left: 0; bottom: calc(-1 * var(--s-2)); padding: var(--s-2); display: flex; }
+.player__copy .icon-btn {
+    width: var(--s-4); height: var(--s-4); opacity: 0;
+    transition: opacity 120ms, background 120ms, color 120ms;
+}
+.player__copy svg { width: 12px; height: 12px; }
+.player__copy:hover .icon-btn, .player__copy--done .icon-btn { opacity: 0.5; }
+.player__copy .icon-btn:hover { opacity: 1; }
 /* Задание прижато к верху: при разной длине заданий начало всегда на одном месте.
    Ожидание и ошибка остаются по центру. */
 .player__exercise { width: 100%; align-self: start; }

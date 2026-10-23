@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState, useTransition, type CSSProperties, type ReactNode } from 'react';
+import { domToBlob } from 'modern-screenshot';
+import { Icon } from '@/components/Icon';
 import { AnyExercise } from '@/components/exercises/AnyExercise';
 import { ActionsSlot } from '@/components/exercises/ExerciseActions';
 import type { ExerciseView } from '@/server/tasks';
@@ -114,6 +116,21 @@ export function SessionPlayer({ workspaceId }: { workspaceId: number }) {
             document.removeEventListener('visibilitychange', onHide);
         };
     }, [running, over, endAt]);
+
+    // Итог копирования на месте значка; null — обычный значок.
+    const [copied, setCopied] = useState<'ok' | 'cancel' | null>(null);
+    // Плеер картинкой в буфер. Promise прямо в ClipboardItem: Safari пускает в буфер
+    // только в самом обработчике клика, а снимок готовится дольше.
+    const copyShot = () => {
+        if (!box.current) return;
+        const png = domToBlob(box.current, {
+            scale: window.devicePixelRatio,
+            filter: (n) => !(n instanceof Element && n.classList.contains('player__copy')),
+        });
+        navigator.clipboard.write([new ClipboardItem({ 'image/png': png })])
+            .then(() => setCopied('ok'), () => setCopied('cancel'))
+            .finally(() => setTimeout(() => setCopied(null), 1000));
+    };
 
     const togglePause = () => {
         if (pausedAt == null) return setPausedAt(Date.now());
@@ -299,6 +316,14 @@ export function SessionPlayer({ workspaceId }: { workspaceId: number }) {
                             <AnyExercise key={current.exercise.id} exercise={current.exercise} targetName={current.targetName} onDone={onDone} />
                         </ActionsSlot.Provider>
                     </div>
+                )}
+                {current && !loading && (
+                    <span className={`player__copy${copied ? ' player__copy--done' : ''}`}>
+                        <button type="button" className="icon-btn" onClick={copyShot} tabIndex={-1}
+                            title={copied === 'cancel' ? 'Не скопировалось' : 'Скопировать картинкой'} aria-label="Скопировать плеер картинкой">
+                            <Icon name={copied ?? 'copy'} />
+                        </button>
+                    </span>
                 )}
             </div>
 
