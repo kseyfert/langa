@@ -5,6 +5,9 @@ import { units, workspaces } from '../db/schema';
 
 export type Workspace = { id: number; name: string };
 
+/** Юнит без guide — без заданий: он в книге для полноты. В работе (started) он сразу освоен. */
+export const hasTasks = (u: { guide: string }) => u.guide.trim() !== '';
+
 export type Unit = {
     id: number;
     workspaceId: number;

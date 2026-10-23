@@ -65,13 +65,13 @@ export function promptSet<N extends string>(sources: { name: N; file: string; te
     };
 }
 
-/** Значения для описания юнита в промпте. Пока guide пуст — однострочное summary_ru. */
+/** Значения для описания юнита в промпте. Юнитов с пустым guide сюда не доходит — заданий по ним нет. */
 export const unitValues = (u: Unit): Values => ({
     book: u.book,
     section: u.section,
     number: String(u.number ?? '—'),
     title: u.title,
-    guide: u.guide.trim() || u.summaryRu,
+    guide: u.guide,
 });
 
 /** Случайная строка в промпт генерации: без неё одинаковые запросы дают одинаковые задания. */

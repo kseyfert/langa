@@ -2,8 +2,9 @@
 
 import type { CSSProperties } from 'react';
 import { jump } from '@/components/jump';
+import type { UnitStatus } from '@/components/unitStatus';
 
-export type MapStatus = 'idle' | 'learning' | 'mastered';
+type MapStatus = UnitStatus;
 export type MapSection = { key: number; name: string; units: { id: number; number: number | null; title: string; status: MapStatus }[] };
 
 const WORD: Record<MapStatus, string> = { idle: 'не начат', learning: 'в работе', mastered: 'освоен' };

@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState, useTransition } from 'react';
 import { Icon } from '@/components/Icon';
+import { unitStatus } from '@/components/unitStatus';
 import { AnyExercise } from '@/components/exercises/AnyExercise';
 import { flash, jump } from '@/components/jump';
 import { MeterHold, MeterSpark } from '@/components/UnitMeter';
@@ -35,9 +36,11 @@ type Props = {
     rating: UnitRating | null;
     /** Юнит взят в работу. */
     started: boolean;
+    /** false — guide пуст, заданий по юниту нет: ▶ не показывается, в работе — сразу освоен. */
+    hasTasks: boolean;
 };
 
-export function UnitRow({ id: unitId, number, title, summaryRu, guideHtml, deps, rating, started: startedInit }: Props) {
+export function UnitRow({ id: unitId, number, title, summaryRu, guideHtml, deps, rating, started: startedInit, hasTasks }: Props) {
     const [open, setOpen] = useState(false);
     const id = useId();
     const row = useRef<HTMLLIElement>(null);
@@ -81,7 +84,7 @@ export function UnitRow({ id: unitId, number, title, summaryRu, guideHtml, deps,
         <li ref={row} id={`unit-${unitId}`} className={[
             'catalog__unit',
             open && 'catalog__unit--open',
-            started && (rating?.mastered ? 'catalog__unit--mastered' : 'catalog__unit--learning'),
+            started && `catalog__unit--${unitStatus(started, hasTasks, rating?.mastered ?? false)}`,
         ].filter(Boolean).join(' ')}>
             {/* Шапка — не одна кнопка: внутри неё ▶, а кнопку в кнопку вкладывать нельзя.
                 Раскрывает guide кнопка-название (и с клавиатуры) и описание — щелчком мыши.
@@ -100,7 +103,7 @@ export function UnitRow({ id: unitId, number, title, summaryRu, guideHtml, deps,
                 </button>
                 {/* ▶ и тип — один виджет: тип выезжает из-под ▶ при наведении. Под словом типа —
                     прозрачный select: список открывается системный, а вид — свой. */}
-                <span className={`catalog__run${loading ? ' catalog__run--busy' : ''}`}>
+                {hasTasks && <span className={`catalog__run${loading ? ' catalog__run--busy' : ''}`}>
                     {loading ? (
                         <span className="icon-btn catalog__play" role="status" aria-label="Составляю задание…"><span className="spinner" /></span>
                     ) : (
@@ -118,7 +121,7 @@ export function UnitRow({ id: unitId, number, title, summaryRu, guideHtml, deps,
                             {READY_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
                         </select>
                     </span>
-                </span>
+                </span>}
             </span>
             {summaryRu && <span className="catalog__summary hint muted" onClick={toggle}>{summaryRu}</span>}
             {/* Рейтинг неначатого юнита (решал из каталога или когда-то начинал) — бледно

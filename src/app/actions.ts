@@ -18,6 +18,7 @@ function fail(e: unknown, what: string): { ok: false; error: string } {
 /** Задание по юниту: заданного типа или, если тип не задан или не готов, случайного. */
 export async function startExercise(unitId: number, type: string | null = null): Promise<Result<{ exercise: tasks.ExerciseView }>> {
     try {
+        if (!catalog.hasTasks(await catalog.getUnit(unitId))) return { ok: false, error: 'По этому юниту заданий нет: guide пуст' };
         const ready = tasks.READY_TYPES.find((t) => t === type);
         return { ok: true, exercise: await (ready ? tasks.get(unitId, ready) : tasks.getRandom(unitId)) };
     } catch (e) {

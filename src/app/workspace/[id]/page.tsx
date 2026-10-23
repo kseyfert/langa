@@ -1,6 +1,7 @@
 import { marked } from 'marked';
 import { notFound } from 'next/navigation';
-import { getWorkspace, listUnits, type Unit, type Workspace } from '@/server/catalog';
+import { getWorkspace, hasTasks, listUnits, type Unit, type Workspace } from '@/server/catalog';
+import { unitStatus } from '@/components/unitStatus';
 import { unitRatings, type UnitRating } from '@/server/learner';
 import { SessionPlayer } from './SessionPlayer';
 import { UnitMap, type MapSection } from './UnitMap';
@@ -66,13 +67,13 @@ export default async function WorkspacePage({ params }: { params: Promise<{ id: 
         });
 
     const books = groupByBook(units);
-    // Статус — тот же, что красит строку юнита (UnitRow): в работе / освоен.
+    // Статус — тот же, что красит строку юнита (UnitRow): одно правило unitStatus.
     const mapSections: MapSection[] = books.flatMap((b) => b.sections).map((s) => ({
         key: s.key,
         name: s.name,
         units: s.units.map((u) => ({
             id: u.id, number: u.number, title: u.title,
-            status: !u.started ? 'idle' : ratings.get(u.id)?.mastered ? 'mastered' : 'learning',
+            status: unitStatus(u.started, hasTasks(u), ratings.get(u.id)?.mastered ?? false),
         })),
     }));
     // Счётчики — по уникальным названиям: разорванная книга остаётся одной книгой.
@@ -120,6 +121,7 @@ export default async function WorkspacePage({ params }: { params: Promise<{ id: 
                                             deps={depsOf(u)}
                                             rating={ratings.get(u.id) ?? null}
                                             started={u.started}
+                                            hasTasks={hasTasks(u)}
                                         />
                                     ))}
                                 </ul>

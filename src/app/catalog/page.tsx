@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { listUnits, listWorkspaces, type Unit, type Workspace } from '@/server/catalog';
+import { hasTasks, listUnits, listWorkspaces, type Unit, type Workspace } from '@/server/catalog';
+import { unitStatus } from '@/components/unitStatus';
 import { unitRatings, type UnitRating } from '@/server/learner';
 import './Workspaces.css';
 
@@ -32,9 +33,10 @@ export default async function CatalogPage() {
                 <ul className="spaces">
                     {workspaces.map((w, i) => {
                         const units = unitsOf[i];
-                        // Те же статусы, что на карте области: в работе — начат и не освоен.
-                        const mastered = units.filter((u) => u.started && ratings.get(u.id)?.mastered).length;
-                        const learning = units.filter((u) => u.started).length - mastered;
+                        // Те же статусы, что на карте области.
+                        const statuses = units.map((u) => unitStatus(u.started, hasTasks(u), ratings.get(u.id)?.mastered ?? false));
+                        const mastered = statuses.filter((s) => s === 'mastered').length;
+                        const learning = statuses.filter((s) => s === 'learning').length;
                         return (
                             <li key={w.id}>
                                 <Link href={`/workspace/${w.id}`} className="spaces__item">

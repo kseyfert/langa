@@ -1,5 +1,6 @@
 import 'server-only';
 import { and, asc, eq, inArray, ne } from 'drizzle-orm';
+import { hasTasks } from '../catalog';
 import { db } from '../db/client';
 import { exerciseAttempts, exercises, units } from '../db/schema';
 import { statusOf } from '../exercises';
@@ -51,10 +52,13 @@ function rate(evs: Evidence[], now: number): UnitRating {
     };
 }
 
-/** Отметка «в работе» — текущая: от неё зависят побочные свидетельства всего лога (evidenceOf). */
+/**
+ * Отметка «в работе» — текущая: от неё зависят побочные свидетельства всего лога (evidenceOf).
+ * Юнит без заданий в работе освоен по определению — побочные ошибки его не трогают, как неначатый.
+ */
 async function startedCheck(): Promise<(unitId: number) => boolean> {
-    const rows = await db().select({ id: units.id }).from(units).where(eq(units.started, true));
-    const ids = new Set(rows.map((r) => r.id));
+    const rows = await db().select({ id: units.id, guide: units.guide }).from(units).where(eq(units.started, true));
+    const ids = new Set(rows.filter(hasTasks).map((r) => r.id));
     return (id) => ids.has(id);
 }
 
@@ -177,7 +181,7 @@ export async function planNext(workspaceId: number, now = Date.now()): Promise<P
     // Заглушки в рейтинг не идут (см. unitRatings); задания других областей планировщику не нужны.
     const scope = and(ne(exercises.model, 'mock'), eq(units.workspaceId, workspaceId));
     const [unitRows, exerciseRows, attemptRows] = await Promise.all([
-        db().select({ id: units.id, position: units.position, started: units.started }).from(units).where(eq(units.workspaceId, workspaceId)),
+        db().select({ id: units.id, position: units.position, started: units.started, guide: units.guide }).from(units).where(eq(units.workspaceId, workspaceId)),
         db()
             .select({ id: exercises.id, unitId: exercises.unitId, type: exercises.type, createdAt: exercises.createdAt })
             .from(exercises)
@@ -191,7 +195,8 @@ export async function planNext(workspaceId: number, now = Date.now()): Promise<P
             .where(scope),
     ]);
     return nextExercise(
-        unitRows,
+        // Юнит без заданий планировщику — как неначатый: предлагать по нему нечего.
+        unitRows.map((u) => ({ id: u.id, position: u.position, started: u.started && hasTasks(u) })),
         exerciseRows.map((e) => ({ ...e, createdAt: e.createdAt.getTime() })),
         attemptRows.map((a) => ({ ...a, at: a.at.getTime() })),
         now,
