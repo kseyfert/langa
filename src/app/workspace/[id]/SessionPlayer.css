@@ -75,15 +75,40 @@
 .player__top { display: flex; align-items: center; gap: var(--s-3); padding: var(--s-3); }
 .player__timer {
     display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 14px 0 12px;
-    border-radius: var(--radius-pill); background: var(--paper-deep);
-    font-weight: 650; font-size: 0.9375rem; font-variant-numeric: tabular-nums;
-    transition: background 200ms, color 200ms;
+    border: 0; border-radius: var(--radius-pill); background: var(--paper-deep); color: var(--ink);
+    font: inherit; font-weight: 650; font-size: 0.9375rem; font-variant-numeric: tabular-nums;
+    cursor: pointer; transition: background 200ms, color 200ms;
 }
+.player__timer:disabled { cursor: default; }
+/* Ячейка значка постоянной ширины: точка, пауза и ▶ сменяют друг друга, а пилюля не дёргается. */
+.player__timer-ic { width: 12px; height: 12px; display: grid; place-items: center; }
+.player__timer-ic > * { grid-area: 1 / 1; display: none; }
+.player__timer-ic svg { width: 12px; height: 12px; }
 .player__timer i { width: 7px; height: 7px; border-radius: 50%; background: var(--speak); animation: player-blink 2s ease-in-out infinite; }
 @keyframes player-blink { 50% { opacity: 0.25; } }
+/* Идёт — точка, наведение — значок паузы, на паузе — ▶. */
+.player__timer:not(.player__timer--paused) .player__timer-ic i { display: block; }
+.player__timer:not(.player__timer--paused):hover:not(:disabled) .player__timer-ic i { display: none; }
+.player__timer:not(.player__timer--paused):hover:not(:disabled) .player__timer-ic svg:first-of-type { display: block; }
+.player__timer--paused .player__timer-ic svg:last-of-type { display: block; }
+/* Наведение — слива: таймер можно нажать. На паузе цифры гаснут. */
+.player__timer:hover:not(:disabled) { background: var(--speak-bg); color: var(--speak); }
+.player__timer--paused:not(:hover) { color: var(--ink-soft); }
 /* Время вышло: таймер краснеет и считает дальше — сессию никто не обрывает. */
 .player__timer--over { background: var(--warn); color: var(--paper-lift); }
 .player__timer--over i { background: var(--paper-lift); }
+
+/* Пауза закрывает задание и нижнюю полосу: время стоит — думать над заданием нельзя.
+   Ложится в те же строки сетки, поэтому без position у рамки. Строки у задания и полосы
+   заданы явно: иначе автораскладка обходит занятые слоем ячейки и уводит их вниз. */
+.player__top + .player__body { grid-row: 2; grid-column: 1; }
+.player__top ~ .player__bottom { grid-row: 3; grid-column: 1; }
+.player__veil {
+    grid-row: 2 / 4; grid-column: 1; z-index: 1;
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+    background: color-mix(in srgb, var(--paper-lift), transparent 5%);
+    backdrop-filter: blur(5px);
+}
 
 .player__trail { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; gap: var(--s-1); }
 .player__mark { width: 8px; height: 8px; border-radius: 50%; }

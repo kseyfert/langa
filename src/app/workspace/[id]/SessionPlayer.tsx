@@ -11,6 +11,8 @@ import './SessionPlayer.css';
 
 const TIMES = PLANNER_CONFIG.SESSION_OPTIONS;
 const DEFAULT_MIN = 15;
+// Уход со вкладки или из окна ставит сессию на паузу. Снимается пауза вручную — тем же таймером.
+const AUTO_PAUSE = true;
 
 // Длительность запоминается в браузере — удобство, а не данные.
 const MIN_KEY = 'langa:session-min';
@@ -53,6 +55,7 @@ function pinToTop(el: HTMLElement) {
 }
 
 const PLAY = <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M4.5 2.4v11.2L13.2 8z" /></svg>;
+const PAUSE = <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><rect x="3.5" y="2.5" width="3" height="11" rx="1" /><rect x="9.5" y="2.5" width="3" height="11" rx="1" /></svg>;
 
 /**
  * Плеер сессии: до старта — полоска с ▶ и длительностью, на старте рамка
@@ -64,6 +67,8 @@ export function SessionPlayer({ workspaceId }: { workspaceId: number }) {
     const [min, setMin] = useState(DEFAULT_MIN);
     const [endAt, setEndAt] = useState<number | null>(null);
     const [now, setNow] = useState(0);
+    // Когда поставлена пауза; null — время идёт. При снятии конец сессии сдвигается на простой.
+    const [pausedAt, setPausedAt] = useState<number | null>(null);
     const [over, setOver] = useState(false);
     const [current, setCurrent] = useState<Current | null>(null);
     const [done, setDone] = useState<boolean | null>(null);
@@ -85,7 +90,8 @@ export function SessionPlayer({ workspaceId }: { workspaceId: number }) {
     // Из localStorage — после монтирования: на сервере его нет, иначе разойдётся гидратация.
     useEffect(() => setMin(readMin()), []);
 
-    const running = endAt != null;
+    const paused = pausedAt != null;
+    const running = endAt != null && !paused;
     useEffect(() => {
         if (!running) return;
         setNow(Date.now());
@@ -93,7 +99,28 @@ export function SessionPlayer({ workspaceId }: { workspaceId: number }) {
         return () => clearInterval(t);
     }, [running]);
 
-    const left = endAt == null ? 0 : Math.round((endAt - now) / 1000);
+    const left = endAt == null ? 0 : Math.round((endAt - (pausedAt ?? now)) / 1000);
+
+    // Автопауза — только пока время идёт: после его конца пауза уже ничего не значит.
+    useEffect(() => {
+        if (!AUTO_PAUSE || !running || over) return;
+        const pause = () => endAt != null && Date.now() < endAt && setPausedAt(Date.now());
+        const onHide = () => document.hidden && pause();
+        // blur — переход в другое окно, visibilitychange — во вкладку или свёрнутое окно.
+        window.addEventListener('blur', pause);
+        document.addEventListener('visibilitychange', onHide);
+        return () => {
+            window.removeEventListener('blur', pause);
+            document.removeEventListener('visibilitychange', onHide);
+        };
+    }, [running, over, endAt]);
+
+    const togglePause = () => {
+        if (pausedAt == null) return setPausedAt(Date.now());
+        const idle = Date.now() - pausedAt;
+        setEndAt((e) => e == null ? e : e + idle);
+        setPausedAt(null);
+    };
 
     // Сброс прошлого задания — до перехода, а не внутри него: обновления в
     // async-переходе применяются только по его окончании, и старая оценка висела бы всю загрузку.
@@ -183,6 +210,7 @@ export function SessionPlayer({ workspaceId }: { workspaceId: number }) {
         resize('close');
         clear();
         setEndAt(null);
+        setPausedAt(null);
         setOver(false);
         setMarks([]);
         setSummary(null);
@@ -246,10 +274,12 @@ export function SessionPlayer({ workspaceId }: { workspaceId: number }) {
 
     return frame('', <>
             <div className="player__top">
-                <span className={`player__timer${shown < 0 ? ' player__timer--over' : ''}`} role="timer"
-                    aria-label={shown < 0 ? 'Время вышло, сверх него' : 'Осталось времени'}>
-                    <i aria-hidden="true" />{clock(shown)}
-                </span>
+                {/* Таймер — он же кнопка паузы. До первого задания ставить на паузу нечего, а после конца времени — незачем. */}
+                <button type="button" className={`player__timer${shown < 0 ? ' player__timer--over' : ''}${paused ? ' player__timer--paused' : ''}`}
+                    onClick={togglePause} disabled={endAt == null || shown < 0} aria-pressed={paused} title={paused ? 'Продолжить' : 'Пауза'}
+                    aria-label={`Пауза, ${shown < 0 ? 'сверх времени' : 'осталось'} ${clock(shown)}`}>
+                    <span className="player__timer-ic"><i />{PAUSE}{PLAY}</span>{clock(shown)}
+                </button>
                 <div className="player__trail" aria-label="Ответы">
                     {marks.map((m, i) => <span key={i} className={`player__mark player__mark--${m}`} />)}
                     {current && done == null && <span className="player__mark player__mark--now" />}
@@ -257,7 +287,7 @@ export function SessionPlayer({ workspaceId }: { workspaceId: number }) {
                 <button type="button" className="player__finish" onClick={stop}>Завершить</button>
             </div>
 
-            <div className="player__body">
+            <div className="player__body" inert={paused}>
                 {loading ? (
                     <span className="player__wait" role="status" aria-label="Составляю задание…" />
                 ) : error ? (
@@ -272,7 +302,7 @@ export function SessionPlayer({ workspaceId }: { workspaceId: number }) {
                 )}
             </div>
 
-            <div className={`player__bottom${done == null ? '' : done ? ' player__bottom--ok' : ' player__bottom--bad'}`}>
+            <div className={`player__bottom${done == null ? '' : done ? ' player__bottom--ok' : ' player__bottom--bad'}`} inert={paused}>
                 {done == null ? (
                     (current || error) && !loading && <button type="button" className="player__skip" onClick={skip}>Пропустить</button>
                 ) : (
@@ -286,5 +316,6 @@ export function SessionPlayer({ workspaceId }: { workspaceId: number }) {
                     </button>
                 )}
             </div>
+            {paused && <div className="player__veil" />}
     </>);
 }
