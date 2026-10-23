@@ -36,10 +36,12 @@ function clock(sec: number) {
 }
 
 /**
- * Прокрутка, прижимающая плеер к верху окна. Своя, а не scroll-behavior:
- * та плавная для переходов по якорю и для смены задания слишком медленная.
+ * Прокрутка, прижимающая к верху окна экран с плеером — от заголовка области, а не
+ * от рамки: так видно, где ты. Экран — родитель плеера, он начинается с заголовка.
+ * Своя, а не scroll-behavior: та плавная для переходов по якорю и для смены задания слишком медленная.
  */
-function pinToTop(el: HTMLElement) {
+function pinToTop(player: HTMLElement) {
+    const el = player.parentElement ?? player;
     // Кадр спустя: прошлое задание уже убрано, и если страница укоротилась, браузер успел поправить прокрутку.
     requestAnimationFrame(() => {
         const from = window.scrollY;
@@ -55,6 +57,10 @@ function pinToTop(el: HTMLElement) {
         requestAnimationFrame(step);
     });
 }
+
+// Фокус на кнопку без прокрутки к ней: autoFocus дотягивал бы окно до низа рамки
+// мимо pinToTop. Вне компонента — чтобы ref не менялся и фокус ставился один раз, при появлении.
+const focusQuietly = (el: HTMLElement | null) => el?.focus({ preventScroll: true });
 
 const PLAY = <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M4.5 2.4v11.2L13.2 8z" /></svg>;
 const PAUSE = <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><rect x="3.5" y="2.5" width="3" height="11" rx="1" /><rect x="9.5" y="2.5" width="3" height="11" rx="1" /></svg>;
@@ -216,6 +222,8 @@ export function SessionPlayer({ workspaceId }: { workspaceId: number }) {
 
     const onDone = (ok: boolean) => {
         setDone(ok);
+        // Разбор меняет высоту задания — окно возвращается туда же, где было при показе.
+        if (box.current) pinToTop(box.current);
         setMarks((m) => [...m, ok ? 'ok' : 'bad']);
         // Ответ мог поменять план (побочная ошибка поднимает другой юнит) — заготовить заново.
         // Время вышло — следующего задания не будет.
@@ -281,7 +289,7 @@ export function SessionPlayer({ workspaceId }: { workspaceId: number }) {
                 )}
             </div>
             <div className="player__bottom">
-                <button type="button" className="player__next" onClick={finish} autoFocus>Завершить</button>
+                <button type="button" className="player__next" onClick={finish} ref={focusQuietly}>Завершить</button>
             </div>
         </>);
     }
@@ -336,7 +344,7 @@ export function SessionPlayer({ workspaceId }: { workspaceId: number }) {
                 {/* Сюда задание выносит свои кнопки: «Проверить», счётчик, «Показать разбор». */}
                 <div ref={setSlot} className="player__slot" />
                 {done != null && (
-                    <button type="button" className="player__next" onClick={advance} autoFocus>
+                    <button type="button" className="player__next" onClick={advance} ref={focusQuietly}>
                         {left < 0 ? 'Закончить' : 'Дальше'}
                     </button>
                 )}
