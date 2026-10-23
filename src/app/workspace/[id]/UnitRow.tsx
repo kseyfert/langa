@@ -98,18 +98,27 @@ export function UnitRow({ id: unitId, number, title, summaryRu, guideHtml, deps,
                 <button type="button" className="catalog__title" aria-expanded={open} aria-controls={id} onClick={toggle}>
                     {title}
                 </button>
-                {loading ? (
-                    <span className="icon-btn catalog__play" role="status" aria-label="Составляю задание…"><span className="spinner" /></span>
-                ) : (
-                    <button type="button" className="icon-btn catalog__play" title="Задание" aria-label="Задание" onClick={play}>
-                        <Icon name="play" />
-                    </button>
-                )}
-                <select className="catalog__type" aria-label="Тип задания" title="Тип задания" value={type}
-                    onChange={(e) => { setType(e.target.value); saveType(unitId, e.target.value); }}>
-                    <option value="">любой</option>
-                    {READY_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-                </select>
+                {/* ▶ и тип — один виджет: тип выезжает из-под ▶ при наведении. Под словом типа —
+                    прозрачный select: список открывается системный, а вид — свой. */}
+                <span className={`catalog__run${loading ? ' catalog__run--busy' : ''}`}>
+                    {loading ? (
+                        <span className="icon-btn catalog__play" role="status" aria-label="Составляю задание…"><span className="spinner" /></span>
+                    ) : (
+                        <button type="button" className="icon-btn catalog__play" title={`Задание · ${type || 'любой'}`}
+                            aria-label={`Задание · ${type || 'любой'}`} onClick={play}>
+                            <Icon name="play" />
+                        </button>
+                    )}
+                    <span className="catalog__type">
+                        {type || 'любой'}
+                        <Icon name="chevron" />
+                        <select aria-label="Тип задания" value={type}
+                            onChange={(e) => { setType(e.target.value); saveType(unitId, e.target.value); }}>
+                            <option value="">любой</option>
+                            {READY_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                        </select>
+                    </span>
+                </span>
             </span>
             {summaryRu && <span className="catalog__summary hint muted" onClick={toggle}>{summaryRu}</span>}
             {/* Рейтинг неначатого юнита (решал из каталога или когда-то начинал) — бледно
