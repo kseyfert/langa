@@ -33,13 +33,16 @@ function normalize(d: unknown, plan: string[]): ChoiceContent {
     };
 }
 
-export const choice: Task<'choice'> = {
+/** Как GapOptions: тема и недавние задания извне — для evals, приложение их не передаёт. */
+export type ChoiceOptions = { topic?: string; recent?: string[] };
+
+export const choice = {
     type: 'choice',
 
-    async generate(unitId) {
+    async generate(unitId: number, opts: ChoiceOptions = {}) {
         const p = prompts('choice', ['generate', 'focus-repeat']);
-        const topic = randomTopic();
-        const [unit, used] = await Promise.all([getUnit(unitId), recent(unitId)]);
+        const topic = opts.topic ?? randomTopic();
+        const [unit, used] = await Promise.all([getUnit(unitId), opts.recent ?? recent(unitId)]);
         const focus = plan(unit.guide, 6, (point) => p.fill('focus-repeat', { point }));
         const prompt = p.fill('generate', {
             ...unitValues(unit), topic, seed: seed(),
@@ -65,4 +68,4 @@ export const choice: Task<'choice'> = {
         const evaluation: ClosedEvaluation = { items, correct: items.filter((i) => i.correct).length, total: items.length };
         return { evaluation, model: null, promptVersion: null };
     },
-};
+} satisfies Task<'choice'>;

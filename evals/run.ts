@@ -12,9 +12,10 @@ import { LangfuseSpanProcessor } from '@langfuse/otel';
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import { parse } from 'yaml';
 import { getUnits } from '../src/server/catalog';
+import * as choiceGenerate from './choice-generate';
 import * as gapGenerate from './gap-generate';
 
-const SUITES = { 'gap-generate': gapGenerate };
+const SUITES = { 'gap-generate': gapGenerate, 'choice-generate': choiceGenerate };
 type SuiteName = keyof typeof SUITES;
 
 /** Генерации идут ~20 с; больше параллельных — упрёмся в rate limit. */
@@ -22,6 +23,9 @@ const CONCURRENCY = 4;
 
 type Case = { id: string; unit_id: number; topic: string };
 type CaseFile = { workspace_id: number; cases: Case[] };
+/** Вход задачи и проблема пункта — общие для наборов генерации (у каждого набора свои копии типов). */
+type Input = { unit_id: number; topic: string };
+type Problem = { item: number; issue: string };
 
 function args() {
     const [suite, area, ...rest] = process.argv.slice(2);
@@ -146,7 +150,7 @@ async function main() {
             metadata: { prompt_version: v.prompt, judge_version: v.judge, repeat },
             // Копия элемента датасета на повтор: id тот же (связь с датасетом), metadata — с номером.
             data: Array.from({ length: repeat }, (_, k) => items.map((it) => ({ ...it, metadata: { ...(it.metadata as object), repeat: k + 1 } }))).flat(),
-            task: ({ input }) => s.task(input as gapGenerate.Input),
+            task: ({ input }) => s.task(input as Input),
             evaluators: s.evaluators,
             runEvaluators: [averages(repeat)],
             maxConcurrency: CONCURRENCY,
@@ -173,7 +177,7 @@ const unitNames = async (data: CaseFile): Promise<Units> =>
     new Map((await getUnits(data.cases.map((c) => c.unit_id))).map((u) => [u.id, `${u.number}. ${u.title}`]));
 
 // Не r.input: в результате элемента SDK его не заполняет, хотя тип обещает.
-const inputOf = (r: ExperimentItemResult) => r.item.input as gapGenerate.Input;
+const inputOf = (r: ExperimentItemResult) => r.item.input as Input;
 
 function summary(results: ExperimentItemResult[], units: Units, st: Stat[], repeat: number) {
     const W = 22;
@@ -189,9 +193,9 @@ function summary(results: ExperimentItemResult[], units: Units, st: Stat[], repe
 
     const bad = results.flatMap((r) => {
         const input = inputOf(r);
-        const problems = r.evaluations.flatMap((e) => (e.metadata as { problems?: gapGenerate.Problem[] } | undefined)?.problems ?? []);
+        const problems = r.evaluations.flatMap((e) => (e.metadata as { problems?: Problem[] } | undefined)?.problems ?? []);
         // Судья упал — его оценок нет вовсе; это тоже проблема задания, а не тишина.
-        const noJudge = !('error' in (r.output as gapGenerate.Output)) && !r.evaluations.some((e) => e.name.startsWith('judge_'));
+        const noJudge = !('error' in (r.output as object)) && !r.evaluations.some((e) => e.name.startsWith('judge_'));
         if (noJudge) problems.push({ item: 0, issue: 'судья не дал оценок (ошибка — выше)' });
         return problems.length ? [{ unit: units.get(input.unit_id) ?? `юнит ${input.unit_id}`, topic: input.topic, at: repeat > 1 ? ` · повтор ${repeatOf(r)}` : '', problems }] : [];
     });
