@@ -3,10 +3,8 @@ import type { Evaluation, Evaluator, ExperimentItemResult } from '@langfuse/clie
 import { getUnit } from '../src/server/catalog';
 import type { FreeContent, RephraseContent, TranslateContent } from '../src/server/exercises/types';
 import { askJson } from '../src/server/tasks/claude';
-import { free } from '../src/server/tasks/free';
+import { generate } from '../src/server/tasks/generate';
 import { prompts, promptSet, unitValues } from '../src/server/tasks/prompt';
-import { rephrase } from '../src/server/tasks/rephrase';
-import { translate } from '../src/server/tasks/translate';
 import { FREE_LENGTH } from '../src/server/tasks/types';
 import { itemProblems, topicCases, type Problem, type Suite, type SuiteCase } from './suite';
 
@@ -18,7 +16,6 @@ import { itemProblems, topicCases, type Problem, type Suite, type SuiteCase } fr
 type OpenType = 'rephrase' | 'translate' | 'free';
 type Content = RephraseContent | TranslateContent | FreeContent;
 
-const TASKS = { rephrase, translate, free };
 const JUDGE_MODEL = 'claude-opus-5-5';
 
 /** Обычный случай — юнит и тема; контрольный — готовое задание, генерации нет. */
@@ -195,8 +192,8 @@ export const openGenerateSuite = (type: OpenType, criteria: Criterion[]): Suite 
             const { unit_id, topic } = i;
             try {
                 // Тема из случая, недавних заданий нет: случай воспроизводим и не зависит от лога.
-                const g = await TASKS[type].generate(unit_id, { topic, recent: [] });
-                return { content: g.content } satisfies Output;
+                const g = await generate(type, unit_id, { topic, recent: [] });
+                return { content: g.content as Content } satisfies Output;
             } catch (e) {
                 // Сбой генерации — тоже результат прогона (valid 0), а не выпавший случай.
                 return { error: e instanceof Error ? e.message : String(e) } satisfies Output;

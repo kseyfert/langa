@@ -2,8 +2,9 @@ import 'server-only';
 import { asc, desc, eq } from 'drizzle-orm';
 import { db } from '../db/client';
 import { exerciseAttempts, exercises } from '../db/schema';
+import { typeOf } from '../tasks/registry';
 import {
-    isClosed, isOpenEvaluation,
+    isOpenEvaluation,
     type Answer, type Attempt, type ContentByType, type Evaluation, type Exercise, type ExerciseStatus,
     type ExerciseType, type ExerciseWithAttempts, type PublicContentByType, type Verdict,
 } from './types';
@@ -55,31 +56,9 @@ export async function listExercises({ unitId, limit = 50 }: { unitId?: number; l
     return rows.map(toExercise);
 }
 
-/** Содержимое для клиента до проверки: без ключей ответов, эталонов и объяснений. */
+/** Содержимое для клиента до проверки: без ключей ответов, эталонов и объяснений — что именно, решает тип. */
 export function publicContent(ex: Exercise): PublicContentByType[ExerciseType] {
-    switch (ex.type) {
-        case 'gap': {
-            const { instructions_ru, items } = ex.content;
-            return { instructions_ru, items: items.map(({ text }) => ({ text })) };
-        }
-        case 'choice': {
-            const { instructions_ru, items } = ex.content;
-            return { instructions_ru, items: items.map(({ text, options }) => ({ text, options })) };
-        }
-        case 'translate': {
-            const { target_note_ru, reference_en, focus, ...rest } = ex.content;
-            return rest;
-        }
-        case 'rephrase': {
-            // focus называет грамматику, start_with (старые задания) выдаёт ответ — клиенту ни то ни другое.
-            const { reference_en, focus, start_with, ...rest } = ex.content;
-            return rest;
-        }
-        case 'free': {
-            const { reference_en, focus, ...rest } = ex.content;
-            return rest;
-        }
-    }
+    return typeOf(ex.type).publicContent(ex.content);
 }
 
 /**
@@ -114,7 +93,7 @@ export async function addAttempt(
     return db().transaction(async (tx) => {
         const [ex] = await tx.select().from(exercises).where(eq(exercises.id, exerciseId)).for('update');
         if (!ex) throw new Error(`Задание ${exerciseId} не найдено`);
-        if (isClosed(ex.type) === isOpenEvaluation(input.evaluation)) {
+        if ((typeOf(ex.type).check.by === 'model') !== isOpenEvaluation(input.evaluation)) {
             throw new Error(`Оценка не подходит к типу задания ${ex.type}`);
         }
 

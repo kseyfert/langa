@@ -1,28 +1,19 @@
 import 'server-only';
-import { listExercises, type Exercise } from '../exercises';
+import { listExercises } from '../exercises';
+import { typeOf } from './registry';
 
 // Данные для разнообразия заданий (все типы): без него генератор по одному
 // юниту каждый раз берёт те же глаголы и ситуации — по примеру на пункт guide.
-// Тексты правил — в generate.md каждого типа.
+// Тексты правил — в generate.md каждого типа, предложения задания — sentences его определения.
 
 /** Сколько последних заданий юнита показывать модели как «уже было». */
 const RECENT = 5;
-
-/** Готовые предложения из задания: ___ заменён верным ответом, у открытых — эталон в скобках. */
-function sentencesOf(ex: Exercise): string[] {
-    if (ex.type === 'gap') return ex.content.items.map((i) => i.text.replace('___', `[${i.answers[0]}]`));
-    if (ex.type === 'choice') return ex.content.items.map((i) => i.text.replace('___', `[${i.options[i.correct]}]`));
-    if (ex.type === 'rephrase') return [`${ex.content.source_en} [${ex.content.reference_en[0] ?? ''}]`];
-    if (ex.type === 'translate') return [`${ex.content.source_ru} [${ex.content.reference_en[0] ?? ''}]`];
-    if (ex.type === 'free') return [`${ex.content.prompt_en || ex.content.prompt_ru} [${ex.content.reference_en[0] ?? ''}]`];
-    return [];
-}
 
 /** Предложения последних заданий юнита — модели как «уже было». */
 export async function recent(unitId: number): Promise<string[]> {
     const list = await listExercises({ unitId, limit: RECENT });
     // Заглушки (model = 'mock') — одно и то же выдуманное предложение, не практика.
-    return list.filter((ex) => ex.model !== 'mock').flatMap(sentencesOf);
+    return list.filter((ex) => ex.model !== 'mock').flatMap((ex) => typeOf(ex.type).sentences(ex.content));
 }
 
 /** Пункты раздела «## Употребление» из guide. */

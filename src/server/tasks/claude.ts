@@ -3,12 +3,12 @@ import Anthropic from '@anthropic-ai/sdk';
 import { propagateAttributes, startObservation } from '@langfuse/tracing';
 import { context, trace } from '@opentelemetry/api';
 import type { ExerciseType } from '../exercises/types';
+import { BAD_FORMAT } from './define';
 import { TaskError } from './types';
 
 export const MODEL_GENERATE = process.env.CLAUDE_MODEL_GENERATE || 'claude-sonnet-5-5';
 export const MODEL_GRADE = process.env.CLAUDE_MODEL_GRADE || 'claude-sonnet-5-5';
 
-const BAD_FORMAT = 'Claude ответил в неожиданном формате. Попробуй ещё раз.';
 const MAX_TOKENS = 16000;
 
 let client: Anthropic | null = null;

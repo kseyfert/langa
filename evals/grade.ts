@@ -2,11 +2,9 @@ import type { Evaluation, Evaluator, ExperimentItemResult } from '@langfuse/clie
 import { getUnits } from '../src/server/catalog';
 import { CONFIG, targetResult } from '../src/server/learner/model';
 import { VERDICTS, type OpenEvaluation, type Verdict } from '../src/server/exercises/types';
-import { free } from '../src/server/tasks/free';
+import { grade } from '../src/server/tasks/grade';
 import { prompts } from '../src/server/tasks/prompt';
-import { rephrase } from '../src/server/tasks/rephrase';
-import { translate } from '../src/server/tasks/translate';
-import type { Task as TaskOf } from '../src/server/tasks/types';
+import { typeOf } from '../src/server/tasks/registry';
 import type { Suite, SuiteCase, Units } from './suite';
 
 // Общее у наборов проверки открытых ответов (rephrase-grade, translate-grade, free-grade;
@@ -14,8 +12,6 @@ import type { Suite, SuiteCase, Units } from './suite';
 // в базу. Судьи нет: вердикт, статус целевого юнита и побочные ошибки сравниваются с expect кодом.
 
 type OpenType = 'rephrase' | 'translate' | 'free';
-// Через Task, а не типы объектов: у free своя parseAnswer с одним параметром, а зовём единообразно.
-const TASKS: { [T in OpenType]: TaskOf<T> } = { rephrase, translate, free };
 
 const TARGET_STATUSES = ['correct', 'error', 'partial', 'not_used'] as const;
 type TargetStatus = OpenEvaluation['target']['status'];
@@ -81,7 +77,7 @@ function cases(data: unknown, file: string): SuiteCase[] {
 /** Ответ, отвергнутый parseAnswer, — ошибка случая (ответ не той формы), а не провал проверки. */
 const task = (type: OpenType) => async (input: unknown): Promise<Output> => {
     const { unit_id, content, answer } = input as Input;
-    const t = TASKS[type];
+    const t = typeOf(type);
     let parsed;
     try {
         parsed = t.parseAnswer({ text: answer }, content as never);
@@ -89,7 +85,7 @@ const task = (type: OpenType) => async (input: unknown): Promise<Output> => {
         return { error: `ответ отвергнут: ${e instanceof Error ? e.message : String(e)}` };
     }
     try {
-        const c = await t.check(unit_id, content as never, parsed);
+        const c = await grade(t, unit_id, content as never, parsed);
         return { evaluation: c.evaluation as OpenEvaluation };
     } catch (e) {
         return { error: `проверка не удалась: ${e instanceof Error ? e.message : String(e)}` };
@@ -188,7 +184,7 @@ const lint = (type: OpenType) => async (cs: SuiteCase[]): Promise<string[]> => {
         const { content, answer } = c.input as Input;
         const out: string[] = [];
         try {
-            TASKS[type].parseAnswer({ text: answer }, content as never);
+            typeOf(type).parseAnswer({ text: answer }, content as never);
         } catch (e) {
             out.push(`${c.id}: ответ отвергнет parseAnswer — ${e instanceof Error ? e.message : String(e)}`);
         }

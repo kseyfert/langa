@@ -1,20 +1,15 @@
 import 'server-only';
 import { catalogForPrompt, getUnit, listUnits } from '../catalog';
-import type { OpenAnswer, OpenEvaluation, Verdict } from '../exercises/types';
+import type { Answer, ClosedEvaluation, ExerciseContent, ExerciseType, OpenAnswer, OpenEvaluation, Verdict } from '../exercises/types';
 import { askJson, MODEL_GRADE, type JsonSchema } from './claude';
+import { object, text } from './define';
 import { prompts, unitValues, type Values } from './prompt';
-import { TaskError, type Checked } from './types';
+import type { Checked, TaskType } from './types';
 
-// Проверка открытых ответов (rephrase, translate, free). Тексты — grade-system.md и
+// Проверка ответа — общая для всех типов, вид выбирает check.by определения типа.
+// По ключу (gap, choice) — локально. Моделью (rephrase, translate, free) — тексты grade-system.md и
 // grade-user.md в папке каждого типа (specs/exercise-spec.md §7): без оспаривания,
 // повторная попытка проверяется как первая, юниты — по id из базы, целевой — с guide.
-
-/** Ответ на открытое задание: непустой текст. */
-export function parseOpenAnswer(raw: unknown): OpenAnswer {
-    const text = (raw as { text?: unknown } | null)?.text;
-    if (typeof text !== 'string' || !text.trim()) throw new TaskError('Ответ пустой');
-    return { text: text.trim() };
-}
 
 const TARGET_STATUSES = ['correct', 'error', 'partial', 'not_used'] as const;
 const OTHER_STATUSES = ['correct', 'error', 'partial'] as const;
@@ -24,10 +19,6 @@ const score = (v: unknown) => Math.round(Math.max(0, Math.min(100, Number(v) || 
 const oneOf = <T extends string>(list: readonly T[], v: unknown, dflt: T): T => (list.includes(v as T) ? (v as T) : dflt);
 
 type Raw = Record<string, unknown>;
-
-/** Объект со всеми полями обязательными и без лишних — так требует structured outputs. Порядок полей — порядок в ответе. */
-const object = (properties: Record<string, unknown>) => ({ type: 'object', additionalProperties: false, required: Object.keys(properties), properties });
-const text = (description?: string) => ({ type: 'string', ...(description && { description }) });
 
 /**
  * Схема ответа проверки — общая у трёх типов (формат задаёт код, не промпт). Описания полей —
@@ -115,7 +106,7 @@ function normalize(d: unknown, targetId: number, ids: Set<number>, excluded: Set
  * Проверить открытый ответ промптами типа. task — значения для описания задания
  * в grade-user.md, с эталоном.
  */
-export async function gradeOpen(type: 'rephrase' | 'translate' | 'free', unitId: number, task: Values, answer: string): Promise<Checked> {
+async function gradeOpen(type: ExerciseType, unitId: number, task: Values, answer: string): Promise<Checked> {
     const p = prompts(type, ['grade-system', 'grade-user']);
     const unit = await getUnit(unitId);
     const book = await listUnits(unit.workspaceId, unit.book);
@@ -128,4 +119,14 @@ export async function gradeOpen(type: 'rephrase' | 'translate' | 'free', unitId:
         call: 'grade', type, promptVersion: p.version, unitId, workspaceId: unit.workspaceId,
     }, SCHEMA);
     return { evaluation: normalize(raw, unitId, new Set(ids), excluded), model: MODEL_GRADE, promptVersion: p.version };
+}
+
+/** Проверить разобранный ответ (parseAnswer типа) так, как велит тип. */
+export async function grade(def: TaskType<ExerciseType>, unitId: number, content: ExerciseContent, answer: Answer): Promise<Checked> {
+    if (def.check.by === 'model') return gradeOpen(def.type, unitId, def.check.task(content), (answer as OpenAnswer).text);
+    // Проверка по ключу бывает только у типов с ответом-списком: по ответу на пункт.
+    const given = answer as ClosedEvaluation['items'][number]['given'][];
+    const items = def.check.score(content, answer).map((correct, index) => ({ index, given: given[index], correct }));
+    const evaluation: ClosedEvaluation = { items, correct: items.filter((i) => i.correct).length, total: items.length };
+    return { evaluation, model: null, promptVersion: null };
 }

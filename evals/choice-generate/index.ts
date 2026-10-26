@@ -2,8 +2,8 @@ import fs from 'node:fs';
 import type { Evaluation, Evaluator, ExperimentItemResult } from '@langfuse/client';
 import { getUnit } from '../../src/server/catalog';
 import type { ChoiceContent } from '../../src/server/exercises/types';
-import { choice } from '../../src/server/tasks/choice';
 import { askJson } from '../../src/server/tasks/claude';
+import { generate } from '../../src/server/tasks/generate';
 import { prompts, promptSet, unitValues } from '../../src/server/tasks/prompt';
 
 // Evals генерации choice (architecture.md, «Evals»): настоящая генерация без записи в базу,
@@ -28,8 +28,8 @@ export const versions = () => ({ prompt: prompts('choice', ['generate', 'focus-r
 export async function task(input: Input): Promise<Output> {
     try {
         // Тема из случая, недавних заданий нет: случай воспроизводим и не зависит от лога.
-        const g = await choice.generate(input.unit_id, { topic: input.topic, recent: [] });
-        return { content: g.content };
+        const g = await generate('choice', input.unit_id, { topic: input.topic, recent: [] });
+        return { content: g.content as ChoiceContent };
     } catch (e) {
         // Сбой генерации — тоже результат прогона (valid_items 0), а не выпавший случай.
         return { error: e instanceof Error ? e.message : String(e) };

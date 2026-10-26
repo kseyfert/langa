@@ -5,19 +5,12 @@ import {
     addAttempt, createExercise, getExercise, isOpenEvaluation, publicContent, statusOf,
     type Attempt, type Exercise, type ExerciseStatus, type ExerciseType, type PublicContentByType,
 } from '../exercises';
-import { choice } from './choice';
-import { free } from './free';
-import { gap } from './gap';
-import { rephrase } from './rephrase';
-import { translate } from './translate';
-import { READY_TYPES, TaskError, type Generated, type Task } from './types';
+import { generate } from './generate';
+import { grade } from './grade';
+import { typeOf } from './registry';
+import { READY_TYPES, TaskError, type Generated } from './types';
 
 export { READY_TYPES, TaskError };
-
-const TASKS: { [T in ExerciseType]: Task<T> } = { gap, choice, translate, rephrase, free };
-
-/** Задача по типу. Связь type ↔ content TypeScript через union не проводит — здесь она гарантирована реестром. */
-const taskOf = (type: ExerciseType) => TASKS[type] as Task<ExerciseType>;
 
 /** То, что уходит клиенту: без ключей ответов. */
 export type ExerciseView = {
@@ -38,7 +31,7 @@ let ahead: { unitId: number; type: ExerciseType; content: Promise<Generated<Exer
 export function prepare(unitId: number, type: ExerciseType): void {
     if (ahead?.unitId === unitId && ahead.type === type) return;
     // Неудача заготовки не ошибка: по «Дальше» задание составится обычным путём.
-    ahead = { unitId, type, content: taskOf(type).generate(unitId).catch(() => null) };
+    ahead = { unitId, type, content: generate(type, unitId).catch(() => null) };
 }
 
 /**
@@ -48,7 +41,7 @@ export function prepare(unitId: number, type: ExerciseType): void {
 export async function get(unitId: number, type: ExerciseType): Promise<ExerciseView> {
     const ready = ahead?.unitId === unitId && ahead.type === type ? ahead.content : null;
     if (ready) ahead = null;
-    const g = (await ready) ?? (await taskOf(type).generate(unitId));
+    const g = (await ready) ?? (await generate(type, unitId));
     const ex = await createExercise({ unitId, type, ...g });
     return view(ex);
 }
@@ -72,15 +65,15 @@ const unitName = (u: { number: number | null; title: string }) => `${u.number ??
 /** Проверить ответ и записать попытку. */
 export async function check(exerciseId: number, rawAnswer: unknown): Promise<CheckResult> {
     const ex = await getExercise(exerciseId);
-    const task = taskOf(ex.type);
+    const def = typeOf(ex.type);
     // Завершённое задание отклонит и addAttempt, но проверять до него — значит не платить за проверку зря.
     if (statusOf(ex.attempts)) throw new TaskError('Задание уже завершено');
-    const answer = task.parseAnswer(rawAnswer, ex.content);
+    const answer = def.parseAnswer(rawAnswer, ex.content);
     // Номер будущей попытки — как в addAttempt. Через контекст, а не параметром: трейсу Langfuse
     // их нужно знать внутри проверки, а самой проверке они ни к чему.
     const seq = (ex.attempts.at(-1)?.seq ?? 0) + 1;
     const checked = await propagateAttributes({ metadata: { exercise_id: exerciseId, seq } },
-        () => task.check(ex.unitId, ex.content, answer));
+        () => grade(def, ex.unitId, ex.content, answer));
     const attempt = await addAttempt(exerciseId, { answer, ...checked });
     const status = statusOf([attempt]);
     const ev = attempt.evaluation;

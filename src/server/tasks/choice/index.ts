@@ -1,25 +1,9 @@
 import 'server-only';
-import { getUnit } from '../../catalog';
-import type { ChoiceContent, ClosedEvaluation } from '../../exercises/types';
-import { askJson, MODEL_GENERATE, type JsonSchema } from '../claude';
-import { prompts, seed, unitValues } from '../prompt';
-import { randomTopic } from '../topics';
-import { TaskError, type Task } from '../types';
-import { plan, recent } from '../variety';
-
-const isStr = (v: unknown): v is string => typeof v === 'string';
+import type { ChoiceContent } from '../../exercises/types';
+import { closedContent, isStr, object, text } from '../define';
+import { TaskError, type TaskType } from '../types';
 
 type Item = ChoiceContent['items'][number];
-
-/** Объект со всеми полями обязательными и без лишних — так требует structured outputs. Порядок полей — порядок в ответе. */
-const obj = (properties: Record<string, unknown>) => ({ type: 'object', additionalProperties: false, required: Object.keys(properties), properties });
-const str = (description?: string) => ({ type: 'string', ...(description && { description }) });
-
-/** Как у gap: схема ответа генерации; 2–3 варианта и валидный correct держит normalize. */
-const SCHEMA: JsonSchema = obj({
-    instructions_ru: str(),
-    items: { type: 'array', items: obj({ text: str(), options: { type: 'array', items: str() }, correct: { type: 'integer' }, explain_ru: str('one short sentence why') }) },
-});
 
 /** Пункт задания или null, если он не той формы. */
 function item(i: unknown): Item | null {
@@ -30,41 +14,21 @@ function item(i: unknown): Item | null {
     return ok ? { text: o.text as string, options: o.options as string[], correct: o.correct as number, explain_ru: isStr(o.explain_ru) ? o.explain_ru : '' } : null;
 }
 
-/** Как у gap: годные пункты, план фокуса прорежен вместе с ними. */
-function normalize(d: unknown, plan: string[]): ChoiceContent {
-    const o = (d ?? {}) as { instructions_ru?: unknown; items?: unknown };
-    const all = (Array.isArray(o.items) ? o.items : []).map(item);
-    const kept = all.flatMap((it, k) => (it ? [k] : []));
-    if (!kept.length) throw new TaskError('Claude ответил в неожиданном формате. Попробуй ещё раз.');
-    return {
-        instructions_ru: isStr(o.instructions_ru) ? o.instructions_ru : '',
-        items: kept.map((k) => all[k]!),
-        focus: kept.map((k) => plan[k] ?? ''),
-    };
-}
-
-/** Как GapOptions: тема и недавние задания извне — для evals, приложение их не передаёт. */
-export type ChoiceOptions = { topic?: string; recent?: string[] };
-
 export const choice = {
     type: 'choice',
+    items: 6,
 
-    async generate(unitId: number, opts: ChoiceOptions = {}) {
-        const p = prompts('choice', ['generate', 'focus-repeat']);
-        const topic = opts.topic ?? randomTopic();
-        const [unit, used] = await Promise.all([getUnit(unitId), opts.recent ?? recent(unitId)]);
-        const focus = plan(unit.guide, 6, (point) => p.fill('focus-repeat', { point }));
-        const prompt = p.fill('generate', {
-            ...unitValues(unit), topic, seed: seed(),
-            focus: focus.map((f, i) => `${i + 1}. ${f}`).join('\n'),
-            recent: used.map((s) => `- ${s}`).join('\n'),
-        });
-        const raw = await askJson(prompt, MODEL_GENERATE, undefined, {
-            call: 'generate', type: 'choice', promptVersion: p.version, unitId, workspaceId: unit.workspaceId,
-        }, SCHEMA);
-        const content = normalize(raw, focus);
-        return { content, topic, model: MODEL_GENERATE, promptVersion: p.version };
-    },
+    /** Как у gap; 2–3 варианта и валидный correct держит normalize. */
+    outputSchema: object({
+        instructions_ru: text(),
+        items: { type: 'array', items: object({ text: text(), options: { type: 'array', items: text() }, correct: { type: 'integer' }, explain_ru: text('one short sentence why') }) },
+    }),
+
+    normalize: (raw, plan) => closedContent(raw, plan, item),
+
+    publicContent: ({ instructions_ru, items }) => ({ instructions_ru, items: items.map(({ text, options }) => ({ text, options })) }),
+
+    sentences: (c) => c.items.map((i) => i.text.replace('___', `[${i.options[i.correct]}]`)),
 
     parseAnswer(raw, content) {
         const ok = Array.isArray(raw) && raw.length === content.items.length
@@ -73,9 +37,8 @@ export const choice = {
         return raw as (number | null)[];
     },
 
-    async check(_unitId, content, answer) {
-        const items = content.items.map((it, index) => ({ index, given: answer[index], correct: answer[index] === it.correct }));
-        const evaluation: ClosedEvaluation = { items, correct: items.filter((i) => i.correct).length, total: items.length };
-        return { evaluation, model: null, promptVersion: null };
+    check: {
+        by: 'key',
+        score: (content, answer) => content.items.map((it, i) => answer[i] === it.correct),
     },
-} satisfies Task<'choice'>;
+} satisfies TaskType<'choice'>;

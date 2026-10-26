@@ -1,60 +1,36 @@
 import 'server-only';
-import { getUnit } from '../../catalog';
-import type { FreeContent } from '../../exercises/types';
-import { askJson, MODEL_GENERATE, type JsonSchema } from '../claude';
-import { gradeOpen, parseOpenAnswer } from '../grade';
-import { prompts, seed, unitValues } from '../prompt';
-import { randomTopic } from '../topics';
-import { FREE_LENGTH, TaskError, type Task } from '../types';
-import { plan, recent } from '../variety';
-
-const isStr = (v: unknown): v is string => typeof v === 'string';
-
-/** Объект со всеми полями обязательными и без лишних — так требует structured outputs. Порядок полей — порядок в ответе. */
-const obj = (properties: Record<string, unknown>) => ({ type: 'object', additionalProperties: false, required: Object.keys(properties), properties });
-const str = (description?: string) => ({ type: 'string', ...(description && { description }) });
-
-/** Схема ответа генерации (формат задаёт код, не промпт); описания — бывший хвост generate.md. Длину эталона держит промпт. */
-const SCHEMA: JsonSchema = obj({
-    instructions_ru: str(),
-    prompt_en: str(),
-    reference_en: { type: 'array', items: str(), description: 'one model answer' },
-});
-
-/** Как normalizeEx прототипа: без вопроса задания нет. */
-function normalize(d: unknown): FreeContent {
-    const o = (d ?? {}) as Record<string, unknown>;
-    if (!isStr(o.prompt_en) || !o.prompt_en.trim()) throw new TaskError('Claude ответил в неожиданном формате. Попробуй ещё раз.');
-    return {
-        instructions_ru: isStr(o.instructions_ru) ? o.instructions_ru : '',
-        prompt_en: o.prompt_en,
-        reference_en: Array.isArray(o.reference_en) ? o.reference_en.filter(isStr) : [],
-    };
-}
-
-/** Как GapOptions: тема и недавние задания извне — для evals, приложение их не передаёт. */
-export type FreeOptions = { topic?: string; recent?: string[] };
+import { BAD_FORMAT, isStr, object, parseOpenAnswer, text } from '../define';
+import { FREE_LENGTH, TaskError, type TaskType } from '../types';
 
 export const free = {
     type: 'free',
+    items: 1,
 
-    async generate(unitId: number, opts: FreeOptions = {}) {
-        const p = prompts('free', ['generate']);
-        const topic = opts.topic ?? randomTopic();
-        const [unit, used] = await Promise.all([getUnit(unitId), opts.recent ?? recent(unitId)]);
-        const focus = plan(unit.guide, 1);
-        const prompt = p.fill('generate', {
-            ...unitValues(unit), topic, seed: seed(),
-            focus: focus[0] ?? '',
-            recent: used.map((s) => `- ${s}`).join('\n'),
-            min: String(FREE_LENGTH.min), max: String(FREE_LENGTH.max),
-        });
-        const raw = await askJson(prompt, MODEL_GENERATE, undefined, {
-            call: 'generate', type: 'free', promptVersion: p.version, unitId, workspaceId: unit.workspaceId,
-        }, SCHEMA);
-        const content = { ...normalize(raw), focus };
-        return { content, topic, model: MODEL_GENERATE, promptVersion: p.version };
+    /** Описания — бывший хвост generate.md. Длину эталона держит промпт. */
+    outputSchema: object({
+        instructions_ru: text(),
+        prompt_en: text(),
+        reference_en: { type: 'array', items: text(), description: 'one model answer' },
+    }),
+
+    /** Рамки ответа — в generate.md: эталон должен в них уложиться. */
+    generateValues: { min: String(FREE_LENGTH.min), max: String(FREE_LENGTH.max) },
+
+    /** Как normalizeEx прототипа: без вопроса задания нет. */
+    normalize(raw, plan) {
+        const o = (raw ?? {}) as Record<string, unknown>;
+        if (!isStr(o.prompt_en) || !o.prompt_en.trim()) throw new TaskError(BAD_FORMAT);
+        return {
+            instructions_ru: isStr(o.instructions_ru) ? o.instructions_ru : '',
+            prompt_en: o.prompt_en,
+            reference_en: Array.isArray(o.reference_en) ? o.reference_en.filter(isStr) : [],
+            focus: plan,
+        };
     },
+
+    publicContent: ({ reference_en, focus, ...rest }) => rest,
+
+    sentences: (c) => [`${c.prompt_en || c.prompt_ru} [${c.reference_en[0] ?? ''}]`],
 
     parseAnswer(raw) {
         const answer = parseOpenAnswer(raw);
@@ -63,8 +39,8 @@ export const free = {
         return answer;
     },
 
-    check: (unitId, content, answer) => gradeOpen('free', unitId, {
-        question: content.prompt_en || content.prompt_ru || '',
-        reference: content.reference_en.join(' | '),
-    }, answer.text),
-} satisfies Task<'free'>;
+    check: {
+        by: 'model',
+        task: (c) => ({ question: c.prompt_en || c.prompt_ru || '', reference: c.reference_en.join(' | ') }),
+    },
+} satisfies TaskType<'free'>;

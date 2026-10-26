@@ -3,7 +3,7 @@ import type { Evaluation, Evaluator, ExperimentItemResult } from '@langfuse/clie
 import { getUnit } from '../../src/server/catalog';
 import type { GapContent } from '../../src/server/exercises/types';
 import { askJson } from '../../src/server/tasks/claude';
-import { gap } from '../../src/server/tasks/gap';
+import { generate } from '../../src/server/tasks/generate';
 import { prompts, promptSet, unitValues } from '../../src/server/tasks/prompt';
 
 // Evals генерации gap (architecture.md, «Evals»): настоящая генерация без записи в базу,
@@ -28,8 +28,8 @@ export const versions = () => ({ prompt: prompts('gap', ['generate', 'focus-repe
 export async function task(input: Input): Promise<Output> {
     try {
         // Тема из случая, недавних заданий нет: случай воспроизводим и не зависит от лога.
-        const g = await gap.generate(input.unit_id, { topic: input.topic, recent: [] });
-        return { content: g.content };
+        const g = await generate('gap', input.unit_id, { topic: input.topic, recent: [] });
+        return { content: g.content as GapContent };
     } catch (e) {
         // Сбой генерации — тоже результат прогона (valid_items 0), а не выпавший случай.
         return { error: e instanceof Error ? e.message : String(e) };

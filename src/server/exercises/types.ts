@@ -4,9 +4,6 @@
 export const EXERCISE_TYPES = ['gap', 'choice', 'rephrase', 'translate', 'free'] as const;
 export type ExerciseType = (typeof EXERCISE_TYPES)[number];
 
-export const CLOSED_TYPES = ['gap', 'choice'] as const satisfies readonly ExerciseType[];
-export const isClosed = (t: ExerciseType) => (CLOSED_TYPES as readonly string[]).includes(t);
-
 /** Статус задания — не хранится, выводится из последней попытки (exercises/index.ts, statusOf). */
 export type ExerciseStatus = 'accepted' | 'failed';
 

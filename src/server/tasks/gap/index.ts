@@ -1,28 +1,9 @@
 import 'server-only';
-import { getUnit } from '../../catalog';
-import type { ClosedEvaluation, GapContent } from '../../exercises/types';
-import { askJson, MODEL_GENERATE, type JsonSchema } from '../claude';
-import { prompts, seed, unitValues } from '../prompt';
-import { randomTopic } from '../topics';
-import { TaskError, type Task } from '../types';
-import { plan, recent } from '../variety';
-
-const isStr = (v: unknown): v is string => typeof v === 'string';
+import type { GapContent } from '../../exercises/types';
+import { closedContent, isStr, object, text } from '../define';
+import { TaskError, type TaskType } from '../types';
 
 type Item = GapContent['items'][number];
-
-/** Объект со всеми полями обязательными и без лишних — так требует structured outputs. Порядок полей — порядок в ответе. */
-const obj = (properties: Record<string, unknown>) => ({ type: 'object', additionalProperties: false, required: Object.keys(properties), properties });
-const str = (description?: string) => ({ type: 'string', ...(description && { description }) });
-
-/**
- * Схема ответа генерации (формат задаёт код, не промпт). Описания полей — бывший хвост
- * «Reply with only JSON» generate.md. Число пунктов схема не ограничивает — его держит normalize.
- */
-const SCHEMA: JsonSchema = obj({
-    instructions_ru: str(),
-    items: { type: 'array', items: obj({ text: str(), answers: { type: 'array', items: str() }, explain_ru: str('one short sentence why') }) },
-});
 
 /** Пункт задания или null, если он не той формы. */
 function item(i: unknown): Item | null {
@@ -32,48 +13,28 @@ function item(i: unknown): Item | null {
     return answers.length ? { text: o.text, answers, explain_ru: isStr(o.explain_ru) ? o.explain_ru : '' } : null;
 }
 
-/**
- * Как normalizeEx прототипа: пункты не той формы отбрасываются; ни одного годного — ошибка.
- * План фокуса прорежается вместе с пунктами, чтобы focus[i] по-прежнему описывал items[i].
- */
-function normalize(d: unknown, plan: string[]): GapContent {
-    const o = (d ?? {}) as { instructions_ru?: unknown; items?: unknown };
-    const all = (Array.isArray(o.items) ? o.items : []).map(item);
-    const kept = all.flatMap((it, k) => (it ? [k] : []));
-    if (!kept.length) throw new TaskError('Claude ответил в неожиданном формате. Попробуй ещё раз.');
-    return {
-        instructions_ru: isStr(o.instructions_ru) ? o.instructions_ru : '',
-        items: kept.map((k) => all[k]!),
-        focus: kept.map((k) => plan[k] ?? ''),
-    };
-}
-
 /** Нормализация ответа — norm прототипа: регистр, апострофы, пробелы, кавычки и финальная пунктуация. */
 export const norm = (s: string) =>
     s.toLowerCase().replace(/[’‘`]/g, "'").replace(/\s+/g, ' ').replace(/^[\s"]+|[\s".,!?]+$/g, '').trim();
 
-/** Тема и недавние задания извне — для evals. Приложение их не передаёт: тема случайная, недавние — из лога. */
-export type GapOptions = { topic?: string; recent?: string[] };
-
 export const gap = {
     type: 'gap',
+    items: 6,
 
-    async generate(unitId: number, opts: GapOptions = {}) {
-        const p = prompts('gap', ['generate', 'focus-repeat']);
-        const topic = opts.topic ?? randomTopic();
-        const [unit, used] = await Promise.all([getUnit(unitId), opts.recent ?? recent(unitId)]);
-        const focus = plan(unit.guide, 6, (point) => p.fill('focus-repeat', { point }));
-        const prompt = p.fill('generate', {
-            ...unitValues(unit), topic, seed: seed(),
-            focus: focus.map((f, i) => `${i + 1}. ${f}`).join('\n'),
-            recent: used.map((s) => `- ${s}`).join('\n'),
-        });
-        const raw = await askJson(prompt, MODEL_GENERATE, undefined, {
-            call: 'generate', type: 'gap', promptVersion: p.version, unitId, workspaceId: unit.workspaceId,
-        }, SCHEMA);
-        const content = normalize(raw, focus);
-        return { content, topic, model: MODEL_GENERATE, promptVersion: p.version };
-    },
+    /**
+     * Описания полей — бывший хвост «Reply with only JSON» generate.md.
+     * Число пунктов схема не ограничивает — его держит normalize.
+     */
+    outputSchema: object({
+        instructions_ru: text(),
+        items: { type: 'array', items: object({ text: text(), answers: { type: 'array', items: text() }, explain_ru: text('one short sentence why') }) },
+    }),
+
+    normalize: (raw, plan) => closedContent(raw, plan, item),
+
+    publicContent: ({ instructions_ru, items }) => ({ instructions_ru, items: items.map(({ text }) => ({ text })) }),
+
+    sentences: (c) => c.items.map((i) => i.text.replace('___', `[${i.answers[0]}]`)),
 
     parseAnswer(raw, content) {
         if (!Array.isArray(raw) || raw.length !== content.items.length || !raw.every(isStr)) {
@@ -82,13 +43,8 @@ export const gap = {
         return raw;
     },
 
-    async check(_unitId, content, answer) {
-        const items = content.items.map((it, index) => ({
-            index,
-            given: answer[index],
-            correct: it.answers.some((a) => norm(a) === norm(answer[index])),
-        }));
-        const evaluation: ClosedEvaluation = { items, correct: items.filter((i) => i.correct).length, total: items.length };
-        return { evaluation, model: null, promptVersion: null };
+    check: {
+        by: 'key',
+        score: (content, answer) => content.items.map((it, i) => it.answers.some((a) => norm(a) === norm(answer[i]))),
     },
-} satisfies Task<'gap'>;
+} satisfies TaskType<'gap'>;
