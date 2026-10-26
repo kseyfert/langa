@@ -13,6 +13,8 @@ export type SuiteCase = {
     label: string;
     /** Что в случае не заполнено; такой случай в прогон не идёт. */
     pending?: string;
+    /** Контрольный случай судьи: его оценка — control_caught, отдельно от средних обычных. */
+    control?: boolean;
 };
 
 export type Units = Map<number, string>;

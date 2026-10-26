@@ -21,13 +21,16 @@ function normalize(d: unknown): RephraseContent {
     };
 }
 
-export const rephrase: Task<'rephrase'> = {
+/** Как GapOptions: тема и недавние задания извне — для evals, приложение их не передаёт. */
+export type RephraseOptions = { topic?: string; recent?: string[] };
+
+export const rephrase = {
     type: 'rephrase',
 
-    async generate(unitId) {
+    async generate(unitId: number, opts: RephraseOptions = {}) {
         const p = prompts('rephrase', ['generate']);
-        const topic = randomTopic();
-        const [unit, used] = await Promise.all([getUnit(unitId), recent(unitId)]);
+        const topic = opts.topic ?? randomTopic();
+        const [unit, used] = await Promise.all([getUnit(unitId), opts.recent ?? recent(unitId)]);
         const focus = plan(unit.guide, 1);
         const prompt = p.fill('generate', {
             ...unitValues(unit), topic, seed: seed(),
@@ -48,4 +51,4 @@ export const rephrase: Task<'rephrase'> = {
         instructions: content.instructions_ru,
         reference: content.reference_en.join(' | '),
     }, answer.text),
-};
+} satisfies Task<'rephrase'>;

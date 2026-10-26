@@ -7,6 +7,8 @@
 // При --repeat N у каждого score — ещё средние по повторам и их min/max: разброс — шум модели.
 // --dry-run — только прочитать случаи и сверить юниты с базой, без Langfuse и вызовов модели.
 // Незаполненные случаи (заготовка) в прогон не идут — их число выводится.
+// --controls-only — только контрольные случаи судьи (раздел controls): при подъёме версии судьи.
+import { execSync } from 'node:child_process';
 import fs from 'node:fs';
 import { LangfuseClient, type Evaluation, type ExperimentItemResult } from '@langfuse/client';
 import { LangfuseSpanProcessor } from '@langfuse/otel';
@@ -14,16 +16,29 @@ import { NodeSDK } from '@opentelemetry/sdk-node';
 import { parse } from 'yaml';
 import { getUnits, listUnits } from '../src/server/catalog';
 import * as choiceGenerate from './choice-generate';
+import * as freeGenerate from './free-generate';
 import * as freeGrade from './free-grade';
 import * as gapGenerate from './gap-generate';
+import * as rephraseGenerate from './rephrase-generate';
 import * as rephraseGrade from './rephrase-grade';
 import type { Suite, SuiteCase, Units } from './suite';
+import * as translateGenerate from './translate-generate';
 import * as translateGrade from './translate-grade';
 
 const SUITES: Record<string, Suite> = {
     'gap-generate': gapGenerate, 'choice-generate': choiceGenerate,
+    'rephrase-generate': rephraseGenerate, 'translate-generate': translateGenerate, 'free-generate': freeGenerate,
     'rephrase-grade': rephraseGrade, 'translate-grade': translateGrade, 'free-grade': freeGrade,
 };
+
+/**
+ * Коммит, на котором идёт прогон, и есть ли незакоммиченные правки в промптах и evals:
+ * без них текст версии восстанавливается из git по коммиту. Только запись, не запрет.
+ */
+function gitState(): { commit: string; dirty: boolean } {
+    const run = (cmd: string) => execSync(cmd, { encoding: 'utf8' }).trim();
+    return { commit: run('git rev-parse HEAD'), dirty: run('git status --porcelain -- src/server/tasks evals') !== '' };
+}
 
 /** Генерации идут ~20 с; больше параллельных — упрёмся в rate limit. */
 const CONCURRENCY = 4;
@@ -35,9 +50,9 @@ function args() {
     const r = rest.indexOf('--repeat');
     const repeat = r >= 0 ? Number(rest[r + 1]) : 1;
     if (!(suite in SUITES) || !area || !Number.isInteger(repeat) || repeat < 1) {
-        throw new Error(`npm run eval -- <${Object.keys(SUITES).join('|')}> <область> [--repeat N] [--report] [--dry-run]`);
+        throw new Error(`npm run eval -- <${Object.keys(SUITES).join('|')}> <область> [--repeat N] [--report] [--dry-run] [--controls-only]`);
     }
-    return { suite, area, repeat, report: rest.includes('--report'), dryRun: rest.includes('--dry-run') };
+    return { suite, area, repeat, report: rest.includes('--report'), dryRun: rest.includes('--dry-run'), controlsOnly: rest.includes('--controls-only') };
 }
 
 const casesFile = (suite: string, area: string) => `evals/${suite}/cases/${area}.yaml`;
@@ -71,7 +86,8 @@ async function sync(lf: LangfuseClient, name: string, file: string, data: CaseFi
     for (const c of data.cases) {
         await lf.dataset.createItem({
             datasetName: name, id: itemId(c), status: 'ACTIVE',
-            input: c.input, expectedOutput: c.expected, metadata: { case: c.id, label: c.label, workspace_id: data.workspace_id },
+            input: c.input, expectedOutput: c.expected,
+            metadata: { case: c.id, label: c.label, workspace_id: data.workspace_id, ...(c.control ? { control: true } : {}) },
         });
     }
     const existing = await lf.api.datasetItems.list({ datasetName: name, limit: 100 });
@@ -86,6 +102,7 @@ async function sync(lf: LangfuseClient, name: string, file: string, data: CaseFi
 
 /** Номер повтора — прохода по всем случаям; пишется в metadata элемента прогона. */
 const repeatOf = (r: ExperimentItemResult) => (r.item.metadata as { repeat?: number } | undefined)?.repeat ?? 1;
+const isControl = (meta: unknown) => (meta as { control?: boolean } | undefined)?.control === true;
 
 const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
 
@@ -127,7 +144,7 @@ const averages = (repeat: number) => async ({ itemResults }: { itemResults: Expe
     ]);
 
 async function main() {
-    const { suite, area, repeat, report, dryRun } = args();
+    const { suite, area, repeat, report, dryRun, controlsOnly } = args();
     const s = SUITES[suite];
     const name = `${area}/${suite}`;
     const all = await readCases(area, suite);
@@ -157,8 +174,12 @@ async function main() {
     sdk.start();
     const lf = new LangfuseClient();
     try {
-        const items = await sync(lf, name, casesFile(suite, area), data);
+        // Синхронизируются все случаи, иначе пропущенные ушли бы в архив; в прогон — только нужные.
+        const synced = await sync(lf, name, casesFile(suite, area), data);
+        const items = controlsOnly ? synced.filter((it) => isControl(it.metadata)) : synced;
+        if (!items.length) throw new Error(`${casesFile(suite, area)}: нет контрольных случаев`);
         const v = s.versions();
+        const git = gitState();
         const at = new Date().toISOString().slice(0, 16).replace('T', ' ');
         const runName = [v.prompt, v.judge, at].filter(Boolean).join(' · ');
         console.log(`${name}: ${items.length} случаев × ${repeat} — ${runName}`);
@@ -166,7 +187,7 @@ async function main() {
             name, runName,
             description: v.judge ? `Генерация ${v.prompt}, судья ${v.judge}` : `Проверка ${v.prompt}`,
             // repeats, а не repeat: metadata прогона SDK сливает поверх metadata элемента, и номер повтора затирался бы числом повторов.
-            metadata: { prompt_version: v.prompt, judge_version: v.judge ?? null, repeats: repeat },
+            metadata: { prompt_version: v.prompt, judge_version: v.judge ?? null, repeats: repeat, commit: git.commit, dirty: git.dirty },
             // Копия элемента датасета на повтор: id тот же (связь с датасетом), metadata — с номером.
             data: Array.from({ length: repeat }, (_, k) => items.map((it) => ({ ...it, metadata: { ...(it.metadata as object), repeat: k + 1 } }))).flat(),
             task: ({ input }) => s.task(input),
@@ -175,13 +196,18 @@ async function main() {
             maxConcurrency: CONCURRENCY,
         });
         const units = await unitNames(data.workspace_id);
-        const st = stats(result.itemResults, repeat);
-        summary(s, result.itemResults, units, st, repeat);
+        const st = stats(result.itemResults.filter((r) => !isControl(r.item.metadata)), repeat);
+        const ctl = controlSummary(s, result.itemResults, units, repeat);
+        summary(s, result.itemResults.filter((r) => !isControl(r.item.metadata)), units, st, repeat);
+        if (ctl.length) console.log(`\n${ctl.join('\n')}`);
         console.log(`\n${result.experimentUrl ?? '(ссылка не получена)'}`);
         if (report) {
-            const file = `evals/reports/${suite}_${area}_${at.replace(' ', '_').replace(':', '')}.md`;
+            // Имя — с точностью до минуты; два прогона в одну минуту не должны затирать отчёт друг друга.
+            const base = `evals/reports/${suite}_${area}_${at.replace(' ', '_').replace(':', '')}`;
+            let file = `${base}.md`;
+            for (let k = 2; fs.existsSync(file); k++) file = `${base}_${k}.md`;
             fs.mkdirSync('evals/reports', { recursive: true });
-            fs.writeFileSync(file, markdown({ name, runName, versions: v, repeat, url: result.experimentUrl }, result.itemResults, st, units, (r) => s.reportItem(r, units)));
+            fs.writeFileSync(file, markdown({ name, runName, versions: v, repeat, url: result.experimentUrl, git, controls: ctl }, result.itemResults, st, units, (r) => s.reportItem(r, units)));
             console.log(`Отчёт: ${file}`);
         }
     } finally {
@@ -198,7 +224,26 @@ const unitNames = async (workspaceId: number): Promise<Units> =>
 const unitOf = (r: ExperimentItemResult) => (r.item.input as { unit_id: number }).unit_id;
 const labelOf = (r: ExperimentItemResult) => (r.item.metadata as { label?: string } | undefined)?.label ?? '—';
 
+/**
+ * Контрольные случаи — отдельно от средних обычных: сколько поймано и, по каждому не пойманному,
+ * что ответил судья. Пусто, если контрольных в прогоне нет.
+ */
+function controlSummary(s: Suite, results: ExperimentItemResult[], units: Units, repeat: number): string[] {
+    const ctl = results.filter((r) => isControl(r.item.metadata));
+    if (!ctl.length) return [];
+    const caught = ctl.filter((r) => r.evaluations.some((e) => e.name === 'control_caught' && e.value === 1)).length;
+    const out = [`Контрольные случаи: пойманы ${caught} из ${ctl.length}`];
+    for (const r of ctl) {
+        const lines = s.problems(r, units);
+        if (!lines.length) continue;
+        const meta = r.item.metadata as { case?: string };
+        out.push(`  ${meta.case} · ${units.get(unitOf(r)) ?? `юнит ${unitOf(r)}`}${repeat > 1 ? ` · повтор ${repeatOf(r)}` : ''}`, ...lines.map((l) => `    ${l}`));
+    }
+    return out;
+}
+
 function summary(s: Suite, results: ExperimentItemResult[], units: Units, st: Stat[], repeat: number) {
+    if (!results.length) return;
     const W = 22;
     if (repeat > 1) {
         console.log(`\n${'Средние'.padEnd(W + 2)} общее  min    max    ${Array.from({ length: repeat }, (_, k) => `#${k + 1}`.padEnd(6)).join(' ')}`);
@@ -223,7 +268,10 @@ function summary(s: Suite, results: ExperimentItemResult[], units: Units, st: St
 
 /** Отчёт прогона: шапка с версиями и средними, затем каждое задание целиком — вид пункта задаёт набор. */
 function markdown(
-    run: { name: string; runName: string; versions: { prompt: string; judge?: string }; repeat: number; url?: string },
+    run: {
+        name: string; runName: string; versions: { prompt: string; judge?: string }; repeat: number; url?: string;
+        git: { commit: string; dirty: boolean }; controls: string[];
+    },
     results: ExperimentItemResult[],
     st: Stat[],
     units: Units,
@@ -235,14 +283,17 @@ function markdown(
             ? [`- генерация: ${run.versions.prompt}`, `- судья: ${run.versions.judge}`]
             : [`- проверка: ${run.versions.prompt}`]),
         `- случаев: ${results.length} (повторов: ${run.repeat})`,
+        `- коммит: ${run.git.commit.slice(0, 7)}${run.git.dirty ? ' + незакоммиченные изменения в src/server/tasks или evals — текст версий из git не восстанавливается' : ''}`,
         `- Langfuse: ${run.url ?? '—'}`, '',
-        ...(run.repeat > 1
+        // Без обычных случаев (--controls-only) таблицы средних нет.
+        ...(!st.length ? [] : run.repeat > 1
             ? [
                 `| score | среднее | min | max | ${Array.from({ length: run.repeat }, (_, k) => `повтор ${k + 1}`).join(' | ')} |`,
                 `|---|---|---|---|${'---|'.repeat(run.repeat)}`,
                 ...st.map((s) => `| ${s.name} | ${f2(s.mean)} | ${f2(range(s).min)} | ${f2(range(s).max)} | ${s.byRepeat.map(f2).join(' | ')} |`),
             ]
             : ['| score | среднее |', '|---|---|', ...st.map((s) => `| ${s.name} | ${f2(s.mean)} |`)]),
+        ...(run.controls.length ? ['', '```', ...run.controls, '```'] : []),
     ];
     const items = results.flatMap((r) => {
         const body = item(r);

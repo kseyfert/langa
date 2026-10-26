@@ -6,6 +6,7 @@ import { free } from '../src/server/tasks/free';
 import { prompts } from '../src/server/tasks/prompt';
 import { rephrase } from '../src/server/tasks/rephrase';
 import { translate } from '../src/server/tasks/translate';
+import type { Task as TaskOf } from '../src/server/tasks/types';
 import type { Suite, SuiteCase, Units } from './suite';
 
 // Общее у наборов проверки открытых ответов (rephrase-grade, translate-grade, free-grade;
@@ -13,7 +14,8 @@ import type { Suite, SuiteCase, Units } from './suite';
 // в базу. Судьи нет: вердикт, статус целевого юнита и побочные ошибки сравниваются с expect кодом.
 
 type OpenType = 'rephrase' | 'translate' | 'free';
-const TASKS = { rephrase, translate, free };
+// Через Task, а не типы объектов: у free своя parseAnswer с одним параметром, а зовём единообразно.
+const TASKS: { [T in OpenType]: TaskOf<T> } = { rephrase, translate, free };
 
 const TARGET_STATUSES = ['correct', 'error', 'partial', 'not_used'] as const;
 type TargetStatus = OpenEvaluation['target']['status'];

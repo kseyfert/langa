@@ -21,13 +21,16 @@ function normalize(d: unknown): FreeContent {
     };
 }
 
-export const free: Task<'free'> = {
+/** Как GapOptions: тема и недавние задания извне — для evals, приложение их не передаёт. */
+export type FreeOptions = { topic?: string; recent?: string[] };
+
+export const free = {
     type: 'free',
 
-    async generate(unitId) {
+    async generate(unitId: number, opts: FreeOptions = {}) {
         const p = prompts('free', ['generate']);
-        const topic = randomTopic();
-        const [unit, used] = await Promise.all([getUnit(unitId), recent(unitId)]);
+        const topic = opts.topic ?? randomTopic();
+        const [unit, used] = await Promise.all([getUnit(unitId), opts.recent ?? recent(unitId)]);
         const focus = plan(unit.guide, 1);
         const prompt = p.fill('generate', {
             ...unitValues(unit), topic, seed: seed(),
@@ -53,4 +56,4 @@ export const free: Task<'free'> = {
         question: content.prompt_en || content.prompt_ru || '',
         reference: content.reference_en.join(' | '),
     }, answer.text),
-};
+} satisfies Task<'free'>;
