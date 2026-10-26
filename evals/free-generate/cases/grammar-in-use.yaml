@@ -51,17 +51,6 @@ cases:
 # и expect_fail — критерии, которые судья обязан провалить. Оценка — control_caught, отдельно
 # от средних обычных случаев. Прогон только их: --controls-only.
 controls:
-  - id: control-free-38-real-money
-    unit_id: 38  # 38. if I do … and if I did …
-    # задание из базы free-generate с судьёй v1 (2026-10-26 12:36 UTC), повтор 2
-    expect_fail: [requires_target]
-    content:
-      instructions_ru: Ответь по-английски в 2–4 предложениях.
-      prompt_en: Imagine your bank tells you that 50,000 euros has arrived in your account and it is yours to keep. What possibilities does that open up for you?
-      reference_en:
-        - If I had 50,000 euros, I could pay off my student loan straight away. I might also quit my job for a few months and travel, or I could finally start my own small business.
-      focus:
-        - воображаемое условие с could или might в главной части
   - id: control-free-40-wrong-turn
     unit_id: 40  # 40. if I had known … , I wish I had known …
     # задание из базы free-generate с судьёй v1 (2026-10-26 12:36 UTC), повтор 1
@@ -73,3 +62,36 @@ controls:
         - I was chatting with my friend the whole time and never checked the map. If I had been paying attention, I wouldn't have missed the turn. We might have reached the car before sunset if we hadn't been walking so slowly.
       focus:
         - длительное действие в условии в прошлом (if + had been + -ing)
+  - id: control-free-3-coffee-machine
+    unit_id: 3    # 3. Present continuous and present simple 1 (I am doing and I do)
+    # синтетический: ситуация не даёт места конструкции из focus
+    expect_fail: [requires_target, reference_ok]
+    content:
+      instructions_ru: Ответь по-английски в 2–4 предложениях.
+      prompt_en: Your office coffee machine is serviced by a technician every Monday morning. A new colleague asks how the machine is looked after. What do you tell her?
+      reference_en:
+        - A technician is always coming on Monday mornings to clean it. He's always checking the water filter and descaling it too, so the coffee tastes good all week and the machine never breaks down.
+      focus:
+        - "always + continuous: раздражающая чужая привычка (жалобы, опоздания, беспорядок)"
+  - id: control-free-40-perfect-hike
+    unit_id: 40   # 40. if I had known … , I wish I had known …
+    # синтетический: ситуация не даёт места конструкции из focus
+    expect_fail: [requires_target, reference_ok]
+    content:
+      instructions_ru: Ответь по-английски в 2–4 предложениях.
+      prompt_en: Last weekend you went hiking in perfect weather, reached the top early and had a picnic with a great view. A friend asks how the trip went. What do you tell them?
+      reference_en:
+        - I wish I hadn't left so early, and I wish I hadn't taken the steep path. But the view from the top was amazing, and our picnic in the sun was the best part of the whole weekend.
+      focus:
+        - сожаление о сделанном (wish + hadn't + V3)
+  - id: control-free-28-car-wash
+    unit_id: 28   # 28. must and can't
+    # синтетический: ситуация не даёт места конструкции из focus
+    expect_fail: [requires_target, reference_ok]
+    content:
+      instructions_ru: Ответь по-английски в 2–4 предложениях.
+      prompt_en: Yesterday you watched your neighbour wash his car outside for an hour. Today another neighbour asks whether he cleaned it himself or took it to a car wash. What do you say?
+      reference_en:
+        - He can't have taken it to a car wash. I watched him do it himself for a whole hour yesterday afternoon, with a bucket and a sponge, and he can't have missed a single spot.
+      focus:
+        - "невозможное в прошлом: забыл, видел, сделал — исключено (can't have + V3)"

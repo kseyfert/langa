@@ -28,8 +28,11 @@ type Control = { expect_fail: string[] };
 const isControl = (expected: unknown): expected is Control => Array.isArray((expected as Control | undefined)?.expect_fail);
 export type Output = { content: Content } | { error: string };
 
-/** Критерий судьи: ключ в ответе, имя score, что не так при false. */
-export type Criterion = { key: string; score: string; issue: string };
+/**
+ * Критерий судьи: ключ в ответе, имя score, что не так при false. fields — строковые поля,
+ * которые судья заполняет до оценки (рассуждение по шагам); они идут в отчёт.
+ */
+export type Criterion = { key: string; score: string; issue: string; fields?: string[] };
 
 /** Общие для трёх типов; свои добавляет набор. */
 export const COMMON: Criterion[] = [
@@ -39,14 +42,15 @@ export const COMMON: Criterion[] = [
     { key: 'focus_match', score: 'judge_focus', issue: 'не по своему пункту focus' },
 ];
 
-type Verdict = Record<string, { ok: boolean; note_ru: string }>;
+type Verdict = Record<string, { ok: boolean; note_ru: string } & Record<string, unknown>>;
 
 /** Ответ судьи строго по схеме: иначе оценки не ставятся, а не угадываются. */
 function verdict(raw: unknown, criteria: Criterion[]): Verdict {
     const o = (raw ?? {}) as Record<string, unknown>;
     for (const c of criteria) {
         const v = (o[c.key] ?? {}) as Record<string, unknown>;
-        if (typeof v.ok !== 'boolean' || typeof v.note_ru !== 'string') throw new Error(`судья: ${c.key} не по схеме`);
+        const fields = (c.fields ?? []).every((f) => typeof v[f] === 'string');
+        if (typeof v.ok !== 'boolean' || typeof v.note_ru !== 'string' || !fields) throw new Error(`судья: ${c.key} не по схеме`);
     }
     return o as Verdict;
 }
@@ -108,6 +112,10 @@ function judge(type: OpenType, file: string, criteria: Criterion[]): Evaluator {
     };
 }
 
+/** Поля рассуждения критерия одной строкой — для отчёта и разбора не пойманных контрольных. */
+const fieldsOf = (c: Criterion, v: Verdict) =>
+    (c.fields ?? []).map((f) => `${f}: ${v[c.key][f] ? `«${v[c.key][f]}»` : '—'}`).join(' · ');
+
 /** Вердикт судьи целиком: у обычного случая — в первом score, у контрольного — в control_caught. */
 const verdictOf = (r: ExperimentItemResult) =>
     r.evaluations.map((e) => (e.metadata as { verdict?: Verdict } | undefined)?.verdict).find(Boolean);
@@ -120,7 +128,10 @@ function controlProblems(r: ExperimentItemResult, criteria: Criterion[]): string
     const { verdict: v, missed } = e.metadata as { verdict: Verdict; missed: string[] };
     return [
         `не пойман: ждали провала ${(r.item.expectedOutput as Control).expect_fail.join(', ')}, не провалены ${missed.join(', ')}`,
-        ...criteria.map((c) => `судья: ${c.key} ${v[c.key].ok}${v[c.key].note_ru ? ` — ${v[c.key].note_ru}` : ''}`),
+        ...criteria.flatMap((c) => [
+            `судья: ${c.key} ${v[c.key].ok}${v[c.key].note_ru ? ` — ${v[c.key].note_ru}` : ''}`,
+            ...(c.fields ? [`  ${fieldsOf(c, v)}`] : []),
+        ]),
     ];
 }
 
@@ -166,7 +177,7 @@ function reportItem(criteria: Criterion[]) {
         out.push('', ...criteria.map((x) => {
             const { ok, note_ru } = v[x.key];
             const head = ok ? `${x.key}: true` : `**${x.key}: false**`;
-            return `- ${head}${note_ru ? ` — ${note_ru}` : ''}`;
+            return `- ${head}${note_ru ? ` — ${note_ru}` : ''}${x.fields ? `\n  - ${fieldsOf(x, v)}` : ''}`;
         }));
         return out.join('\n');
     };
