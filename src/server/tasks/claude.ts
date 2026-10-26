@@ -31,7 +31,8 @@ function topLevelJson(text: string): string[] {
 }
 
 /**
- * Ответ модели целиком, иначе тело code fence, иначе последний разбираемый объект в тексте.
+ * Для вызовов без схемы ответа — судей evals (их не трогаем, чтобы измерение не менялось
+ * вместе с измеряемым). Ответ модели целиком, иначе тело code fence, иначе последний разбираемый объект в тексте.
  * Последний — потому что модель иногда пишет JSON, замечает ошибку («Wait — …») и присылает
  * исправленный: верен второй.
  */
@@ -58,14 +59,18 @@ export type CallInfo = {
     workspaceId: number;
 };
 
+/** JSON-схема ответа (structured outputs): формат задаёт код, а не текст промпта. */
+export type JsonSchema = Record<string, unknown>;
+
 /**
- * Один запрос к Claude, ответ — JSON. Ошибки API переводятся в понятные TaskError.
+ * Один запрос к Claude, ответ — JSON. Со схемой ответ по ней гарантирован (output_config.format),
+ * без схемы — разбирается терпимо (parseJsonLoose). Ошибки API переводятся в понятные TaskError.
  * system — неизменная часть промпта: она кэшируется и в следующих запросах стоит дешевле.
  * Каждый вызов — трейс Langfuse с генерацией внутри; без ключей Langfuse это no-op.
  */
-export function askJson(prompt: string, model: string, system: string | undefined, info: CallInfo): Promise<unknown> {
+export function askJson(prompt: string, model: string, system: string | undefined, info: CallInfo, schema?: JsonSchema): Promise<unknown> {
     const metadata = { call: info.call, type: info.type, prompt_version: info.promptVersion, unit_id: info.unitId, workspace_id: info.workspaceId };
-    const run = () => traced(info.call, prompt, model, system);
+    const run = () => traced(info.call, prompt, model, system, schema);
     // Внутри наблюдения Langfuse (прогон evals) генерация ложится в его трейс, имя трейса не трогаем.
     if (inLangfuseObservation()) return propagateAttributes({ metadata }, run);
     // Иначе свой трейс на вызов: без этого генерация легла бы под span запроса Next, который в Langfuse не уходит.
@@ -79,7 +84,7 @@ function inLangfuseObservation(): boolean {
     return span?.instrumentationScope?.name === 'langfuse-sdk';
 }
 
-async function traced(name: CallInfo['call'], prompt: string, model: string, system: string | undefined): Promise<unknown> {
+async function traced(name: CallInfo['call'], prompt: string, model: string, system: string | undefined, schema: JsonSchema | undefined): Promise<unknown> {
     const gen = startObservation(name, {
         model,
         modelParameters: { max_tokens: MAX_TOKENS },
@@ -103,6 +108,7 @@ async function traced(name: CallInfo['call'], prompt: string, model: string, sys
             betas: ['server-side-fallback-2026-07-01'],
             fallbacks: 'default',
             ...(system && { system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }] }),
+            ...(schema && { output_config: { format: { type: 'json_schema', schema } } }),
             messages: [{ role: 'user', content: prompt }],
         });
     } catch (e) {
@@ -122,13 +128,14 @@ async function traced(name: CallInfo['call'], prompt: string, model: string, sys
             cache_read_input_tokens: u.cache_read_input_tokens ?? 0,
             cache_creation_input_tokens: u.cache_creation_input_tokens ?? 0,
         },
-        metadata: { stop_reason: res.stop_reason, requested_model: model },
+        metadata: { stop_reason: res.stop_reason, requested_model: model, output_format: schema ? 'json_schema' : 'text' },
     });
     if (res.stop_reason === 'refusal') return fail('Claude отказался отвечать на этот запрос.', 'stop_reason: refusal');
     if (res.stop_reason === 'max_tokens') return fail(BAD_FORMAT, `stop_reason: max_tokens (${MAX_TOKENS})`);
     let json;
     try {
-        json = parseJsonLoose(text);
+        // Со схемой ответ — ровно JSON: терпимый разбор только спрятал бы нарушение формата.
+        json = schema ? JSON.parse(text) : parseJsonLoose(text);
     } catch {
         return fail(BAD_FORMAT, 'ответ не разбирается как JSON');
     }

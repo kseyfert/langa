@@ -1,5 +1,5 @@
 ---
-version: free-gen-v1
+version: free-gen-v2
 ---
 You write grammar practice for a Russian-speaking adult learner of English (around B2).
 
@@ -28,4 +28,3 @@ Make one free-answer task.
 - Do not repeat the instructions (answer length, language) inside the prompt.
 - "instructions_ru": generic, must not name or describe the grammar, e.g. "Ответь по-английски в 2–4 предложениях."
 - "reference_en": one model answer of {{min}}–{{max}} characters: the learner's answer must fit the same limit.
-Reply with only JSON: {"instructions_ru":"...","prompt_en":"...","reference_en":["one model answer"]}

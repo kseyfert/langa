@@ -1,5 +1,5 @@
 ---
-version: rephrase-gen-v4
+version: rephrase-gen-v5
 ---
 You write grammar practice for a Russian-speaking adult learner of English (around B2).
 
@@ -26,4 +26,3 @@ Make one rephrasing task.
 - Choose a source sentence where the target structure is the most natural way for a native speaker to express the same meaning; avoid situations with many equally natural paraphrases that bypass it.
 - Do not generate any opening words, key words or hints for the answer.
 - "instructions_ru": generic, must not name or describe the grammar, e.g. "Перепиши предложение другими словами, сохранив смысл."
-Reply with only JSON: {"instructions_ru":"...","source_en":"...","reference_en":["one model answer"]}

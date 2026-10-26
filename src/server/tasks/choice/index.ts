@@ -1,7 +1,7 @@
 import 'server-only';
 import { getUnit } from '../../catalog';
 import type { ChoiceContent, ClosedEvaluation } from '../../exercises/types';
-import { askJson, MODEL_GENERATE } from '../claude';
+import { askJson, MODEL_GENERATE, type JsonSchema } from '../claude';
 import { prompts, seed, unitValues } from '../prompt';
 import { randomTopic } from '../topics';
 import { TaskError, type Task } from '../types';
@@ -10,6 +10,16 @@ import { plan, recent } from '../variety';
 const isStr = (v: unknown): v is string => typeof v === 'string';
 
 type Item = ChoiceContent['items'][number];
+
+/** Объект со всеми полями обязательными и без лишних — так требует structured outputs. Порядок полей — порядок в ответе. */
+const obj = (properties: Record<string, unknown>) => ({ type: 'object', additionalProperties: false, required: Object.keys(properties), properties });
+const str = (description?: string) => ({ type: 'string', ...(description && { description }) });
+
+/** Как у gap: схема ответа генерации; 2–3 варианта и валидный correct держит normalize. */
+const SCHEMA: JsonSchema = obj({
+    instructions_ru: str(),
+    items: { type: 'array', items: obj({ text: str(), options: { type: 'array', items: str() }, correct: { type: 'integer' }, explain_ru: str('one short sentence why') }) },
+});
 
 /** Пункт задания или null, если он не той формы. */
 function item(i: unknown): Item | null {
@@ -51,7 +61,7 @@ export const choice = {
         });
         const raw = await askJson(prompt, MODEL_GENERATE, undefined, {
             call: 'generate', type: 'choice', promptVersion: p.version, unitId, workspaceId: unit.workspaceId,
-        });
+        }, SCHEMA);
         const content = normalize(raw, focus);
         return { content, topic, model: MODEL_GENERATE, promptVersion: p.version };
     },

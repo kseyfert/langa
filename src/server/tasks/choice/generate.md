@@ -1,5 +1,5 @@
 ---
-version: choice-gen-v5
+version: choice-gen-v6
 ---
 You write grammar practice for a Russian-speaking adult learner of English (around B2).
 
@@ -33,4 +33,3 @@ Make a multiple-choice exercise of exactly 6 items.
 - The correct option must not be guessable from the words around the gap without knowing the unit's rule.
 - The key is British English, as in the book. If an item has a known difference between British and American usage, mention it briefly in explain_ru.
 - Vary the position of the correct option.
-Reply with only JSON: {"instructions_ru":"...","items":[{"text":"...","options":["...","..."],"correct":0,"explain_ru":"one short sentence why"}]}

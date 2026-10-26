@@ -1,5 +1,5 @@
 ---
-version: translate-gen-v1
+version: translate-gen-v2
 ---
 You write grammar practice for a Russian-speaking adult learner of English (around B2).
 
@@ -26,4 +26,3 @@ Make one translation task from Russian into English.
 - Do not mention grammar in the source.
 - "instructions_ru": generic, must not name or describe the grammar, e.g. "Переведи на английский."
 - "target_note_ru": one or two short sentences on what the learner should notice; it is shown only after checking. Address the learner as «ты».
-Reply with only JSON: {"instructions_ru":"...","source_ru":"...","target_note_ru":"...","reference_en":["one model translation"]}

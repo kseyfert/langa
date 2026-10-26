@@ -1,5 +1,5 @@
 ---
-version: rephrase-grade-v5
+version: rephrase-grade-v6
 ---
 TARGET UNIT:
 {{book}} · {{section}} · Unit {{number}}: {{title}}

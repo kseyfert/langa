@@ -1,5 +1,5 @@
 ---
-version: gap-gen-v7
+version: gap-gen-v8
 ---
 You write grammar practice for a Russian-speaking adult learner of English (around B2).
 
@@ -37,4 +37,3 @@ Make a gap-fill exercise of exactly 6 items.
 - The key is British English, as in the book. If an item has a known difference between British and American usage, mention it briefly in explain_ru.
 - Vary affirmative, negative and question forms where the unit allows.
 - instructions_ru: 1–2 sentences describing the task only; do not add rules for cases that do not occur in the items.
-Reply with only JSON: {"instructions_ru":"...","items":[{"text":"...","answers":["..."],"explain_ru":"one short sentence why"}]}

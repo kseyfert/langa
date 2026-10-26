@@ -1,7 +1,7 @@
 import 'server-only';
 import { catalogForPrompt, getUnit, listUnits } from '../catalog';
 import type { OpenAnswer, OpenEvaluation, Verdict } from '../exercises/types';
-import { askJson, MODEL_GRADE } from './claude';
+import { askJson, MODEL_GRADE, type JsonSchema } from './claude';
 import { prompts, unitValues, type Values } from './prompt';
 import { TaskError, type Checked } from './types';
 
@@ -24,6 +24,41 @@ const score = (v: unknown) => Math.round(Math.max(0, Math.min(100, Number(v) || 
 const oneOf = <T extends string>(list: readonly T[], v: unknown, dflt: T): T => (list.includes(v as T) ? (v as T) : dflt);
 
 type Raw = Record<string, unknown>;
+
+/** Объект со всеми полями обязательными и без лишних — так требует structured outputs. Порядок полей — порядок в ответе. */
+const object = (properties: Record<string, unknown>) => ({ type: 'object', additionalProperties: false, required: Object.keys(properties), properties });
+const text = (description?: string) => ({ type: 'string', ...(description && { description }) });
+
+/**
+ * Схема ответа проверки — общая у трёх типов (формат задаёт код, не промпт). Описания полей —
+ * бывший хвост «Reply with only JSON» grade-system.md. Диапазон баллов схема не держит — его держит normalize.
+ */
+const SCHEMA: JsonSchema = object({
+    verdict: { type: 'string', enum: ['correct_target', 'correct_non_target', 'incorrect'] },
+    summary_ru: text('1–2 sentences'),
+    target_unit: object({
+        status: { type: 'string', enum: [...TARGET_STATUSES] },
+        score: { anyOf: [{ type: 'integer' }, { type: 'null' }], description: '0-100 or null if not_used' },
+        fragment: text('exact quote from the answer or empty'),
+        fix: text('corrected fragment or empty'),
+        comment_ru: text(),
+    }),
+    other_units: {
+        type: 'array',
+        items: object({
+            id: { type: 'integer', description: 'catalog id' },
+            status: { type: 'string', enum: [...OTHER_STATUSES] },
+            score: { type: 'integer', description: '0-100' },
+            notable: { type: 'boolean', description: 'true only for a correct use that is advanced or especially well done and worth praising; otherwise false' },
+            fragment: text('exact quote'),
+            fix: text('corrected fragment or empty'),
+            comment_ru: text(),
+        }),
+    },
+    other_issues: { type: 'array', items: object({ fragment: text(), fix: text(), comment_ru: text('spelling, vocabulary, meaning, punctuation') }) },
+    corrected_answer: text("the learner's answer with minimal corrections"),
+    natural_version: text('how a native speaker would naturally say it'),
+});
 
 /** Один фрагмент ответа входит в другой — значит, речь об одном и том же месте. */
 const overlaps = (a: string, b: string) => {
@@ -91,6 +126,6 @@ export async function gradeOpen(type: 'rephrase' | 'translate' | 'free', unitId:
     const user = p.fill('grade-user', { ...unitValues(unit), ...task, answer });
     const raw = await askJson(user, MODEL_GRADE, system, {
         call: 'grade', type, promptVersion: p.version, unitId, workspaceId: unit.workspaceId,
-    });
+    }, SCHEMA);
     return { evaluation: normalize(raw, unitId, new Set(ids), excluded), model: MODEL_GRADE, promptVersion: p.version };
 }
