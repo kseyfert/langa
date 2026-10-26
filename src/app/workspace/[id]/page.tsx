@@ -2,6 +2,7 @@ import { marked } from 'marked';
 import { notFound } from 'next/navigation';
 import { getWorkspace, hasTasks, listUnits, type Unit, type Workspace } from '@/server/catalog';
 import { unitStatus } from '@/components/unitStatus';
+import { workspaceContent } from '@/server/content';
 import { unitRatings, type UnitRating } from '@/server/learner';
 import { SessionPlayer } from './SessionPlayer';
 import { UnitMap, type MapSection } from './UnitMap';
@@ -45,8 +46,10 @@ export default async function WorkspacePage({ params }: { params: Promise<{ id: 
     let workspace: Workspace | null;
     let units: Unit[];
     let ratings: Map<number, UnitRating>;
+    let types: string[];
     try {
         [workspace, units, ratings] = await Promise.all([getWorkspace(id), listUnits(id), unitRatings()]);
+        types = workspace ? (await workspaceContent(id)).types : [];
     } catch (e) {
         return (
             <div className="stack">
@@ -122,6 +125,7 @@ export default async function WorkspacePage({ params }: { params: Promise<{ id: 
                                             rating={ratings.get(u.id) ?? null}
                                             started={u.started}
                                             hasTasks={hasTasks(u)}
+                                            types={types}
                                         />
                                     ))}
                                 </ul>

@@ -1,7 +1,15 @@
 import type { Evaluator, ExperimentItemResult } from '@langfuse/client';
+import { contentFile } from '../src/server/content/settings';
 
 // Что набор отдаёт общему запуску run.ts (architecture.md, «Evals»). Наборы генерации
 // (gap-generate, choice-generate) берут разбор случаев и проблем отсюда, наборы проверки — из grade.ts.
+// Набор — фабрика по области: случаи, судья и промпты у каждой области свои (content/<область>/).
+
+/** Файл набора <тип>-<вид> в содержимом области: content/<область>/<тип>/evals/<вид>-<what>. */
+export function suiteFile(area: string, suite: string, what: 'cases.yaml' | 'judge.md'): string {
+    const [type, kind] = suite.split('-');
+    return contentFile(area, type, 'evals', `${kind}-${what}`);
+}
 
 /** Случай из yaml в общем виде: run.ts сверяет юниты с базой и синхронизирует его в датасет. */
 export type SuiteCase = {

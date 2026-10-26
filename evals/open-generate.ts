@@ -6,7 +6,7 @@ import { askJson } from '../src/server/tasks/claude';
 import { generate } from '../src/server/tasks/generate';
 import { prompts, promptSet, unitValues } from '../src/server/tasks/prompt';
 import { FREE_LENGTH } from '../src/server/tasks/types';
-import { itemProblems, topicCases, type Problem, type Suite, type SuiteCase } from './suite';
+import { itemProblems, suiteFile, topicCases, type Problem, type Suite, type SuiteCase } from './suite';
 
 // Общее у наборов генерации открытых типов (rephrase-generate, translate-generate, free-generate;
 // architecture.md, «Evals»): настоящая генерация без записи в базу, оценки кодом и судьёй.
@@ -180,11 +180,11 @@ function reportItem(criteria: Criterion[]) {
     };
 }
 
-/** Набор генерации одного открытого типа; criteria — общие и свои критерии судьи. */
-export const openGenerateSuite = (type: OpenType, criteria: Criterion[]): Suite => {
-    const file = `evals/${type}-generate/judge.md`;
+/** Набор генерации одного открытого типа по области; criteria — общие и свои критерии судьи. */
+export const openGenerateSuite = (type: OpenType, criteria: Criterion[]) => (area: string): Suite => {
+    const file = suiteFile(area, `${type}-generate`, 'judge.md');
     return {
-        versions: () => ({ prompt: prompts(type, ['generate']).version, judge: judgePrompts(file).version }),
+        versions: () => ({ prompt: prompts(area, type, ['generate']).version, judge: judgePrompts(file).version }),
         cases: (data, f) => [...topicCases(data), ...controls(data, f, criteria)],
         async task(input) {
             const i = input as Input;

@@ -1,6 +1,7 @@
 import type { Evaluation, Evaluator, ExperimentItemResult } from '@langfuse/client';
 import { getUnits } from '../src/server/catalog';
-import { CONFIG, targetResult } from '../src/server/learner/model';
+import { readSettings } from '../src/server/content/settings';
+import { targetResult, type Config } from '../src/server/learner/model';
 import { VERDICTS, type OpenEvaluation, type Verdict } from '../src/server/exercises/types';
 import { grade } from '../src/server/tasks/grade';
 import { prompts } from '../src/server/tasks/prompt';
@@ -38,9 +39,9 @@ type Other = OpenEvaluation['others'][number];
 const sideR = (o: Other) => (o.score != null ? o.score / 100 : 0.3);
 /**
  * Побочные с ошибкой, которые снижают рейтинг (rating-model.md §3.1): error / partial с баллом
- * ниже FAIL_THRESHOLD. С баллом от порога в рейтинг не попадают — ни найденными, ни лишними не считаются.
+ * ниже FAIL_THRESHOLD области. С баллом от порога в рейтинг не попадают — ни найденными, ни лишними не считаются.
  */
-const sideErrors = (ev: OpenEvaluation) => ev.others.filter((o) => o.status !== 'correct' && sideR(o) < CONFIG.FAIL_THRESHOLD);
+const sideErrors = (ev: OpenEvaluation, c: Config) => ev.others.filter((o) => o.status !== 'correct' && sideR(o) < c.FAIL_THRESHOLD);
 
 function cases(data: unknown, file: string): SuiteCase[] {
     const d = data as CaseFile;
@@ -98,13 +99,13 @@ const score = (name: string, ok: boolean): Evaluation => ({ name, value: ok ? 1 
  * Целевой юнит засчитан провалом в рейтинге: результат ниже FAIL_THRESHOLD — как в learner/evidence.ts
  * («без конструкции» свидетельства не даёт, not_used — 0, без балла — 100 у correct, иначе 0).
  */
-function targetFails(ev: OpenEvaluation): boolean {
+function targetFails(ev: OpenEvaluation, c: Config): boolean {
     if (ev.verdict === 'correct_non_target') return false;
     const t = ev.target;
     const r = t.status === 'not_used'
-        ? targetResult({ kind: 'not_used' })
-        : targetResult({ kind: 'used', score: t.score ?? (t.status === 'correct' ? 100 : 0) });
-    return r != null && r < CONFIG.FAIL_THRESHOLD;
+        ? targetResult({ kind: 'not_used' }, c)
+        : targetResult({ kind: 'used', score: t.score ?? (t.status === 'correct' ? 100 : 0) }, c);
+    return r != null && r < c.FAIL_THRESHOLD;
 }
 
 /** Ветка случая — по id (<юнит>-<тип>-<ветка>). */
@@ -114,11 +115,11 @@ const isTargetError = (metadata: unknown) => String((metadata as { case?: string
  * Оценки по случаю, 0/1. side_found — только при непустом side_errors, no_false_side — при заданном,
  * target_fail — только в ветке target-error: ошибка в целевой конструкции должна дойти до рейтинга провалом.
  */
-const match: Evaluator = async ({ output, expectedOutput, metadata }) => {
+const match = (c: Config): Evaluator => async ({ output, expectedOutput, metadata }) => {
     const o = output as Output;
     if ('error' in o) return [];
     const e = expectedOutput as Expect;
-    const got = new Set(sideErrors(o.evaluation).map((x) => x.unit_id));
+    const got = new Set(sideErrors(o.evaluation, c).map((x) => x.unit_id));
     const ok = new Set(allowed(e));
     return [
         score('verdict_match', list(e.verdict).includes(o.evaluation.verdict)),
@@ -126,7 +127,7 @@ const match: Evaluator = async ({ output, expectedOutput, metadata }) => {
         ...(e.side_errors?.length ? [score('side_found', e.side_errors.every((x) => list(x).some((id) => got.has(id))))] : []),
         // Лишняя — побочная с ошибкой, которой нет ни в одном элементе списка.
         ...(e.side_errors ? [score('no_false_side', [...got].every((id) => ok.has(id)))] : []),
-        ...(isTargetError(metadata) ? [score('target_fail', targetFails(o.evaluation))] : []),
+        ...(isTargetError(metadata) ? [score('target_fail', targetFails(o.evaluation, c))] : []),
     ];
 };
 
@@ -139,14 +140,14 @@ function expected(e: Expect, units: Units): string {
     return `${list(e.verdict).join(' / ')} · target ${list(e.target).join(' / ')} · побочные: ${side}`;
 }
 
-function got(ev: OpenEvaluation, units: Units): string[] {
+function got(ev: OpenEvaluation, units: Units, c: Config): string[] {
     // Все побочные с ошибкой, с баллом; те, что от порога, помечены — в оценки они не идут.
     const side = ev.others.filter((o) => o.status !== 'correct');
-    const counted = new Set(sideErrors(ev));
+    const counted = new Set(sideErrors(ev, c));
     return [
         `${ev.verdict} · target ${ev.target.status}${ev.target.score === null ? '' : ` (${ev.target.score})`}`,
         side.length
-            ? `побочные: ${side.map((o) => `${unit(units, o.unit_id)} — ${o.status} (${o.score}${counted.has(o) ? '' : `, от порога ${CONFIG.FAIL_THRESHOLD * 100} — не в рейтинг`}): «${o.fragment}» → «${o.fix}»`).join('; ')}`
+            ? `побочные: ${side.map((o) => `${unit(units, o.unit_id)} — ${o.status} (${o.score}${counted.has(o) ? '' : `, от порога ${c.FAIL_THRESHOLD * 100} — не в рейтинг`}): «${o.fragment}» → «${o.fix}»`).join('; ')}`
             : 'побочные: нет',
         `summary_ru: ${ev.summary_ru || '—'}`,
     ];
@@ -155,19 +156,19 @@ function got(ev: OpenEvaluation, units: Units): string[] {
 const failed = (r: ExperimentItemResult) => r.evaluations.filter((e) => e.value === 0).map((e) => e.name);
 
 /** Несовпавший или упавший случай: ответ, ожидание и что вернула проверка. */
-function problems(r: ExperimentItemResult, units: Units): string[] {
+function problems(r: ExperimentItemResult, units: Units, c: Config): string[] {
     const o = r.output as Output;
     const answer = `ответ: «${(r.item.input as Input).answer}»`;
     if ('error' in o) return [o.error, answer];
     const bad = failed(r);
     if (!bad.length) return [];
     // Не r.expectedOutput: как и input, SDK в результате элемента его может не заполнить.
-    return [`не совпало: ${bad.join(', ')}`, answer, `ожидалось: ${expected(r.item.expectedOutput as Expect, units)}`, ...got(o.evaluation, units).map((s) => `проверка: ${s}`)];
+    return [`не совпало: ${bad.join(', ')}`, answer, `ожидалось: ${expected(r.item.expectedOutput as Expect, units)}`, ...got(o.evaluation, units, c).map((s) => `проверка: ${s}`)];
 }
 
 /** В отчёте — только несовпавшие и упавшие случаи: совпавшие калибровке ничего не дают. */
-function reportItem(r: ExperimentItemResult, units: Units): string | null {
-    const lines = problems(r, units);
+function reportItem(r: ExperimentItemResult, units: Units, c: Config): string | null {
+    const lines = problems(r, units, c);
     return lines.length ? lines.map((s) => `- ${s}`).join('\n') : null;
 }
 
@@ -202,13 +203,16 @@ const lint = (type: OpenType) => async (cs: SuiteCase[]): Promise<string[]> => {
     });
 };
 
-/** Набор проверки открытых ответов одного типа. */
-export const gradeSuite = (type: OpenType): Suite => ({
-    versions: () => ({ prompt: prompts(type, ['grade-system', 'grade-user']).version }),
-    cases,
-    lint: lint(type),
-    task: task(type),
-    evaluators: [match],
-    problems,
-    reportItem,
-});
+/** Набор проверки открытых ответов одного типа по области; порог рейтинга — из её конфига. */
+export const gradeSuite = (type: OpenType) => (area: string): Suite => {
+    const c = readSettings(area).config;
+    return {
+        versions: () => ({ prompt: prompts(area, type, ['grade-system', 'grade-user']).version }),
+        cases,
+        lint: lint(type),
+        task: task(type),
+        evaluators: [match(c)],
+        problems: (r, units) => problems(r, units, c),
+        reportItem: (r, units) => reportItem(r, units, c),
+    };
+};

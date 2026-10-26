@@ -26,7 +26,8 @@
 ```sql
 create table public.workspaces (
   id           bigint generated always as identity primary key,
-  name         text      not null,                 -- "Grammar In Use"; позже — настройки области
+  key          text      not null unique,          -- "grammar-in-use": папка content/<key>/ — промпты, evals, настройки области
+  name         text      not null,                 -- "Grammar In Use"
   created_at   timestamptz not null default now(),
   updated_at   timestamptz not null default now()
 );
@@ -89,7 +90,8 @@ alter table public.units enable row level security;
 ## 4. Типы и модуль доступа
 
 ```ts
-export type Workspace = { id: number; name: string };
+/** key — папка content/<key>/ (architecture.md, «Содержимое области»). */
+export type Workspace = { id: number; key: string; name: string };
 
 export type Unit = {
   id: number;

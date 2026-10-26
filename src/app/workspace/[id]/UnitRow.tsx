@@ -9,7 +9,6 @@ import { MeterHold, MeterSpark } from '@/components/UnitMeter';
 import type { UnitRating } from '@/server/learner';
 import type { ExerciseView } from '@/server/tasks';
 import { setUnitStarted, startExercise } from '@/app/actions';
-import { READY_TYPES } from '@/server/tasks/types';
 
 // Выбор типа задания — временно, на время тестов. Свой у каждого юнита,
 // запоминается в браузере.
@@ -38,9 +37,11 @@ type Props = {
     started: boolean;
     /** false — guide пуст, заданий по юниту нет: ▶ не показывается, в работе — сразу освоен. */
     hasTasks: boolean;
+    /** Типы заданий области (workspace.yaml) — варианты выбора у ▶. */
+    types: string[];
 };
 
-export function UnitRow({ id: unitId, number, title, summaryRu, guideHtml, deps, rating, started: startedInit, hasTasks }: Props) {
+export function UnitRow({ id: unitId, number, title, summaryRu, guideHtml, deps, rating, started: startedInit, hasTasks, types }: Props) {
     const [open, setOpen] = useState(false);
     const id = useId();
     const row = useRef<HTMLLIElement>(null);
@@ -75,7 +76,11 @@ export function UnitRow({ id: unitId, number, title, summaryRu, guideHtml, deps,
     // Пришли по ссылке с другой страницы (из выдачи поиска): браузер уже
     // прокрутил к якорю, осталось подсветить.
     // Из localStorage — после монтирования: на сервере его нет, иначе разойдётся гидратация.
-    useEffect(() => setType(readType(unitId)), [unitId]);
+    // Запомненный тип, которого в области больше нет, — как «любой».
+    useEffect(() => {
+        const saved = readType(unitId);
+        setType(types.includes(saved) ? saved : '');
+    }, [unitId, types]);
 
     useEffect(() => {
         if (row.current && location.hash === `#unit-${unitId}`) flash(row.current);
@@ -118,7 +123,7 @@ export function UnitRow({ id: unitId, number, title, summaryRu, guideHtml, deps,
                         <select aria-label="Тип задания" value={type}
                             onChange={(e) => { setType(e.target.value); saveType(unitId, e.target.value); }}>
                             <option value="">любой</option>
-                            {READY_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                            {types.map((t) => <option key={t} value={t}>{t}</option>)}
                         </select>
                     </span>
                 </span>}

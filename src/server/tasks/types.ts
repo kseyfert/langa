@@ -2,13 +2,6 @@ import type { AnswerByType, ContentByType, Evaluation, ExerciseType, PublicConte
 import type { JsonSchema } from './claude';
 import type { Values } from './prompt';
 
-/**
- * Типы, которые уже сделаны по-настоящему; остальные — заглушки и в выдачу не попадают.
- * Здесь, а не в tasks/index.ts: список нужен и клиенту (выбор типа для тестов).
- */
-export const READY_TYPES = ['gap', 'choice', 'rephrase', 'translate', 'free'] as const satisfies readonly ExerciseType[];
-export type ReadyType = (typeof READY_TYPES)[number];
-
 /** Объём свободного ответа в символах. Здесь, а не в free/: рамки показывает и клиент. */
 export const FREE_LENGTH = { min: 150, max: 300 } as const;
 

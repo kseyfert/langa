@@ -4,25 +4,24 @@ import type { ExerciseType } from '../exercises/types';
 export type { ExerciseType };
 
 // Reference implementation of the unit rating model: Elo mastery + a ladder of review intervals.
-// Pure functions, no I/O. All tunable numbers live in CONFIG.
+// Pure functions, no I/O. All tunable numbers live in Config.
 
 
-export const CONFIG = {
+// Общие константы модели — умолчания для всех областей. Константы типов (DIFFICULTY, LEVEL_CAP,
+// MEMORY_WEIGHT, EASY_TYPES) и порядок типов задаёт область — content/<key>/workspace.yaml;
+// там же она может переопределить и общие (rating). Сборка и проверка — learner/config.ts.
+export const DEFAULTS = {
   // --- mastery (Elo) ---
   INITIAL_MASTERY: 10,
-  DIFFICULTY: { gap: 20, choice: 30, rephrase: 50, translate: 60, free: 70 } as Record<ExerciseType, number>,
-  LEVEL_CAP: { gap: 50, choice: 60, rephrase: 80, translate: 90, free: 100 } as Record<ExerciseType, number>,
   ELO_SCALE: 12,
   K_TARGET: 20,
   K_SIDE: 6,
 
   // --- review ladder ---
   LADDER_DAYS: [1, 2, 4, 7, 14, 30, 60, 120],
-  MEMORY_WEIGHT: { gap: 0.2, choice: 0.25, rephrase: 0.6, translate: 0.8, free: 1.0 } as Record<ExerciseType, number>,
   SUCCESS_THRESHOLD: 0.8,
   FAIL_THRESHOLD: 0.5,
   PROMOTE_MIN_CREDIT: 0.2,
-  EASY_TYPES: ["gap", "choice"] as ExerciseType[],
   EASY_MAX_STAGE: 3,
   EARLY_FRACTION: 0.5,
   FAIL_STAGE_DROP: 2,
@@ -37,7 +36,16 @@ export const CONFIG = {
   PROGRESS_FULL_INTERVAL: 30,
   MASTERED_PROGRESS: 80,
 };
-export type Config = typeof CONFIG;
+export type RatingConstants = typeof DEFAULTS;
+
+/** Конфиг области: общие константы и константы её типов. TYPES — типы по нарастанию сложности, fromM — порог планировщика. */
+export type Config = RatingConstants & {
+  TYPES: { type: ExerciseType; fromM: number }[];
+  DIFFICULTY: Record<ExerciseType, number>;
+  LEVEL_CAP: Record<ExerciseType, number>;
+  MEMORY_WEIGHT: Record<ExerciseType, number>;
+  EASY_TYPES: ExerciseType[];
+};
 
 const DAY_MS = 86_400_000;
 const clamp = (x: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, x));
@@ -68,46 +76,46 @@ export type TargetOutcome =
   | { kind: "not_used" };                               // open types: incorrect without the target structure
 
 /** Result r for the target unit, or null when there is nothing to count. */
-export function targetResult(o: TargetOutcome, c: Config = CONFIG): number | null {
+export function targetResult(o: TargetOutcome, c: Config): number | null {
   if (o.kind === "share") return o.total ? o.correct / o.total : null;
   if (o.kind === "used") return clamp(o.score / 100, 0, 1);
   return 0;
 }
 
-export function newUnit(c: Config = CONFIG): UnitState {
+export function newUnit(c: Config): UnitState {
   return { M: c.INITIAL_MASTERY, stage: 0, lastSeen: null, dueFrom: null, day: null };
 }
 
-export const interval = (u: UnitState, c: Config = CONFIG) => c.LADDER_DAYS[u.stage];
+export const interval = (u: UnitState, c: Config) => c.LADDER_DAYS[u.stage];
 
 /** Next review date (ms), or null for a unit never practised (due right away). */
-export function dueAt(u: UnitState, c: Config = CONFIG): number | null {
+export function dueAt(u: UnitState, c: Config): number | null {
   return u.dueFrom == null ? null : u.dueFrom + interval(u, c) * DAY_MS;
 }
-export function isDue(u: UnitState, now: number, c: Config = CONFIG): boolean {
+export function isDue(u: UnitState, now: number, c: Config): boolean {
   const d = dueAt(u, c);
   return d == null || now >= d;
 }
 
 /** Level shown to the user, 0..100: mastery minus forgetting since the last practice (display and planning only). */
-export function level(u: UnitState, now: number, c: Config = CONFIG): number {
+export function level(u: UnitState, now: number, c: Config): number {
   if (u.lastSeen == null) return u.M;
   const t = Math.max(0, now - u.lastSeen) / DAY_MS;
   return u.M * Math.pow(c.RETENTION_AT_DUE, t / interval(u, c));
 }
 
 /** One number for "how far the unit is done", 0..100. */
-export function progress(u: UnitState, now: number, c: Config = CONFIG): number {
+export function progress(u: UnitState, now: number, c: Config): number {
   const cap = c.PROGRESS_FLOOR + (100 - c.PROGRESS_FLOOR) * Math.min(1, interval(u, c) / c.PROGRESS_FULL_INTERVAL);
   return Math.min(level(u, now, c), cap);
 }
-export const isMastered = (u: UnitState, now: number, c: Config = CONFIG) => progress(u, now, c) >= c.MASTERED_PROGRESS;
+export const isMastered = (u: UnitState, now: number, c: Config) => progress(u, now, c) >= c.MASTERED_PROGRESS;
 
-export function expected(E: number, type: ExerciseType, c: Config = CONFIG): number {
+export function expected(E: number, type: ExerciseType, c: Config): number {
   return 1 / (1 + Math.exp((c.DIFFICULTY[type] - E) / c.ELO_SCALE));
 }
 
-export function dayKey(at: number, c: Config = CONFIG): string {
+export function dayKey(at: number, c: Config): string {
   const d = new Date(at - c.DAY_START_HOUR * 3_600_000);    // late-night practice counts to the previous day
   return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
 }
@@ -142,7 +150,7 @@ function applyDay(u: UnitState, c: Config): void {
 }
 
 /** Apply one piece of evidence. Returns a new state; the input is not mutated. */
-export function update(prev: UnitState, ev: Evidence, c: Config = CONFIG): UnitState {
+export function update(prev: UnitState, ev: Evidence, c: Config): UnitState {
   const u: UnitState = structuredClone(prev);
 
   // mastery: measured skill, updated from the stored value (forgetting is handled by the ladder, not here)
@@ -177,6 +185,6 @@ export function update(prev: UnitState, ev: Evidence, c: Config = CONFIG): UnitS
 }
 
 /** Rebuild a unit's state from its full evidence history (the attempt log is the source of truth). */
-export function replay(history: Evidence[], c: Config = CONFIG): UnitState {
+export function replay(history: Evidence[], c: Config): UnitState {
   return [...history].sort((a, b) => a.at - b.at).reduce((u, ev) => update(u, ev, c), newUnit(c));
 }

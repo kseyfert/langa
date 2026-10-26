@@ -3,7 +3,8 @@ import { and, asc, eq, inArray } from 'drizzle-orm';
 import { db } from '../db/client';
 import { units, workspaces } from '../db/schema';
 
-export type Workspace = { id: number; name: string };
+/** key — папка content/<key>/ с промптами, evals и настройками области. */
+export type Workspace = { id: number; key: string; name: string };
 
 /** Юнит без guide — без заданий: он в книге для полноты. В работе (started) он сразу освоен. */
 export const hasTasks = (u: { guide: string }) => u.guide.trim() !== '';
@@ -32,12 +33,12 @@ function toUnit(r: Row): Unit {
 }
 
 export async function listWorkspaces(): Promise<Workspace[]> {
-    return db().select({ id: workspaces.id, name: workspaces.name }).from(workspaces).orderBy(asc(workspaces.id));
+    return db().select({ id: workspaces.id, key: workspaces.key, name: workspaces.name }).from(workspaces).orderBy(asc(workspaces.id));
 }
 
 /** Рабочая область или null, если её нет. */
 export async function getWorkspace(id: number): Promise<Workspace | null> {
-    const [row] = await db().select({ id: workspaces.id, name: workspaces.name }).from(workspaces).where(eq(workspaces.id, id));
+    const [row] = await db().select({ id: workspaces.id, key: workspaces.key, name: workspaces.name }).from(workspaces).where(eq(workspaces.id, id));
     return row ?? null;
 }
 

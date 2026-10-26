@@ -1,7 +1,8 @@
 // Evals на Langfuse Experiments (architecture.md, «Evals»):
 //   npm run eval -- <набор> <область> [--repeat N] [--report] [--dry-run]
-// Всё про набор — в его папке evals/<набор>/: index.ts (случаи, задача и оценщики — suite.ts),
-// judge.md у наборов с судьёй, cases/<область>.yaml — случаи, источник истины: перед прогоном
+// Код набора — в evals/<набор>/index.ts (случаи, задача и оценщики — suite.ts). Случаи и судья —
+// в содержимом области, content/<область>/<тип>/evals/ (<вид>-cases.yaml, <вид>-judge.md; набор
+// <тип>-<вид>); <область> — workspaces.key. Случаи — источник истины: перед прогоном
 // они синхронизируются в датасет Langfuse <область>/<набор>. Прогон — эксперимент на нём,
 // итог — в терминал; с --report — ещё подробный отчёт в evals/reports/ (калибровка).
 // При --repeat N у каждого score — ещё средние по повторам и их min/max: разброс — шум модели.
@@ -14,21 +15,21 @@ import { LangfuseClient, type Evaluation, type ExperimentItemResult } from '@lan
 import { LangfuseSpanProcessor } from '@langfuse/otel';
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import { parse } from 'yaml';
-import { getUnits, listUnits } from '../src/server/catalog';
+import { getUnits, listUnits, listWorkspaces } from '../src/server/catalog';
 import * as choiceGenerate from './choice-generate';
 import * as freeGenerate from './free-generate';
 import * as freeGrade from './free-grade';
 import * as gapGenerate from './gap-generate';
 import * as rephraseGenerate from './rephrase-generate';
 import * as rephraseGrade from './rephrase-grade';
-import type { Suite, SuiteCase, Units } from './suite';
+import { suiteFile, type Suite, type SuiteCase, type Units } from './suite';
 import * as translateGenerate from './translate-generate';
 import * as translateGrade from './translate-grade';
 
-const SUITES: Record<string, Suite> = {
-    'gap-generate': gapGenerate, 'choice-generate': choiceGenerate,
-    'rephrase-generate': rephraseGenerate, 'translate-generate': translateGenerate, 'free-generate': freeGenerate,
-    'rephrase-grade': rephraseGrade, 'translate-grade': translateGrade, 'free-grade': freeGrade,
+const SUITES: Record<string, (area: string) => Suite> = {
+    'gap-generate': gapGenerate.suite, 'choice-generate': choiceGenerate.suite,
+    'rephrase-generate': rephraseGenerate.suite, 'translate-generate': translateGenerate.suite, 'free-generate': freeGenerate.suite,
+    'rephrase-grade': rephraseGrade.suite, 'translate-grade': translateGrade.suite, 'free-grade': freeGrade.suite,
 };
 
 /**
@@ -37,7 +38,7 @@ const SUITES: Record<string, Suite> = {
  */
 function gitState(): { commit: string; dirty: boolean } {
     const run = (cmd: string) => execSync(cmd, { encoding: 'utf8' }).trim();
-    return { commit: run('git rev-parse HEAD'), dirty: run('git status --porcelain -- src/server/tasks evals') !== '' };
+    return { commit: run('git rev-parse HEAD'), dirty: run('git status --porcelain -- content src/server/tasks evals') !== '' };
 }
 
 /** Генерации идут ~20 с; больше параллельных — упрёмся в rate limit. */
@@ -55,21 +56,23 @@ function args() {
     return { suite, area, repeat, report: rest.includes('--report'), dryRun: rest.includes('--dry-run'), controlsOnly: rest.includes('--controls-only') };
 }
 
-const casesFile = (suite: string, area: string) => `evals/${suite}/cases/${area}.yaml`;
+const casesFile = (suite: string, area: string) => suiteFile(area, suite, 'cases.yaml');
 
-async function readCases(area: string, suite: string): Promise<CaseFile> {
+/** Случаи набора; область — по её key, юниты случаев должны быть из неё. */
+async function readCases(s: Suite, area: string, suite: string): Promise<CaseFile> {
     const file = casesFile(suite, area);
+    const ws = (await listWorkspaces()).find((w) => w.key === area);
+    if (!ws) throw new Error(`Нет области с key «${area}» (workspaces.key)`);
     if (!fs.existsSync(file)) throw new Error(`Нет случаев: ${file}`);
-    const raw = parse(fs.readFileSync(file, 'utf8')) as { workspace_id: number };
-    const cases = SUITES[suite].cases(raw, file);
+    const cases = s.cases(parse(fs.readFileSync(file, 'utf8')), file);
     const ids = new Set(cases.map((c) => c.id));
     if (ids.size !== cases.length) throw new Error(`${file}: повторяются id случаев`);
     const units = await getUnits([...new Set(cases.map((c) => c.unit_id))]);
     for (const c of cases) {
         const u = units.find((x) => x.id === c.unit_id);
-        if (!u || u.workspaceId !== raw.workspace_id) throw new Error(`${file}: юнит ${c.unit_id} (${c.id}) не из области ${raw.workspace_id}`);
+        if (!u || u.workspaceId !== ws.id) throw new Error(`${file}: юнит ${c.unit_id} (${c.id}) не из области ${area}`);
     }
-    return { workspace_id: raw.workspace_id, cases };
+    return { workspace_id: ws.id, cases };
 }
 
 /** Датасет повторяет yaml: случаи — upsert по id, пропавшие из файла — в архив, а не удаляются. */
@@ -145,9 +148,9 @@ const averages = (repeat: number) => async ({ itemResults }: { itemResults: Expe
 
 async function main() {
     const { suite, area, repeat, report, dryRun, controlsOnly } = args();
-    const s = SUITES[suite];
+    const s = SUITES[suite](area);
     const name = `${area}/${suite}`;
-    const all = await readCases(area, suite);
+    const all = await readCases(s, area, suite);
     const pending = all.cases.filter((c) => c.pending);
     const data = { ...all, cases: all.cases.filter((c) => !c.pending) };
     const warnings = (await s.lint?.(all.cases)) ?? [];

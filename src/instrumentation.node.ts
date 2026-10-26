@@ -8,3 +8,17 @@ if (process.env.LANGFUSE_PUBLIC_KEY && process.env.LANGFUSE_SECRET_KEY) {
     // Неотправленное при остановке сервера теряется — это допустимо (architecture.md).
     new NodeSDK({ serviceName: 'langa', spanProcessors: [new LangfuseSpanProcessor({ exportMode: 'batched' })] }).start();
 }
+
+/**
+ * Содержимое областей (content/<key>/) — до первого запроса. С битыми настройками или без нужных
+ * промптов сервер не стартует: ошибка в register() Next только пишет в лог и дальше отвечает 500.
+ */
+export async function checkContentOrExit(): Promise<void> {
+    const { checkContent } = await import('./server/content');
+    try {
+        await checkContent();
+    } catch (e) {
+        console.error(e instanceof Error ? e.message : e);
+        process.exit(1);
+    }
+}

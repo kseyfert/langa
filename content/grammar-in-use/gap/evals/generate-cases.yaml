@@ -1,8 +1,7 @@
-# Случаи набора gap-generate для рабочей области Grammar In Use (имя файла — область).
+# Случаи набора gap-generate для рабочей области Grammar In Use (область — папка content/<key>/).
 # Источник истины — этот файл: запуск синхронизирует его в датасет Langfuse
 # grammar-in-use/gap-generate (новые и изменённые случаи — upsert, удалённые — в архив).
-# topic — из src/server/tasks/topics.ts.
-workspace_id: 1
+# topic — из topics в workspace.yaml области.
 cases:
   - id: present-continuous-simple
     unit_id: 3     # 3. Present continuous and present simple 1 (I am doing and I do)

@@ -2,6 +2,7 @@
 
 import { refresh } from 'next/cache';
 import * as catalog from '@/server/catalog';
+import { workspaceContent } from '@/server/content';
 import type { Exercise } from '@/server/exercises/types';
 import * as learner from '@/server/learner';
 import * as tasks from '@/server/tasks';
@@ -15,12 +16,14 @@ function fail(e: unknown, what: string): { ok: false; error: string } {
     return { ok: false, error: `${what}: ${e instanceof Error ? e.message : String(e)}` };
 }
 
-/** Задание по юниту: заданного типа или, если тип не задан или не готов, случайного. */
+/** Задание по юниту: заданного типа или, если тип не задан или его нет в области, случайного типа области. */
 export async function startExercise(unitId: number, type: string | null = null): Promise<Result<{ exercise: tasks.ExerciseView }>> {
     try {
-        if (!catalog.hasTasks(await catalog.getUnit(unitId))) return { ok: false, error: 'По этому юниту заданий нет: guide пуст' };
-        const ready = tasks.READY_TYPES.find((t) => t === type);
-        return { ok: true, exercise: await (ready ? tasks.get(unitId, ready) : tasks.getRandom(unitId)) };
+        const unit = await catalog.getUnit(unitId);
+        if (!catalog.hasTasks(unit)) return { ok: false, error: 'По этому юниту заданий нет: guide пуст' };
+        const { types } = await workspaceContent(unit.workspaceId);
+        const chosen = types.find((t) => t === type) ?? types[Math.floor(Math.random() * types.length)];
+        return { ok: true, exercise: await tasks.get(unitId, chosen) };
     } catch (e) {
         return fail(e, 'Не получилось составить задание');
     }

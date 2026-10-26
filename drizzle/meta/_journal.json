@@ -43,6 +43,13 @@
       "when": 1792575391067,
       "tag": "0005_unit_exclude_as_side",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793051087552,
+      "tag": "0006_workspace_key",
+      "breakpoints": true
     }
   ]
 }

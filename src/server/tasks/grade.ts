@@ -1,5 +1,5 @@
 import 'server-only';
-import { catalogForPrompt, getUnit, listUnits } from '../catalog';
+import { catalogForPrompt, getUnit, getWorkspace, listUnits } from '../catalog';
 import type { Answer, ClosedEvaluation, ExerciseContent, ExerciseType, OpenAnswer, OpenEvaluation, Verdict } from '../exercises/types';
 import { askJson, MODEL_GRADE, type JsonSchema } from './claude';
 import { object, text } from './define';
@@ -107,8 +107,9 @@ function normalize(d: unknown, targetId: number, ids: Set<number>, excluded: Set
  * в grade-user.md, с эталоном.
  */
 async function gradeOpen(type: ExerciseType, unitId: number, task: Values, answer: string): Promise<Checked> {
-    const p = prompts(type, ['grade-system', 'grade-user']);
     const unit = await getUnit(unitId);
+    const ws = await getWorkspace(unit.workspaceId);
+    const p = prompts(ws!.key, type, ['grade-system', 'grade-user']);
     const book = await listUnits(unit.workspaceId, unit.book);
     // Целевой юнит идёт в промпт отдельно, поэтому каталог от его флага не зависит и одинаков для всей книги — кэшируется.
     const ids = book.filter((u) => !u.excludeAsSide).map((u) => u.id);

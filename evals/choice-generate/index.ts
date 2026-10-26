@@ -5,6 +5,7 @@ import type { ChoiceContent } from '../../src/server/exercises/types';
 import { askJson } from '../../src/server/tasks/claude';
 import { generate } from '../../src/server/tasks/generate';
 import { prompts, promptSet, unitValues } from '../../src/server/tasks/prompt';
+import { itemProblems, suiteFile, topicCases, type Suite } from '../suite';
 
 // Evals генерации choice (architecture.md, «Evals»): настоящая генерация без записи в базу,
 // оценки кодом и судьёй. Устроен как gap-generate; главное здесь — верный дистрактор:
@@ -12,8 +13,11 @@ import { prompts, promptSet, unitValues } from '../../src/server/tasks/prompt';
 
 const ITEMS = 6;
 const JUDGE_MODEL = 'claude-opus-5-5';
-const JUDGE = 'evals/choice-generate/judge.md';
-const judgePrompts = () => promptSet([{ name: 'judge' as const, file: JUDGE, text: fs.readFileSync(JUDGE, 'utf8') }]);
+/** Судья области: content/<область>/choice/evals/generate-judge.md. */
+const judgePrompts = (area: string) => {
+    const file = suiteFile(area, 'choice-generate', 'judge.md');
+    return promptSet([{ name: 'judge' as const, file, text: fs.readFileSync(file, 'utf8') }]);
+};
 
 export type Input = { unit_id: number; topic: string };
 export type Output = { content: ChoiceContent } | { error: string };
@@ -23,12 +27,13 @@ export type Problem = { item: number; issue: string };
 type Item = ChoiceContent['items'][number];
 
 /** Версии в имени и metadata прогона: сравнивать имеет смысл прогоны с одной версией судьи. */
-export const versions = () => ({ prompt: prompts('choice', ['generate', 'focus-repeat']).version, judge: judgePrompts().version });
+const versions = (area: string) => ({ prompt: prompts(area, 'choice', ['generate', 'focus-repeat']).version, judge: judgePrompts(area).version });
 
-export async function task(input: Input): Promise<Output> {
+async function task(input: unknown): Promise<Output> {
     try {
         // Тема из случая, недавних заданий нет: случай воспроизводим и не зависит от лога.
-        const g = await generate('choice', input.unit_id, { topic: input.topic, recent: [] });
+        const { unit_id, topic } = input as Input;
+        const g = await generate('choice', unit_id, { topic, recent: [] });
         return { content: g.content as ChoiceContent };
     } catch (e) {
         // Сбой генерации — тоже результат прогона (valid_items 0), а не выпавший случай.
@@ -55,7 +60,7 @@ function invalid(it: Item): string | undefined {
     if (new Set(it.options.map((x) => x.trim())).size !== it.options.length) return 'варианты повторяются';
 }
 
-export const codeChecks: Evaluator = async ({ output }) => {
+const codeChecks: Evaluator = async ({ output }) => {
     const o = output as Output;
     if ('error' in o) {
         return { name: 'valid_items', value: 0, comment: o.error, metadata: { problems: [{ item: 0, issue: `генерация не удалась: ${o.error}` }] } };
@@ -100,12 +105,12 @@ const CRITERIA: [name: string, pass: (v: Verdict) => boolean, issue: string][] =
     ['judge_explain', (v) => v.explain_ok, 'explain_ru неверен'],
 ];
 
-/** LLM-судья: один вызов на задание, вердикт по каждому пункту. */
-export const judge: Evaluator = async ({ input, output }) => {
+/** LLM-судья области: один вызов на задание, вердикт по каждому пункту. */
+const judge = (area: string): Evaluator => async ({ input, output }) => {
     const o = output as Output;
     if ('error' in o) return [];
     const { unit_id } = input as Input;
-    const p = judgePrompts();
+    const p = judgePrompts(area);
     const unit = await getUnit(unit_id);
     const { items, focus } = o.content;
     // answer рядом с индексом: судье не нужно отсчитывать его самому.
@@ -137,7 +142,7 @@ const code = (s: string) => `\`${s.replace(/`/g, "'")}\``;
 const field = (name: string, value: unknown, ok: boolean) => (ok ? `${name}: ${JSON.stringify(value)}` : `**${name}: ${JSON.stringify(value)}**`);
 
 /** Раздел отчёта по заданию: каждый пункт и вердикт судьи по нему целиком. */
-export function reportItem(r: ExperimentItemResult): string {
+function reportItem(r: ExperimentItemResult): string {
     const o = r.output as Output;
     if ('error' in o) return `Ошибка генерации: ${o.error}`;
     const vs = verdictsOf(r);
@@ -168,7 +173,12 @@ export function reportItem(r: ExperimentItemResult): string {
     return out.join('\n').trimEnd();
 }
 
-export const evaluators = [codeChecks, judge];
-
-// Случаи и проблемы — общие для наборов генерации (suite.ts).
-export { topicCases as cases, itemProblems as problems } from '../suite';
+/** Набор по области; случаи и проблемы — общие для наборов генерации (suite.ts). */
+export const suite = (area: string): Suite => ({
+    versions: () => versions(area),
+    cases: topicCases,
+    task,
+    evaluators: [codeChecks, judge(area)],
+    problems: itemProblems,
+    reportItem,
+});

@@ -2,9 +2,14 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { ExerciseType, OpenEvaluation } from '../exercises/types';
+import { readSettings } from '../content/settings';
+import { learnerConfig } from './config';
 import { evidenceOf } from './evidence';
 import { interval, replay, type Evidence } from './model';
 import { nextExercise, typeFor, type PlannerAttempt, type PlannerExercise, type PlannerUnit } from './planner';
+
+// Константы и лестница типов — Grammar In Use: сценарии собраны на её значениях (content/grammar-in-use/workspace.yaml).
+const C = readSettings('grammar-in-use').config;
 
 const H = 3_600_000;
 const DAY = 24 * H;
@@ -51,15 +56,15 @@ function makeLog() {
             const evs: Evidence[] = [];
             for (const a of attempts) {
                 const ex = exercises.find((e) => e.id === a.exerciseId)!;
-                for (const { unitId: u, ev } of evidenceOf({ at: a.at, unitId: ex.unitId, type: ex.type, evaluation: a.evaluation }, () => true)) if (u === unitId) evs.push(ev);
+                for (const { unitId: u, ev } of evidenceOf({ at: a.at, unitId: ex.unitId, type: ex.type, evaluation: a.evaluation }, () => true, C)) if (u === unitId) evs.push(ev);
             }
-            return replay(evs);
+            return replay(evs, C);
         },
     };
 }
 
 test('1: нет начатых юнитов — нет задания', () => {
-    assert.equal(nextExercise([{ id: 5, position: 5, started: false }], [], [], T0), null);
+    assert.equal(nextExercise([{ id: 5, position: 5, started: false }], [], [], T0, C), null);
 });
 
 test('2: новые юниты по порядку книги, по одному gap', () => {
@@ -67,7 +72,7 @@ test('2: новые юниты по порядку книги, по одному
     const units = started(7, 5, 6);
     let now = T0;
     for (const expected of [5, 6, 7]) {
-        const plan = nextExercise(units, log.exercises, log.attempts, now);
+        const plan = nextExercise(units, log.exercises, log.attempts, now, C);
         assert.deepEqual(plan, { unitId: expected, type: 'gap', tier: 'new' });
         log.solve(plan!.unitId, plan!.type, now, 1);
         now += 2 * 60_000;
@@ -77,9 +82,9 @@ test('2: новые юниты по порядку книги, по одному
 test('3: единственный кандидат идёт снова, тип по освоению', () => {
     const log = makeLog();
     log.solve(5, 'gap', T0, 1);
-    const plan = nextExercise(started(5), log.exercises, log.attempts, T0 + 5 * 60_000);
+    const plan = nextExercise(started(5), log.exercises, log.attempts, T0 + 5 * 60_000, C);
     assert.equal(plan?.unitId, 5);
-    assert.equal(plan?.type, typeFor(log.state(5).M));
+    assert.equal(plan?.type, typeFor(log.state(5).M, C));
 });
 
 test('4: свежий провал уступает, если он был последним; затем его очередь', () => {
@@ -89,9 +94,9 @@ test('4: свежий провал уступает, если он был пос
     log.solve(9, 'translate', T0, 1);
     log.solve(9, 'translate', now - H, 0.2);
     log.solve(8, 'translate', now - 5 * 60_000, 0.2);
-    assert.deepEqual(nextExercise(started(8, 9), log.exercises, log.attempts, now), { unitId: 9, type: typeFor(log.state(9).M), tier: 'failed' });
+    assert.deepEqual(nextExercise(started(8, 9), log.exercises, log.attempts, now, C), { unitId: 9, type: typeFor(log.state(9).M, C), tier: 'failed' });
     log.solve(9, 'gap', now, 1);
-    const next = nextExercise(started(8, 9), log.exercises, log.attempts, now + 5 * 60_000);
+    const next = nextExercise(started(8, 9), log.exercises, log.attempts, now + 5 * 60_000, C);
     assert.equal(next?.unitId, 8);
     assert.equal(next?.tier, 'failed');
 });
@@ -103,12 +108,12 @@ test('5: новые юниты раньше просроченных повто�
     const units = started(1, 2, ...due);
     let now = T0;
     for (const expected of [1, 2]) {
-        const plan = nextExercise(units, log.exercises, log.attempts, now);
+        const plan = nextExercise(units, log.exercises, log.attempts, now, C);
         assert.deepEqual(plan, { unitId: expected, type: 'gap', tier: 'new' });
         log.solve(expected, 'gap', now, 1);
         now += 2 * 60_000;
     }
-    const plan = nextExercise(units, log.exercises, log.attempts, now);
+    const plan = nextExercise(units, log.exercises, log.attempts, now, C);
     assert.equal(plan?.tier, 'due');
     assert.ok(due.includes(plan!.unitId));
 });
@@ -122,9 +127,9 @@ test('6: порядок повторений — по относительной
     // Юнит 3 — последний показанный, не просрочен.
     log.solve(3, 'free', T0 + 61 * DAY, 1);
     const now = T0 + 62 * DAY;
-    assert.equal(interval(log.state(1)), 1);
-    assert.equal(interval(log.state(2)), 30);
-    const plan = nextExercise(started(1, 2, 3), log.exercises, log.attempts, now);
+    assert.equal(interval(log.state(1), C), 1);
+    assert.equal(interval(log.state(2), C), 30);
+    const plan = nextExercise(started(1, 2, 3), log.exercises, log.attempts, now, C);
     assert.equal(plan?.unitId, 1);
     assert.equal(plan?.tier, 'due');
 });
@@ -134,7 +139,7 @@ test('7: побочная ошибка не делает юнит кандида
     log.solve(6, 'gap', T0, 1);
     log.solve(5, 'free', T0 + H, 0.9, [{ unit: 3, r: 0.2 }]);
     const units = [...started(5, 6), { id: 3, position: 3, started: false }];
-    const plan = nextExercise(units, log.exercises, log.attempts, T0 + 2 * H);
+    const plan = nextExercise(units, log.exercises, log.attempts, T0 + 2 * H, C);
     assert.equal(plan?.unitId, 6);
 });
 
@@ -142,7 +147,7 @@ test('8: побочная ошибка ставит начатый юнит на
     const log = makeLog();
     log.solve(4, 'gap', T0, 1);
     log.solve(19, 'free', T0 + H, 0.9, [{ unit: 4, r: 0.2 }]);
-    const plan = nextExercise(started(4, 19), log.exercises, log.attempts, T0 + 2 * H);
+    const plan = nextExercise(started(4, 19), log.exercises, log.attempts, T0 + 2 * H, C);
     assert.equal(plan?.unitId, 4);
     assert.equal(plan?.tier, 'failed');
 });
@@ -153,7 +158,7 @@ test('9: «верно, но без конструкции» провал не с
     log.solve(1, 'translate', T0 + H, 0.2);
     log.nonTarget(1, 'translate', T0 + 2 * H);
     log.show(2, 'gap', T0 + 3 * H);   // последним был другой юнит
-    const plan = nextExercise(started(1, 2), log.exercises, log.attempts, T0 + 4 * H);
+    const plan = nextExercise(started(1, 2), log.exercises, log.attempts, T0 + 4 * H, C);
     assert.equal(plan?.unitId, 1);
     assert.equal(plan?.tier, 'failed');
 });
@@ -161,25 +166,25 @@ test('9: «верно, но без конструкции» провал не с
 test('10: пропущенное задание — следующим другой юнит', () => {
     const log = makeLog();
     log.show(12, 'gap', T0);
-    const plan = nextExercise(started(12, 13), log.exercises, log.attempts, T0 + 60_000);
+    const plan = nextExercise(started(12, 13), log.exercises, log.attempts, T0 + 60_000, C);
     assert.equal(plan?.unitId, 13);
 });
 
 test('11: освоение перешло 30 после удачного gap — дальше choice', () => {
-    assert.equal(typeFor(29), 'gap');
-    assert.equal(typeFor(31), 'choice');
+    assert.equal(typeFor(29, C), 'gap');
+    assert.equal(typeFor(31, C), 'choice');
     const log = makeLog();
     log.solve(5, 'gap', T0, 1);
     assert.ok(log.state(5).M < 30);
-    assert.equal(nextExercise(started(5), log.exercises, log.attempts, T0 + H)?.type, 'gap');
+    assert.equal(nextExercise(started(5), log.exercises, log.attempts, T0 + H, C)?.type, 'gap');
     log.solve(5, 'gap', T0 + H, 1);
     assert.ok(log.state(5).M >= 30);
-    assert.equal(nextExercise(started(5), log.exercises, log.attempts, T0 + 2 * H)?.type, 'choice');
+    assert.equal(nextExercise(started(5), log.exercises, log.attempts, T0 + 2 * H, C)?.type, 'choice');
 });
 
 test('12: проваленный translate опускает тип до rephrase', () => {
-    assert.equal(typeFor(58), 'translate');
-    assert.equal(typeFor(52), 'rephrase');
+    assert.equal(typeFor(58, C), 'translate');
+    assert.equal(typeFor(52, C), 'rephrase');
     const log = makeLog();
     for (const [d, type] of [[0, 'gap'], [0, 'choice'], [2, 'rephrase'], [6, 'rephrase']] as const) log.solve(5, type, T0 + d * DAY, 1);
     const before = log.state(5).M;
@@ -187,5 +192,26 @@ test('12: проваленный translate опускает тип до rephrase
     log.solve(5, 'translate', T0 + 13 * DAY, 0.2);
     const after = log.state(5).M;
     assert.ok(after >= 42 && after < 55, `M после провала ${after}`);
-    assert.equal(nextExercise(started(5), log.exercises, log.attempts, T0 + 13 * DAY + H)?.type, 'rephrase');
+    assert.equal(nextExercise(started(5), log.exercises, log.attempts, T0 + 13 * DAY + H, C)?.type, 'rephrase');
+});
+
+test('типы — только из области: тип вне её types не выдаётся, порядок и пороги — её', () => {
+    const steps = [
+        { type: 'gap', fromM: 0, difficulty: 20, levelCap: 50, memoryWeight: 0.2, easy: true },
+        { type: 'free', fromM: 40, difficulty: 70, levelCap: 100, memoryWeight: 1, easy: false },
+    ];
+    const c = learnerConfig(steps);
+    assert.equal(typeFor(39, c), 'gap');
+    assert.equal(typeFor(95, c), 'free');
+    const log = makeLog();
+    log.solve(5, 'gap', T0, 1);
+    assert.ok(['gap', 'free'].includes(nextExercise(started(5), log.exercises, log.attempts, T0 + H, c)!.type));
+});
+
+test('настройки области вне диапазонов rating-model.md §0 — ошибка', () => {
+    const gap = { type: 'gap', fromM: 0, difficulty: 20, levelCap: 50, memoryWeight: 0.2, easy: true };
+    assert.throws(() => learnerConfig([{ ...gap, levelCap: 10 }]), /levelCap/);
+    assert.throws(() => learnerConfig([gap], { FAIL_THRESHOLD: 0.9 }), /FAIL_THRESHOLD/);
+    assert.throws(() => learnerConfig([gap], { NO_SUCH: 1 }), /NO_SUCH/);
+    assert.throws(() => learnerConfig([{ ...gap, fromM: 10 }]), /fromM/);
 });

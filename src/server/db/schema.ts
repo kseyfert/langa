@@ -12,6 +12,8 @@ const oneOf = (values: readonly string[]) => sql.raw(values.map((v) => `'${v}'`)
 // Триггер updated_at и RLS дописаны в миграцию руками.
 export const workspaces = pgTable('workspaces', {
     id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
+    // Имя папки content/<key>/ с промптами, evals и настройками области; в коде области — по нему.
+    key: text('key').notNull().unique(),
     name: text('name').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),

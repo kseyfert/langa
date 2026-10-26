@@ -8,9 +8,9 @@ import {
 import { generate } from './generate';
 import { grade } from './grade';
 import { typeOf } from './registry';
-import { READY_TYPES, TaskError, type Generated } from './types';
+import { TaskError, type Generated } from './types';
 
-export { READY_TYPES, TaskError };
+export { TaskError };
 
 /** То, что уходит клиенту: без ключей ответов. */
 export type ExerciseView = {
@@ -45,9 +45,6 @@ export async function get(unitId: number, type: ExerciseType): Promise<ExerciseV
     const ex = await createExercise({ unitId, type, ...g });
     return view(ex);
 }
-
-/** Задание по юниту случайного готового типа. */
-export const getRandom = (unitId: number) => get(unitId, READY_TYPES[Math.floor(Math.random() * READY_TYPES.length)]);
 
 export type CheckResult = {
     attempt: Attempt;

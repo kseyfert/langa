@@ -1,4 +1,4 @@
-# Случаи набора rephrase-grade для рабочей области Grammar In Use (имя файла — область).
+# Случаи набора rephrase-grade для рабочей области Grammar In Use (область — папка content/<key>/).
 # Источник истины — этот файл: запуск синхронизирует его в датасет Langfuse
 # grammar-in-use/rephrase-grade (новые и изменённые случаи — upsert, удалённые — в архив).
 #
@@ -13,7 +13,6 @@
 # target-error — ошибка в целевой конструкции; side-error — целевая верна, ошибка другого
 # юнита; edge — пограничный случай.
 # Пока answer пуст или в expect нет verdict и target, случай не заполнен и в прогон не идёт.
-workspace_id: 1
 tasks:
   - id: 3-rephrase
     unit_id: 3    # 3. Present continuous and present simple 1 (I am doing and I do)

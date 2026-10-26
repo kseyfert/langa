@@ -1,16 +1,14 @@
 // Планировщик — specs/planner.md. Чистая функция без сети и базы: на входе
 // юниты, задания и попытки как они лежат в базе, на выходе — одно следующее задание.
-import { EXERCISE_TYPES, type Evaluation, type ExerciseType } from '../exercises/types';
+import type { Evaluation, ExerciseType } from '../exercises/types';
 import { evidenceOf } from './evidence';
-import { CONFIG, dueAt, interval, progress, isDue, replay, type Evidence, type UnitState } from './model';
+import { dueAt, interval, progress, isDue, replay, type Config, type Evidence, type UnitState } from './model';
 
+// Типы и пороги между ними (§4) — из конфига области (c.TYPES, content/<key>/workspace.yaml).
 export const PLANNER_CONFIG = {
-    /** Границы освоения M между gap / choice / rephrase / translate / free (§4). */
-    TYPE_THRESHOLDS: [30, 42, 55, 65],
     /** Варианты таймера, минуты. На выбор заданий не влияют — только интерфейс. */
     SESSION_OPTIONS: [5, 10, 15, 20, 30] as const,
 };
-export type PlannerConfig = typeof PLANNER_CONFIG;
 
 export type PlannerUnit = { id: number; position: number; started: boolean };
 export type PlannerExercise = { id: number; unitId: number; type: ExerciseType; createdAt: number };
@@ -23,9 +21,9 @@ export type Plan = { unitId: number; type: ExerciseType; tier: Tier };
 
 const DAY_MS = 86_400_000;
 
-/** Тип по освоению без забывания. EXERCISE_TYPES уже идут по нарастанию сложности. */
-export function typeFor(M: number, c: PlannerConfig = PLANNER_CONFIG): ExerciseType {
-    return EXERCISE_TYPES[c.TYPE_THRESHOLDS.filter((t) => M >= t).length];
+/** Тип по освоению без забывания: последний тип области, чей порог fromM не выше M. Типы идут по нарастанию сложности. */
+export function typeFor(M: number, c: Config): ExerciseType {
+    return c.TYPES.findLast((t) => M >= t.fromM)!.type;
 }
 
 /**
@@ -33,35 +31,35 @@ export function typeFor(M: number, c: PlannerConfig = PLANNER_CONFIG): ExerciseT
  * свидетельство ниже FAIL_THRESHOLD; снимает его только целевое не ниже порога.
  * «Верно, но без конструкции» свидетельства не даёт и потому ничего не снимает.
  */
-function openFailure(history: Evidence[]): number | null {
+function openFailure(history: Evidence[], c: Config): number | null {
     let at: number | null = null;
     for (const ev of history) {
-        if (ev.r < CONFIG.FAIL_THRESHOLD) at = ev.at;
+        if (ev.r < c.FAIL_THRESHOLD) at = ev.at;
         else if (ev.role === 'target') at = null;
     }
     return at;
 }
 
 /** Уровень юнита и ключ порядка внутри уровня: меньше — раньше. */
-function rank(state: UnitState, history: Evidence[], attempted: boolean, now: number): { tier: Tier; key: number } {
+function rank(state: UnitState, history: Evidence[], attempted: boolean, now: number, c: Config): { tier: Tier; key: number } {
     if (!attempted) return { tier: 'new', key: 0 };   // внутри уровня решает position
-    const failedAt = openFailure(history);
+    const failedAt = openFailure(history, c);
     if (failedAt != null) return { tier: 'failed', key: -failedAt };
-    if (isDue(state, now)) {
+    if (isDue(state, now, c)) {
         // Юнит с одними «верно, но без конструкции» срока не имеет — он просрочен больше всех.
-        const due = dueAt(state);
-        return { tier: 'due', key: due == null ? -Infinity : -(now - due) / (interval(state) * DAY_MS) };
+        const due = dueAt(state, c);
+        return { tier: 'due', key: due == null ? -Infinity : -(now - due) / (interval(state, c) * DAY_MS) };
     }
-    return { tier: 'consolidate', key: progress(state, now) };
+    return { tier: 'consolidate', key: progress(state, now, c) };
 }
 
-/** Следующее задание: юнит и тип. null — начатых юнитов нет. */
+/** Следующее задание: юнит и тип. null — начатых юнитов нет. c — конфиг области. */
 export function nextExercise(
     units: PlannerUnit[],
     exercises: PlannerExercise[],
     attempts: PlannerAttempt[],
     now: number,
-    c: PlannerConfig = PLANNER_CONFIG,
+    c: Config,
 ): Plan | null {
     const candidates = units.filter((u) => u.started);
     if (!candidates.length) return null;
@@ -75,7 +73,7 @@ export function nextExercise(
         const ex = exById.get(a.exerciseId);
         if (!ex) continue;
         attempted.add(ex.unitId);
-        for (const { unitId, ev } of evidenceOf({ at: a.at, unitId: ex.unitId, type: ex.type, evaluation: a.evaluation }, isStarted)) {
+        for (const { unitId, ev } of evidenceOf({ at: a.at, unitId: ex.unitId, type: ex.type, evaluation: a.evaluation }, isStarted, c)) {
             const list = histories.get(unitId);
             if (list) list.push(ev);
             else histories.set(unitId, [ev]);
@@ -88,8 +86,8 @@ export function nextExercise(
 
     const ranked = pool.map((u) => {
         const history = histories.get(u.id) ?? [];
-        const state = replay(history);
-        const { tier, key } = rank(state, history, attempted.has(u.id), now);
+        const state = replay(history, c);
+        const { tier, key } = rank(state, history, attempted.has(u.id), now, c);
         return { u, state, tier: TIERS.indexOf(tier), key };
     });
     ranked.sort((a, b) => a.tier - b.tier || a.key - b.key || a.u.position - b.u.position);

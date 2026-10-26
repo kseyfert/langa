@@ -1,10 +1,11 @@
 import 'server-only';
 import fs from 'node:fs';
-import path from 'node:path';
 import type { Unit } from '../catalog';
+import { contentFile, contentPath } from '../content/settings';
 
-// Тексты промптов — md-файлы в папке типа (exercise-spec §7). Путь от корня проекта,
-// а не от модуля: сборка Next переносит модули в .next, а md остаются в src.
+// Тексты промптов — md-файлы в папке типа внутри содержимого области: content/<key>/<type>/
+// (exercise-spec §7, exercise-types.md). Путь от корня проекта, а не от модуля: сборка Next
+// переносит модули в .next, а content остаётся на месте.
 // Читаются при каждом вызове — правка файла действует без перезапуска.
 
 export type Values = Record<string, string>;
@@ -40,17 +41,16 @@ function fill(file: string, body: string, values: Values): string {
 }
 
 /**
- * Файлы одного вызова модели из папки типа. Версия у них общая — она пишется в задание
- * или попытку; разные версии в одном вызове — ошибка.
+ * Файлы одного вызова модели из папки типа в области key. Версия у них общая — она пишется
+ * в задание или попытку; разные версии в одном вызове — ошибка.
  */
-export const prompts = <N extends string>(type: string, names: readonly [N, ...N[]]) => promptSet(names.map((name) => ({
+export const prompts = <N extends string>(key: string, type: string, names: readonly [N, ...N[]]) => promptSet(names.map((name) => ({
     name,
-    file: `src/server/tasks/${type}/${name}.md`,
-    // Подпапка задана литералом: по нему Turbopack трассирует только src/server/tasks, а не весь проект.
-    text: fs.readFileSync(path.join(process.cwd(), 'src/server/tasks', type, `${name}.md`), 'utf8'),
+    file: contentFile(key, type, `${name}.md`),
+    text: fs.readFileSync(contentPath(key, type, `${name}.md`), 'utf8'),
 })));
 
-/** Набор из уже прочитанных файлов — для промптов вне src/server/tasks (evals читают свои сами). */
+/** Набор из уже прочитанных файлов — для промптов не из вызовов приложения (судьи evals). */
 export function promptSet<N extends string>(sources: { name: N; file: string; text: string }[]) {
     const files = sources.map((f) => ({ ...f, ...parse(f.file, f.text) }));
     const version = files[0].version;

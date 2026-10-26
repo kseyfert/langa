@@ -1,11 +1,11 @@
 import 'server-only';
 import { getUnit } from '../catalog';
+import { workspaceContent } from '../content';
 import type { ExerciseType } from '../exercises/types';
 import { askJson, MODEL_GENERATE } from './claude';
 import { prompts, seed, unitValues } from './prompt';
 import { typeOf } from './registry';
-import { randomTopic } from './topics';
-import type { Generated } from './types';
+import { TaskError, type Generated } from './types';
 import { plan, recent } from './variety';
 
 /** Тема и недавние задания извне — для evals. Приложение их не передаёт: тема случайная, недавние — из лога. */
@@ -13,14 +13,17 @@ export type GenerateOptions = { topic?: string; recent?: string[] };
 
 /**
  * Составить задание по юниту — один конвейер на все типы: тема, недавние задания, план фокуса,
- * промпты типа, вызов модели со схемой типа, его normalize. Чем типы различаются — в их определениях.
+ * промпты типа из содержимого области юнита, вызов модели со схемой типа, его normalize.
+ * Чем типы различаются — в их определениях, чем области — в content/<key>/.
  */
 export async function generate(type: ExerciseType, unitId: number, opts: GenerateOptions = {}): Promise<Generated<ExerciseType>> {
     const def = typeOf(type);
-    // Пометка повтора нужна, только когда пунктов в задании больше одного: иначе повторов не бывает.
-    const p = prompts<'generate' | 'focus-repeat'>(type, def.items > 1 ? ['generate', 'focus-repeat'] : ['generate']);
-    const topic = opts.topic ?? randomTopic();
     const [unit, used] = await Promise.all([getUnit(unitId), opts.recent ?? recent(unitId)]);
+    const ws = await workspaceContent(unit.workspaceId);
+    if (!ws.types.includes(type)) throw new TaskError(`Тип ${type} не подключён к области`);
+    // Пометка повтора нужна, только когда пунктов в задании больше одного: иначе повторов не бывает.
+    const p = prompts<'generate' | 'focus-repeat'>(ws.key, type, def.items > 1 ? ['generate', 'focus-repeat'] : ['generate']);
+    const topic = opts.topic ?? ws.topics[Math.floor(Math.random() * ws.topics.length)];
     const focus = plan(unit.guide, def.items, def.items > 1 ? (point) => p.fill('focus-repeat', { point }) : undefined);
     const prompt = p.fill('generate', {
         ...unitValues(unit), topic, seed: seed(),
