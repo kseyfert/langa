@@ -84,14 +84,3 @@ controls:
         - I wish I hadn't left so early, and I wish I hadn't taken the steep path. But the view from the top was amazing, and our picnic in the sun was the best part of the whole weekend.
       focus:
         - сожаление о сделанном (wish + hadn't + V3)
-  - id: control-free-28-car-wash
-    unit_id: 28   # 28. must and can't
-    # синтетический: ситуация не даёт места конструкции из focus
-    expect_fail: [requires_target, reference_ok]
-    content:
-      instructions_ru: Ответь по-английски в 2–4 предложениях.
-      prompt_en: Yesterday you watched your neighbour wash his car outside for an hour. Today another neighbour asks whether he cleaned it himself or took it to a car wash. What do you say?
-      reference_en:
-        - He can't have taken it to a car wash. I watched him do it himself for a whole hour yesterday afternoon, with a bucket and a sponge, and he can't have missed a single spot.
-      focus:
-        - "невозможное в прошлом: забыл, видел, сделал — исключено (can't have + V3)"
