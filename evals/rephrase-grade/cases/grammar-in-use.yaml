@@ -1,0 +1,235 @@
+# Случаи набора rephrase-grade для рабочей области Grammar In Use (имя файла — область).
+# Источник истины — этот файл: запуск синхронизирует его в датасет Langfuse
+# grammar-in-use/rephrase-grade (новые и изменённые случаи — upsert, удалённые — в архив).
+#
+# tasks — задания (content как в exercises.content), cases ссылаются на них по task.
+# Случай: answer — ответ ученика; expect:
+#   verdict      — correct_target / correct_non_target / incorrect, или список допустимых;
+#   target       — ожидаемый target.status: correct / error / partial / not_used, или список допустимых;
+#   side_errors  — unit_id, которые должны быть в others со статусом error или partial;
+#                  элемент-список [9, 11] — «найден любой из»; лишняя — побочная error/partial
+#                  не из списка; [] — побочных ошибок быть не должно; ключа нет — не проверяются.
+# Ветки: target — верно с целевой конструкцией; non-target — верно без неё;
+# target-error — ошибка в целевой конструкции; side-error — целевая верна, ошибка другого
+# юнита; edge — пограничный случай.
+# Пока answer пуст или в expect нет verdict и target, случай не заполнен и в прогон не идёт.
+workspace_id: 1
+tasks:
+  - id: 3-rephrase
+    unit_id: 3    # 3. Present continuous and present simple 1 (I am doing and I do)
+    # задание 138 из базы, rephrase-gen-v4, 2026-10-24
+    content:
+      focus:
+        - "always + continuous: раздражающая чужая привычка (жалобы, опоздания, беспорядок)"
+      source_en: Every time we plan a Saturday hike, Tom turns up half an hour late, and it really annoys the rest of us.
+      reference_en:
+        - Tom is always turning up half an hour late when we plan a Saturday hike, and it really annoys the rest of us.
+      instructions_ru: Перепиши предложение другими словами, сохранив смысл.
+  - id: 13-rephrase
+    unit_id: 13    # 13. Present perfect and past 1 (I have done and I did)
+    # сгенерировано без записи в базу, rephrase-gen-v4, 2026-10-26
+    content:
+      instructions_ru: Перепиши предложение другими словами, сохранив смысл.
+      source_en: It's three weeks since I ordered these trainers online.
+      reference_en:
+        - I ordered these trainers online three weeks ago.
+      focus:
+        - законченное событие с указанием времени (ago)
+  - id: 28-rephrase
+    unit_id: 28    # 28. must and can't
+    # сгенерировано без записи в базу, rephrase-gen-v4, 2026-10-26
+    content:
+      instructions_ru: Перепиши предложение другими словами, сохранив смысл.
+      source_en: I'm sure Marcus isn't playing the piano right now, because I just saw him leave the building with his guitar case.
+      reference_en:
+        - Marcus can't be playing the piano right now, because I just saw him leave the building with his guitar case.
+      focus:
+        - невозможный процесс сейчас (can't be + -ing)
+  - id: 38-rephrase
+    unit_id: 38    # 38. if I do … and if I did …
+    # сгенерировано без записи в базу, rephrase-gen-v4, 2026-10-26
+    content:
+      instructions_ru: Перепиши предложение другими словами, сохранив смысл.
+      source_en: I'm curious about your reaction to the unlikely scenario of your parents turning up at your door at midnight with all their luggage.
+      reference_en:
+        - What would you do if your parents turned up at your door at midnight with all their luggage?
+      focus:
+        - вопрос о воображаемой ситуации (What would you do + if-часть)
+  - id: 43-rephrase
+    unit_id: 43    # 43. Passive 2 (be done / been done / being done)
+    # сгенерировано без записи в базу, rephrase-gen-v4, 2026-10-26
+    content:
+      instructions_ru: Перепиши предложение другими словами, сохранив смысл.
+      source_en: You can't enter the marathon unless a doctor signs your medical form first.
+      reference_en:
+        - Your medical form must be signed by a doctor before you can enter the marathon.
+      focus:
+        - "необходимость в пассиве: подпись, проверка (must / has to be + V3)"
+  - id: 56-rephrase
+    unit_id: 56    # 56. Verb + -ing or to … 1 (remember, regret etc.)
+    # сгенерировано без записи в базу, rephrase-gen-v4, 2026-10-26
+    content:
+      instructions_ru: Перепиши предложение другими словами, сохранив смысл.
+      source_en: Our professor first explained how to find reliable sources, and after that she showed us how to reference them properly.
+      reference_en:
+        - Our professor explained how to find reliable sources, and then went on to show us how to reference them properly.
+      focus:
+        - "go on + to: перейти к следующему действию"
+  - id: 72-rephrase
+    unit_id: 72    # 72. a/an and the
+    # сгенерировано без записи в базу, rephrase-gen-v4, 2026-10-26
+    content:
+      instructions_ru: Перепиши предложение другими словами, сохранив смысл.
+      source_en: Dad has gone up to the space under our roof to look for our Christmas decorations.
+      reference_en:
+        - Dad has gone up to the attic to look for our Christmas decorations.
+      focus:
+        - the + единственное в комнате или доме (the door, the floor, the ceiling, the light, the kitchen, the roof)
+
+cases:
+  - id: 3-rephrase-target
+    task: 3-rephrase
+    answer: "Tom is always turning up half an hour late for our Saturday hikes, and it really annoys the rest of us."
+    expect: {verdict: "correct_target", target: "correct", side_errors: []}
+  - id: 3-rephrase-non-target
+    task: 3-rephrase
+    answer: "Whenever we plan a Saturday hike, Tom arrives half an hour late, and the rest of us find it really annoying."
+    expect: {verdict: "correct_non_target", target: "not_used", side_errors: []}
+  - id: 3-rephrase-target-error   # ошибка формы continuous
+    task: 3-rephrase
+    answer: "Tom is always turns up half an hour late for our Saturday hikes, which really annoys the rest of us."
+    expect: {verdict: "incorrect", target: ["error", "partial"], side_errors: []}
+  - id: 3-rephrase-side-error   # in Saturdays → on Saturdays
+    task: 3-rephrase
+    answer: "Tom is always turning up half an hour late for our hikes in Saturdays, and it really annoys the rest of us."
+    expect: {verdict: "correct_target", target: "correct", side_errors: [121]}
+  - id: 3-rephrase-edge   # continuous без always для постоянной привычки — не к месту
+    task: 3-rephrase
+    answer: "Tom is turning up half an hour late every time we plan a Saturday hike, and it really annoys the rest of us."
+    expect: {verdict: "incorrect", target: ["error", "partial"]}
+
+  - id: 13-rephrase-target
+    task: 13-rephrase
+    answer: "I ordered these trainers on the internet three weeks ago."
+    expect: {verdict: "correct_target", target: "correct", side_errors: []}
+  - id: 13-rephrase-non-target   # обход без прошедшего времени
+    task: 13-rephrase
+    answer: "My online order for these trainers is now three weeks old."
+    expect: {verdict: "correct_non_target", target: "not_used", side_errors: []}
+  - id: 13-rephrase-target-error   # present perfect с ago
+    task: 13-rephrase
+    answer: "I have ordered these trainers online three weeks ago."
+    expect: {verdict: "incorrect", target: ["error", "partial"], side_errors: []}
+  - id: 13-rephrase-side-error   # I'm waiting … since → I've been waiting (юнит 9, 11 или 12)
+    task: 13-rephrase
+    answer: "I ordered these trainers online three weeks ago, and I'm waiting for them since then."
+    expect: {verdict: "correct_target", target: "correct", side_errors: [[9, 11, 12]]}
+  - id: 13-rephrase-edge   # верно; главное — не incorrect
+    task: 13-rephrase
+    answer: "It has been three weeks since I ordered these trainers online."
+    expect: {verdict: ["correct_target", "correct_non_target"], target: ["correct", "not_used"], side_errors: []}
+
+  - id: 28-rephrase-target
+    task: 28-rephrase
+    answer: "Marcus can't be playing the piano right now, because I've just seen him leave the building with his guitar case."
+    expect: {verdict: "correct_target", target: "correct", side_errors: []}
+  - id: 28-rephrase-non-target
+    task: 28-rephrase
+    answer: "There's no way Marcus is playing the piano right now, because I've just seen him leave the building with his guitar case."
+    expect: {verdict: "correct_non_target", target: "not_used", side_errors: []}
+  - id: 28-rephrase-target-error   # mustn't вместо can't — типичная ошибка юнита
+    task: 28-rephrase
+    answer: "Marcus mustn't be playing the piano right now, because I've just seen him leave the building with his guitar case."
+    expect: {verdict: "incorrect", target: ["error", "partial"], side_errors: []}
+  - id: 28-rephrase-side-error   # see him to leave → see him leave
+    task: 28-rephrase
+    answer: "Marcus can't be playing the piano right now, because I've just seen him to leave the building with his guitar case."
+    expect: {verdict: "correct_target", target: "correct", side_errors: [67]}
+  - id: 28-rephrase-edge   # can't play — неспособность, а не вывод о процессе
+    task: 28-rephrase
+    answer: "Marcus can't play the piano right now, because I've just seen him leave the building with his guitar case."
+    expect: {verdict: "incorrect", target: ["error", "partial"]}
+
+  - id: 38-rephrase-target
+    task: 38-rephrase
+    answer: "How would you react if your parents turned up on your doorstep at midnight with all their luggage?"
+    expect: {verdict: "correct_target", target: "correct", side_errors: []}
+  - id: 38-rephrase-non-target   # would без if — граница обхода; главное — не incorrect
+    task: 38-rephrase
+    answer: "I'd love to know how you'd react to your parents turning up at your door at midnight with all their luggage."
+    expect: {verdict: ["correct_non_target", "correct_target"], target: ["not_used", "correct"], side_errors: []}
+  - id: 38-rephrase-target-error   # would в if-части
+    task: 38-rephrase
+    answer: "What would you do if your parents would turn up at your door at midnight with all their luggage?"
+    expect: {verdict: "incorrect", target: ["error", "partial"], side_errors: []}
+  - id: 38-rephrase-side-error   # in midnight → at midnight
+    task: 38-rephrase
+    answer: "What would you do if your parents turned up at your door in midnight with all their luggage?"
+    expect: {verdict: "correct_target", target: "correct", side_errors: [121]}
+  - id: 38-rephrase-edge   # реальное условие для маловероятной ситуации
+    task: 38-rephrase
+    answer: "What will you do if your parents turn up at your door at midnight with all their luggage?"
+    expect: {verdict: "incorrect", target: ["error", "partial"]}
+
+  - id: 43-rephrase-target
+    task: 43-rephrase
+    answer: "Your medical form has to be signed by a doctor before you can enter the marathon."
+    expect: {verdict: "correct_target", target: "correct", side_errors: []}
+  - id: 43-rephrase-non-target   # актив
+    task: 43-rephrase
+    answer: "A doctor needs to sign your medical form before you can enter the marathon."
+    expect: {verdict: "correct_non_target", target: "not_used", side_errors: []}
+  - id: 43-rephrase-target-error   # be sign
+    task: 43-rephrase
+    answer: "Your medical form must be sign by a doctor before you can enter the marathon."
+    expect: {verdict: "incorrect", target: ["error", "partial"], side_errors: []}
+  - id: 43-rephrase-side-error   # will после before
+    task: 43-rephrase
+    answer: "Your medical form must be signed by a doctor before you will be able to enter the marathon."
+    expect: {verdict: "correct_target", target: "correct", side_errors: [25]}
+  - id: 43-rephrase-edge   # must to — ошибка внутри конструкции
+    task: 43-rephrase
+    answer: "Your medical form must to be signed by a doctor before you can enter the marathon."
+    expect: {verdict: "incorrect", target: ["error", "partial"]}
+
+  - id: 56-rephrase-target
+    task: 56-rephrase
+    answer: "Our professor explained how to find reliable sources and then went on to show us how to reference them properly."
+    expect: {verdict: "correct_target", target: "correct", side_errors: []}
+  - id: 56-rephrase-non-target
+    task: 56-rephrase
+    answer: "After explaining how to find reliable sources, our professor showed us how to reference them properly."
+    expect: {verdict: "correct_non_target", target: "not_used", side_errors: []}
+  - id: 56-rephrase-target-error   # went on + -ing — продолжать то же самое
+    task: 56-rephrase
+    answer: "Our professor explained how to find reliable sources and then went on showing us how to reference them properly."
+    expect: {verdict: "incorrect", target: ["error", "partial"], side_errors: []}
+  - id: 56-rephrase-side-error   # after explain → after explaining
+    task: 56-rephrase
+    answer: "After explain how to find reliable sources, our professor went on to show us how to reference them properly."
+    expect: {verdict: "correct_target", target: "correct", side_errors: [60]}
+  - id: 56-rephrase-edge   # продвинутое верное -ing-предложение не должно стать ошибкой
+    task: 56-rephrase
+    answer: "Having explained how to find reliable sources, our professor went on to show us how to reference them properly."
+    expect: {verdict: "correct_target", target: "correct", side_errors: []}
+
+  - id: 72-rephrase-target
+    task: 72-rephrase
+    answer: "Dad has gone up to the attic to look for our Christmas decorations."
+    expect: {verdict: "correct_target", target: "correct", side_errors: []}
+  - id: 72-rephrase-non-target   # our вместо the; главное — не incorrect
+    task: 72-rephrase
+    answer: "Dad has gone up to our attic to look for our Christmas decorations."
+    expect: {verdict: ["correct_non_target", "correct_target"], target: ["not_used", "correct"], side_errors: []}
+  - id: 72-rephrase-target-error
+    task: 72-rephrase
+    answer: "Dad has gone up to an attic to look for our Christmas decorations."
+    expect: {verdict: "incorrect", target: ["error", "partial"], side_errors: []}
+  - id: 72-rephrase-side-error   # for looking → to look
+    task: 72-rephrase
+    answer: "Dad has gone up to the attic for looking for our Christmas decorations."
+    expect: {verdict: "correct_target", target: "correct", side_errors: [64]}
+  - id: 72-rephrase-edge   # британский синоним
+    task: 72-rephrase
+    answer: "Dad has gone up to the loft to look for our Christmas decorations."
+    expect: {verdict: "correct_target", target: "correct", side_errors: []}

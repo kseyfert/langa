@@ -1,0 +1,235 @@
+# Случаи набора free-grade для рабочей области Grammar In Use (имя файла — область).
+# Источник истины — этот файл: запуск синхронизирует его в датасет Langfuse
+# grammar-in-use/free-grade (новые и изменённые случаи — upsert, удалённые — в архив).
+#
+# tasks — задания (content как в exercises.content), cases ссылаются на них по task.
+# Случай: answer — ответ ученика; expect:
+#   verdict      — correct_target / correct_non_target / incorrect, или список допустимых;
+#   target       — ожидаемый target.status: correct / error / partial / not_used, или список допустимых;
+#   side_errors  — unit_id, которые должны быть в others со статусом error или partial;
+#                  элемент-список [9, 11] — «найден любой из»; лишняя — побочная error/partial
+#                  не из списка; [] — побочных ошибок быть не должно; ключа нет — не проверяются.
+# Ветки: target — верно с целевой конструкцией; non-target — верно без неё;
+# target-error — ошибка в целевой конструкции; side-error — целевая верна, ошибка другого
+# юнита; edge — пограничный случай.
+# Пока answer пуст или в expect нет verdict и target, случай не заполнен и в прогон не идёт.
+workspace_id: 1
+tasks:
+  - id: 3-free
+    unit_id: 3    # 3. Present continuous and present simple 1 (I am doing and I do)
+    # сгенерировано без записи в базу, free-gen-v1, 2026-10-26
+    content:
+      instructions_ru: Ответь по-английски в 2–4 предложениях.
+      prompt_en: At a family birthday party, your relatives start teasing you about the silly little mistakes you make over and over. What do they say, and how do you feel about it?
+      reference_en:
+        - My brother says I'm always locking myself out of the flat, and he's right. I'm also always spilling coffee on my shirt just before meetings! I laugh along with them, but it's a bit embarrassing.
+      focus:
+        - "always + continuous: что-то случается слишком часто с самим говорящим (терять, забывать)"
+  - id: 13-free
+    unit_id: 13    # 13. Present perfect and past 1 (I have done and I did)
+    # сгенерировано без записи в базу, free-gen-v1, 2026-10-26
+    content:
+      instructions_ru: Ответь по-английски в 2–4 предложениях.
+      prompt_en: Your university is naming a new reading room after a professor who died last year. A first-year student asks you who she was. What do you tell them?
+      reference_en:
+        - She taught physics here for thirty years. She wrote two textbooks, and many of us learned from them. She also started a free evening course for adults, and hundreds of people joined it.
+      focus:
+        - дела умершего человека
+  - id: 28-free
+    unit_id: 28    # 28. must and can't
+    # сгенерировано без записи в базу, free-gen-v1, 2026-10-26
+    content:
+      instructions_ru: Ответь по-английски в 2–4 предложениях.
+      prompt_en: Your landlord phones and says the people in the flat above you were having loud parties every night last week. But you were at home all week, and you know those tenants were away on holiday. What do you tell him?
+      reference_en:
+        - They can't have been having parties every night. I was at home all week and I didn't hear a thing. The tenants were on holiday, so they can't have been making any noise. Someone has given you wrong information.
+      focus:
+        - невозможный длительный процесс в прошлом (can't have been + -ing)
+  - id: 38-free
+    unit_id: 38    # 38. if I do … and if I did …
+    # сгенерировано без записи в базу, free-gen-v1, 2026-10-26
+    content:
+      instructions_ru: Ответь по-английски в 2–4 предложениях.
+      prompt_en: Your teammate is leading tomorrow's training session for the first time, and you can't be there. What do you text him about possible problems?
+      reference_en:
+        - If it rains, move the session into the gym and message everyone first. If somebody gets injured, call me or the club doctor straight away. And if you run out of balls, ask the other team to lend you some.
+      focus:
+        - инструкция или просьба при условии (if + present, повелительное)
+  - id: 43-free
+    unit_id: 43    # 43. Passive 2 (be done / been done / being done)
+    # сгенерировано без записи в базу, free-gen-v1, 2026-10-26
+    content:
+      instructions_ru: Ответь по-английски в 2–4 предложениях.
+      prompt_en: "You ordered a winter coat online, but the parcel arrived a week late and the box was crushed. You are writing to customer service: what do you say went wrong?"
+      reference_en:
+        - My coat should have been delivered last Monday, but it arrived a week late. The box was crushed, so it clearly could have been packed more carefully. It shouldn't have been left outside my door, either.
+      focus:
+        - "прошлое с модальными: надо было, могли бы (should / could have been + V3)"
+  - id: 56-free
+    unit_id: 56    # 56. Verb + -ing or to … 1 (remember, regret etc.)
+    # сгенерировано без записи в базу, free-gen-v1, 2026-10-26
+    content:
+      instructions_ru: Ответь по-английски в 2–4 предложениях.
+      prompt_en: Think about a weekend trip or a night out with friends that was so memorable you still talk about it. What was it like for you?
+      reference_en:
+        - Last summer my friends and I went camping by a lake. I'll never forget waking up at dawn and seeing mist over the water. We still talk about it, and I'll never forget laughing so hard around the fire that night.
+      focus:
+        - "never forget + -ing: никогда не забуду, как делал"
+  - id: 72-free
+    unit_id: 72    # 72. a/an and the
+    # сгенерировано без записи в базу, free-gen-v1, 2026-10-26
+    content:
+      instructions_ru: Ответь по-английски в 2–4 предложениях.
+      prompt_en: A friend is visiting your town for the first time and arrives by plane late at night. Tell them how to get to your home.
+      reference_en:
+        - Take the bus from the airport to the city centre – it runs all night. Get off next to the station and I'll meet you there. If you miss the last bus, a taxi is about €30, and the driver will know my street.
+      focus:
+        - the + привычные места в городе (the bank, the post office, the station, the airport, the city centre)
+
+cases:
+  - id: 3-free-target
+    task: 3-free
+    answer: "They say I'm always losing my keys and I'm always forgetting people's birthdays. My aunt also jokes that I'm always arriving late for family dinners. Honestly, I don't mind, because they're right."
+    expect: {verdict: "correct_target", target: "correct", side_errors: []}
+  - id: 3-free-non-target
+    task: 3-free
+    answer: "They joke that I lose my keys every week and forget everybody's birthday. My uncle says I've never once been on time for a family dinner. I just laugh with them, because it's true."
+    expect: {verdict: "correct_non_target", target: "not_used", side_errors: []}
+  - id: 3-free-target-error   # нет am
+    task: 3-free
+    answer: "They say I always losing my keys and I always forgetting people's birthdays. My aunt jokes that I always arriving late for family dinners. I don't mind, because they're right."
+    expect: {verdict: "incorrect", target: ["error", "partial"], side_errors: []}
+  - id: 3-free-side-error   # embarrassed → embarrassing
+    task: 3-free
+    answer: "They say I'm always losing my keys and I'm always forgetting people's birthdays. I don't really mind, because they're right, but sometimes it's a bit embarrassed for me."
+    expect: {verdict: "correct_target", target: "correct", side_errors: [98]}
+  - id: 3-free-edge   # always + continuous и обычное usually + simple рядом — оба верны
+    task: 3-free
+    answer: "They say I'm always losing my keys. To be fair, I usually lose them on Mondays, because I'm tired after the weekend. So I don't really mind their jokes, and I laugh along with them."
+    expect: {verdict: "correct_target", target: "correct", side_errors: []}
+
+  - id: 13-free-target
+    task: 13-free
+    answer: "She was a chemistry professor here for over twenty years. She wrote the textbook we still use, and she started the university's science club. Everyone loved her lectures because she made them fun."
+    expect: {verdict: "correct_target", target: "correct", side_errors: []}
+  - id: 13-free-non-target   # о наследии в настоящем
+    task: 13-free
+    answer: "She's the professor whose textbook we still use in every chemistry course. Her science club is still the most popular club at the university, and her old students still talk about her."
+    expect: {verdict: "correct_non_target", target: "not_used", side_errors: []}
+  - id: 13-free-target-error   # present perfect об умершем
+    task: 13-free
+    answer: "She has been a chemistry professor here for over twenty years. She has written the textbook we still use, and she has started the university's science club. Everyone has loved her lectures."
+    expect: {verdict: "incorrect", target: ["error", "partial"], side_errors: []}
+  - id: 13-free-side-error   # during twenty years → for
+    task: 13-free
+    answer: "She was a chemistry professor here during twenty years. She wrote the textbook we still use, and she started the university's science club. Everyone loved her lectures because she made them fun."
+    expect: {verdict: "correct_target", target: "correct", side_errors: [119]}
+  - id: 13-free-edge   # два верных past simple и один has started
+    task: 13-free
+    answer: "She was a chemistry professor here for over twenty years. She wrote the textbook we still use, and she has started the university's science club, which is still very popular with students."
+    expect: {verdict: "incorrect", target: ["partial", "error"]}
+
+  - id: 28-free-target
+    task: 28-free
+    answer: "They can't have been having parties every night, because they were on holiday all week. I was at home the whole time, and it was completely quiet. Someone must have given you the wrong information."
+    expect: {verdict: "correct_target", target: "correct", side_errors: []}
+  - id: 28-free-non-target
+    task: 28-free
+    answer: "That's impossible. The neighbours were away on holiday all last week, and I was at home every evening and didn't hear a single sound. I think someone has made a mistake."
+    expect: {verdict: "correct_non_target", target: "not_used", side_errors: []}
+  - id: 28-free-target-error   # mustn't have been
+    task: 28-free
+    answer: "They mustn't have been having parties every night, because they were on holiday all week. I was at home the whole time, and it was completely quiet. Someone has given you the wrong information."
+    expect: {verdict: "incorrect", target: ["error", "partial"], side_errors: []}
+  - id: 28-free-side-error   # didn't see nobody
+    task: 28-free
+    answer: "They can't have been having parties every night, because they were on holiday all week. I was at home the whole week, and I didn't see nobody go upstairs. Someone has given you the wrong information."
+    expect: {verdict: "correct_target", target: "correct", side_errors: [86]}
+  - id: 28-free-edge   # can't have had — тоже верно
+    task: 28-free
+    answer: "They can't have had parties every night, because they were on holiday all week. I was at home the whole time, and it was completely quiet. Someone must have given you the wrong information."
+    expect: {verdict: "correct_target", target: "correct", side_errors: []}
+
+  - id: 38-free-target
+    task: 38-free
+    answer: "If it rains, move the session to the indoor hall. If someone gets hurt, call the club doctor first and then me. And if only a few people turn up, just do a light session and finish early."
+    expect: {verdict: "correct_target", target: "correct", side_errors: []}
+  - id: 38-free-non-target
+    task: 38-free
+    answer: "In case of rain, move the session to the indoor hall. Keep the club doctor's number with you for any injuries. With only a few players, just do a light session and finish early."
+    expect: {verdict: "correct_non_target", target: "not_used", side_errors: []}
+  - id: 38-free-target-error   # will в if-части
+    task: 38-free
+    answer: "If it will rain, move the session to the indoor hall. If someone will get hurt, call the club doctor first and then me. And if only a few people will turn up, just do a light session."
+    expect: {verdict: "incorrect", target: ["error", "partial"], side_errors: []}
+  - id: 38-free-side-error   # enough small → small enough
+    task: 38-free
+    answer: "If it rains, move the session to the indoor hall. If someone gets hurt, call the club doctor first. And if only a few people turn up, the group will be enough small for a light session."
+    expect: {verdict: "correct_target", target: "correct", side_errors: [103]}
+  - id: 38-free-edge   # if + present с will/should/can вместо повелительного — верно
+    task: 38-free
+    answer: "If it rains, you'll have to move the session to the indoor hall. If someone gets hurt, you should call the club doctor first. And if only a few people turn up, you can just do a light session."
+    expect: {verdict: "correct_target", target: "correct", side_errors: []}
+
+  - id: 43-free-target
+    task: 43-free
+    answer: "My coat should have been delivered last Tuesday, but it arrived a week late. The box was crushed, so it can't have been packed properly. Parcels like this should be handled more carefully."
+    expect: {verdict: "correct_target", target: "correct", side_errors: []}
+  - id: 43-free-non-target
+    task: 43-free
+    answer: "Your courier delivered my coat a week late, and the box was completely crushed when it arrived. You promised delivery within three days, so I'm very disappointed with your service."
+    expect: {verdict: "correct_non_target", target: "not_used", side_errors: []}
+  - id: 43-free-target-error   # should have delivered / have be packed
+    task: 43-free
+    answer: "My coat should have delivered last Tuesday, but it arrived a week late. The box was crushed, so it should have be packed more carefully. I'm very disappointed with your service."
+    expect: {verdict: "incorrect", target: ["error", "partial"], side_errors: []}
+  - id: 43-free-side-error   # more careful → more carefully
+    task: 43-free
+    answer: "My coat should have been delivered last Tuesday, but it arrived a week late. The box was crushed, so it should have been packed more careful. I'm very disappointed with your service."
+    expect: {verdict: "correct_target", target: "correct", side_errors: [100]}
+  - id: 43-free-edge   # was supposed to be delivered; главное — не incorrect
+    task: 43-free
+    answer: "My coat was supposed to be delivered last Tuesday, but it arrived a week late. The box was crushed, so somebody obviously didn't pack it carefully enough. I'm very disappointed."
+    expect: {verdict: ["correct_target", "correct_non_target"], target: ["correct", "not_used"], side_errors: []}
+
+  - id: 56-free-target
+    task: 56-free
+    answer: "I'll never forget swimming in the sea at midnight during our trip to Montenegro. I also remember laughing until I cried when our tent collapsed in the rain. We still talk about that weekend."
+    expect: {verdict: "correct_target", target: "correct", side_errors: []}
+  - id: 56-free-non-target
+    task: 56-free
+    answer: "It was a camping weekend in the mountains, and it was the best trip of my life. We cooked dinner on a fire, swam in a freezing lake and talked until sunrise. We still laugh about it."
+    expect: {verdict: "correct_non_target", target: "not_used", side_errors: []}
+  - id: 56-free-target-error   # forget to swim / remember to laugh
+    task: 56-free
+    answer: "I'll never forget to swim in the sea at midnight during our trip to Montenegro. I also remember to laugh until I cried when our tent collapsed in the rain. We still talk about that weekend."
+    expect: {verdict: "incorrect", target: ["error", "partial"], side_errors: []}
+  - id: 56-free-side-error   # the more exciting → the most exciting
+    task: 56-free
+    answer: "I'll never forget swimming in the sea at midnight during our trip to Montenegro. Our tent collapsed in the rain and we slept in the car, but it was the more exciting night of my life."
+    expect: {verdict: "correct_target", target: "correct", side_errors: [108]}
+  - id: 56-free-edge   # never forget how we swam; главное — не incorrect
+    task: 56-free
+    answer: "I'll never forget how we swam in the sea at midnight during our trip to Montenegro, and I still remember how our tent collapsed in the rain. We talk about that weekend every time we meet."
+    expect: {verdict: ["correct_non_target", "correct_target"], target: ["not_used", "correct"], side_errors: []}
+
+  - id: 72-free-target
+    task: 72-free
+    answer: "When you land, take the night bus from the airport to the city centre. Get off at the station, and I'll meet you at the bus stop outside. If you miss the bus, take a taxi and show the driver my address."
+    expect: {verdict: "correct_target", target: "correct", side_errors: []}
+  - id: 72-free-non-target   # мест города нет; главное — не incorrect
+    task: 72-free
+    answer: "When you land, book a taxi through the app, because it's the easiest option at night. Send me a message when you're in the car, and I'll wait for you outside my building with the keys."
+    expect: {verdict: ["correct_non_target", "correct_target"], target: ["not_used", "correct"], side_errors: []}
+  - id: 72-free-target-error   # a/an вместо the везде
+    task: 72-free
+    answer: "When you land, take a night bus from an airport to a city centre. Get off at a station, and I'll meet you at a bus stop outside. If you miss a last bus, take a taxi and show a driver my address."
+    expect: {verdict: "incorrect", target: ["error", "partial"], side_errors: []}
+  - id: 72-free-side-error   # if you will miss
+    task: 72-free
+    answer: "When you land, take the night bus from the airport to the city centre. Get off at the station, and I'll meet you there. If you will miss the last bus, take a taxi and show the driver my address."
+    expect: {verdict: "correct_target", target: "correct", side_errors: [[25, 38]]}
+  - id: 72-free-edge   # into town без артикля — британское
+    task: 72-free
+    answer: "When you land, take the night bus from the airport into town. Get off at the railway station, and I'll meet you at the bus stop outside it. If you miss the last bus, just call me and I'll come."
+    expect: {verdict: "correct_target", target: "correct", side_errors: []}

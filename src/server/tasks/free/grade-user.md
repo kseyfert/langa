@@ -1,5 +1,5 @@
 ---
-version: grade-v3
+version: free-grade-v4
 ---
 TARGET UNIT:
 {{book}} · {{section}} · Unit {{number}}: {{title}}

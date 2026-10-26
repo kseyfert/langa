@@ -1,0 +1,242 @@
+# Случаи набора translate-grade для рабочей области Grammar In Use (имя файла — область).
+# Источник истины — этот файл: запуск синхронизирует его в датасет Langfuse
+# grammar-in-use/translate-grade (новые и изменённые случаи — upsert, удалённые — в архив).
+#
+# tasks — задания (content как в exercises.content), cases ссылаются на них по task.
+# Случай: answer — ответ ученика; expect:
+#   verdict      — correct_target / correct_non_target / incorrect, или список допустимых;
+#   target       — ожидаемый target.status: correct / error / partial / not_used, или список допустимых;
+#   side_errors  — unit_id, которые должны быть в others со статусом error или partial;
+#                  элемент-список [9, 11] — «найден любой из»; лишняя — побочная error/partial
+#                  не из списка; [] — побочных ошибок быть не должно; ключа нет — не проверяются.
+# Ветки: target — верно с целевой конструкцией; non-target — верно без неё;
+# target-error — ошибка в целевой конструкции; side-error — целевая верна, ошибка другого
+# юнита; edge — пограничный случай.
+# Пока answer пуст или в expect нет verdict и target, случай не заполнен и в прогон не идёт.
+workspace_id: 1
+tasks:
+  - id: 3-translate
+    unit_id: 3    # 3. Present continuous and present simple 1 (I am doing and I do)
+    # сгенерировано без записи в базу, translate-gen-v1, 2026-10-26
+    content:
+      instructions_ru: Переведи на английский.
+      source_ru: Вообще я живу в Казани, но этот месяц я работаю в Тбилиси и снимаю маленькую квартиру у реки.
+      target_note_ru: Временное проживание и работа на ограниченный срок передаются через present continuous (I'm working, I'm renting), а постоянное место жительства — через present simple (I live). Подсказки — «вообще» и «этот месяц».
+      reference_en:
+        - I normally live in Kazan, but this month I'm working in Tbilisi and renting a small flat by the river.
+      focus:
+        - временное проживание или работа до какого-то момента
+  - id: 13-translate
+    unit_id: 13    # 13. Present perfect and past 1 (I have done and I did)
+    # сгенерировано без записи в базу, translate-gen-v1, 2026-10-26
+    content:
+      instructions_ru: Переведи на английский.
+      source_ru: На прошлой неделе мы украшали ёлку у бабушки, и Маша разбила её любимый стеклянный шар. Когда бабушка его увидела, она просто засмеялась.
+      target_note_ru: «На прошлой неделе» и «когда» указывают на законченное время в прошлом, поэтому здесь нужен только past simple (decorated, broke, saw, laughed). Present perfect с такими маркерами невозможен.
+      reference_en:
+        - Last week we decorated the Christmas tree at Grandma's, and Masha broke her favourite glass ball. When Grandma saw it, she just laughed.
+      focus:
+        - yesterday, last week, when — только с past simple
+  - id: 28-translate
+    unit_id: 28    # 28. must and can't
+    # сгенерировано без записи в базу, translate-gen-v1, 2026-10-26
+    content:
+      instructions_ru: Переведи на английский.
+      source_ru: Не может быть, что Дима сейчас играет в футбол с ребятами. Он же вчера сломал ногу и лежит дома.
+      target_note_ru: "Когда ты уверен, что что-то прямо сейчас происходить не может, используй can't be + -ing. Не говори mustn't: для такого вывода оно не подходит."
+      reference_en:
+        - Dima can't be playing football with the guys right now. He broke his leg yesterday and is lying at home.
+      focus:
+        - невозможный процесс сейчас (can't be + -ing)
+  - id: 38-translate
+    unit_id: 38    # 38. if I do … and if I did …
+    # сгенерировано без записи в базу, translate-gen-v1, 2026-10-26
+    content:
+      instructions_ru: Переведи на английский.
+      source_ru: Я записан к врачу на пятницу. Если анализы будут готовы к утру, я заберу их по дороге. А вот если бы у меня был личный врач, я бы вообще не стоял в этих очередях.
+      target_note_ru: Первое условие — реальный план, поэтому после if идёт present (are/will be не нужно), а в главной части — will. Второе — просто мечта, поэтому if + past (had), а в главной части — would.
+      reference_en:
+        - I have a doctor's appointment on Friday. If the test results are ready by the morning, I'll pick them up on the way. But if I had a private doctor, I wouldn't stand in these queues at all.
+      focus:
+        - "выбор: реальный план (if + present) или просто идея (if + past)"
+  - id: 43-translate
+    unit_id: 43    # 43. Passive 2 (be done / been done / being done)
+    # сгенерировано без записи в базу, translate-gen-v1, 2026-10-26
+    content:
+      instructions_ru: Переведи на английский.
+      source_ru: Результаты отборочного забега объявят завтра в полдень. Список участников финала вывесят на сайте клуба, так что приходить в зал не нужно.
+      target_note_ru: "Действие выполняется кем-то неназванным в будущем, поэтому нужен пассив с will: will be announced, will be posted. Не забудь be после will и не добавляй to."
+      reference_en:
+        - The results of the qualifying run will be announced tomorrow at noon. The list of finalists will be posted on the club's website, so you don't need to come to the gym.
+      focus:
+        - "будущее в пассиве: объявление результатов, открытие (will be + V3)"
+  - id: 56-translate
+    unit_id: 56    # 56. Verb + -ing or to … 1 (remember, regret etc.)
+    # сгенерировано без записи в базу, translate-gen-v1, 2026-10-26
+    content:
+      instructions_ru: Переведи на английский.
+      source_ru: Через полчаса после того, как я выпил таблетку, боль начала отступать. Я начал надеяться, что к вечеру смогу вернуться на работу.
+      target_note_ru: "После begin и start можно использовать и to + глагол, и -ing, смысл не меняется: began to fade, started to hope / started hoping. Следи, чтобы не получилось два -ing подряд, если сам глагол start стоит в форме -ing."
+      reference_en:
+        - Half an hour after I took the pill, the pain began to fade. I started to hope that I'd be able to go back to work by the evening.
+      focus:
+        - begin/start + -ing или to без разницы в смысле
+  - id: 72-translate
+    unit_id: 72    # 72. a/an and the
+    # сгенерировано без записи в базу, translate-gen-v1, 2026-10-26
+    content:
+      instructions_ru: Переведи на английский.
+      source_ru: Мой брат всегда ездит слишком быстро. Вчера, когда мы везли бабушку в больницу, он гнал под сто тридцать километров в час, хотя там ограничение — девяносто.
+      target_note_ru: "Скорость в значении «в час» передаётся через an hour: 130 km an hour (не «in the hour» и не «per the hour»). Перед hour ставим an, потому что слово начинается с гласного звука."
+      reference_en:
+        - My brother always drives too fast. Yesterday, when we were taking Grandma to the hospital, he was doing 130 km an hour, even though the speed limit there is 90.
+      focus:
+        - a/an со скоростью (100 km an hour)
+
+cases:
+  - id: 3-translate-target
+    task: 3-translate
+    answer: "I usually live in Kazan, but this month I'm working in Tbilisi and renting a small flat by the river."
+    expect: {verdict: "correct_target", target: "correct", side_errors: []}
+  - id: 3-translate-non-target
+    task: 3-translate
+    answer: "My home is in Kazan, but I have a one-month job in Tbilisi, and I've rented a small flat by the river."
+    expect: {verdict: "correct_non_target", target: "not_used", side_errors: []}
+  - id: 3-translate-target-error   # simple для временного — грамотно, но не к месту
+    task: 3-translate
+    answer: "I usually live in Kazan, but this month I work in Tbilisi and rent a small flat by the river."
+    expect: {verdict: "incorrect", target: ["error", "partial"], side_errors: []}
+  - id: 3-translate-side-error   # in this month → this month
+    task: 3-translate
+    answer: "I usually live in Kazan, but in this month I'm working in Tbilisi and renting a small flat by the river."
+    expect: {verdict: "correct_target", target: "correct", side_errors: [121]}
+  - id: 3-translate-edge   # continuous для постоянного, вторая часть верна
+    task: 3-translate
+    answer: "I am usually living in Kazan, but this month I'm working in Tbilisi and renting a small flat by the river."
+    expect: {verdict: "incorrect", target: ["error", "partial"]}
+
+  - id: 13-translate-target
+    task: 13-translate
+    answer: "Last week we were decorating the Christmas tree at Grandma's, and Masha broke her favourite glass ornament. When Grandma saw it, she just laughed."
+    expect: {verdict: "correct_target", target: "correct", side_errors: []}
+  - id: 13-translate-non-target   # обхода тут нет: второй верный вариант
+    task: 13-translate
+    answer: "A week ago, while we were decorating Grandma's Christmas tree, Masha broke her favourite glass bauble. Grandma just laughed when she saw it."
+    expect: {verdict: "correct_target", target: "correct", side_errors: []}
+  - id: 13-translate-target-error
+    task: 13-translate
+    answer: "Last week we have decorated the Christmas tree at Grandma's, and Masha has broken her favourite glass ball. When Grandma saw it, she just laughed."
+    expect: {verdict: "incorrect", target: ["error", "partial"], side_errors: []}
+  - id: 13-translate-side-error   # on last week → last week
+    task: 13-translate
+    answer: "On last week we decorated the Christmas tree at Grandma's, and Masha broke her favourite glass ball. When Grandma saw it, she just laughed."
+    expect: {verdict: "correct_target", target: "correct", side_errors: [121]}
+  - id: 13-translate-edge   # перестроенный верный перевод
+    task: 13-translate
+    answer: "Last week, when we decorated the tree at Grandma's, Masha broke her favourite glass ball, and Grandma just laughed when she saw it."
+    expect: {verdict: "correct_target", target: "correct", side_errors: []}
+
+  - id: 28-translate-target
+    task: 28-translate
+    answer: "Dima can't be playing football with the guys right now. He broke his leg yesterday and he's at home in bed."
+    expect: {verdict: "correct_target", target: "correct", side_errors: []}
+  - id: 28-translate-non-target
+    task: 28-translate
+    answer: "There's no way Dima is playing football with the lads right now. He broke his leg yesterday and he's in bed at home."
+    expect: {verdict: "correct_non_target", target: "not_used", side_errors: []}
+  - id: 28-translate-target-error
+    task: 28-translate
+    answer: "Dima mustn't be playing football with the guys right now. He broke his leg yesterday and he's in bed at home."
+    expect: {verdict: "incorrect", target: ["error", "partial"], side_errors: []}
+  - id: 28-translate-side-error   # has broken … yesterday
+    task: 28-translate
+    answer: "Dima can't be playing football with the guys right now. He has broken his leg yesterday and he's in bed at home."
+    expect: {verdict: "correct_target", target: "correct", side_errors: [[13, 14]]}
+  - id: 28-translate-edge   # неспособность вместо вывода; главное — не correct_target
+    task: 28-translate
+    answer: "Dima can't play football with the guys right now. He broke his leg yesterday and he's in bed at home."
+    expect: {verdict: ["incorrect", "correct_non_target"], target: ["error", "partial", "not_used"]}
+
+  - id: 38-translate-target
+    task: 38-translate
+    answer: "I've got a doctor's appointment on Friday. If my test results are ready by the morning, I'll pick them up on the way. But if I had a private doctor, I wouldn't have to stand in these queues at all."
+    expect: {verdict: "correct_target", target: "correct", side_errors: []}
+  - id: 38-translate-non-target   # provided и would без if; главное — не incorrect
+    task: 38-translate
+    answer: "I've got a doctor's appointment on Friday. I'll pick up my test results on the way, provided they're ready by the morning. With a private doctor, I wouldn't have to queue at all."
+    expect: {verdict: ["correct_non_target", "correct_target"], target: ["not_used", "correct"], side_errors: []}
+  - id: 38-translate-target-error
+    task: 38-translate
+    answer: "I've got a doctor's appointment on Friday. If my test results will be ready by the morning, I'll pick them up on the way. But if I would have a private doctor, I wouldn't stand in these queues at all."
+    expect: {verdict: "incorrect", target: ["error", "partial"], side_errors: []}
+  - id: 38-translate-side-error   # at Friday → on Friday
+    task: 38-translate
+    answer: "I've got an appointment with the doctor at Friday. If my test results are ready by the morning, I'll pick them up on the way. But if I had a private doctor, I wouldn't stand in these queues at all."
+    expect: {verdict: "correct_target", target: "correct", side_errors: [121]}
+  - id: 38-translate-edge   # первое условие верно, второе — реальное вместо нереального
+    task: 38-translate
+    answer: "I've got a doctor's appointment on Friday. If my test results are ready by the morning, I'll pick them up on the way. But if I have a private doctor, I won't stand in these queues at all."
+    expect: {verdict: "incorrect", target: ["partial", "error"]}
+
+  - id: 43-translate-target
+    task: 43-translate
+    answer: "The results of the qualifying race will be announced tomorrow at noon. The list of finalists will be posted on the club's website, so there's no need to come to the gym."
+    expect: {verdict: "correct_target", target: "correct", side_errors: []}
+  - id: 43-translate-non-target   # актив с they
+    task: 43-translate
+    answer: "They'll announce the results of the qualifying race tomorrow at noon and put the list of finalists on the club's website, so you don't need to come to the gym."
+    expect: {verdict: "correct_non_target", target: "not_used", side_errors: []}
+  - id: 43-translate-target-error
+    task: 43-translate
+    answer: "The results of the qualifying race will announced tomorrow at noon. The list of finalists will be post on the club's website, so you don't need to come to the gym."
+    expect: {verdict: "incorrect", target: ["error", "partial"], side_errors: []}
+  - id: 43-translate-side-error   # in noon → at noon
+    task: 43-translate
+    answer: "The results of the qualifying race will be announced tomorrow in noon. The list of finalists will be posted on the club's website, so you don't need to come to the gym."
+    expect: {verdict: "correct_target", target: "correct", side_errors: [121]}
+  - id: 43-translate-edge   # are being announced о договорённости — тоже верно
+    task: 43-translate
+    answer: "The results of the qualifying race are being announced tomorrow at noon, and the list of finalists will be posted on the club's website, so you don't need to come to the gym."
+    expect: {verdict: "correct_target", target: "correct", side_errors: []}
+
+  - id: 56-translate-target
+    task: 56-translate
+    answer: "Half an hour after I took the pill, the pain started to go away. I began hoping that I'd be able to go back to work by the evening."
+    expect: {verdict: "correct_target", target: "correct", side_errors: []}
+  - id: 56-translate-non-target
+    task: 56-translate
+    answer: "Half an hour after I took the pill, the pain eased. Soon I was hoping that I could get back to work by the evening."
+    expect: {verdict: "correct_non_target", target: "not_used", side_errors: []}
+  - id: 56-translate-target-error
+    task: 56-translate
+    answer: "Half an hour after I took the pill, the pain started go away. I began to hoping that I'd be able to go back to work by the evening."
+    expect: {verdict: "incorrect", target: ["error", "partial"], side_errors: []}
+  - id: 56-translate-side-error   # until the evening → by the evening
+    task: 56-translate
+    answer: "Half an hour after I took the pill, the pain started to go away. I began hoping that I'd be able to go back to work until the evening."
+    expect: {verdict: "correct_target", target: "correct", side_errors: [120]}
+  - id: 56-translate-edge   # starting hoping — два -ing подряд
+    task: 56-translate
+    answer: "Half an hour after I took the pill, the pain was starting to fade, and I was starting hoping that I'd be able to go back to work by the evening."
+    expect: {verdict: "incorrect", target: ["error", "partial"]}
+
+  - id: 72-translate-target   # to hospital — британское
+    task: 72-translate
+    answer: "My brother always drives too fast. Yesterday, when we were taking Grandma to hospital, he was doing about 130 kilometres an hour, even though the limit there is 90."
+    expect: {verdict: "correct_target", target: "correct", side_errors: []}
+  - id: 72-translate-non-target   # per hour вместо an hour
+    task: 72-translate
+    answer: "My brother always drives too fast. Yesterday, when we were taking Grandma to hospital, he was doing about 130 kilometres per hour, even though the limit there is 90."
+    expect: {verdict: ["correct_non_target", "correct_target"], target: ["not_used", "correct"], side_errors: []}
+  - id: 72-translate-target-error
+    task: 72-translate
+    answer: "My brother always drives too fast. Yesterday, when we were taking Grandma to hospital, he was doing about 130 kilometres a hour, even though the limit there is 90."
+    expect: {verdict: "incorrect", target: ["error", "partial"], side_errors: []}
+  - id: 72-translate-side-error   # drives always → always drives
+    task: 72-translate
+    answer: "My brother drives always too fast. Yesterday, when we were taking Grandma to hospital, he was doing about 130 kilometres an hour, even though the limit there is 90."
+    expect: {verdict: "correct_target", target: "correct", side_errors: [110]}
+  - id: 72-translate-edge   # km/h без артикля; главное — не incorrect
+    task: 72-translate
+    answer: "My brother always drives too fast. Yesterday, when we were taking Grandma to hospital, he was doing about 130 km/h, even though the limit there is 90."
+    expect: {verdict: ["correct_non_target", "correct_target"], target: ["not_used", "correct"], side_errors: []}

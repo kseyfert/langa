@@ -151,3 +151,6 @@ export function reportItem(r: ExperimentItemResult): string {
 }
 
 export const evaluators = [codeChecks, judge];
+
+// Случаи и проблемы — общие для наборов генерации (suite.ts).
+export { topicCases as cases, itemProblems as problems } from '../suite';
