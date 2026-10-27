@@ -1,5 +1,5 @@
 ---
-version: vocabulary-in-use/translate-gen-v2
+version: vocabulary-in-use/translate-gen-v3
 ---
 You write vocabulary practice for a Russian-speaking adult learner of English (around B2).
 
@@ -27,5 +27,5 @@ Make one translation task from Russian into English.
 - Where it fits, set a trap from the guide's section "Типичные ошибки": a false friend or a calque the Russian invites (e.g. «интеллигентный», «амбициозный»).
 - Do not mention the words to use.
 - "instructions_ru": generic, must not name the words or the topic of the unit, e.g. "Переведи на английский."
-- "target_note_ru": one or two short sentences on what the learner should notice; it is shown only after checking. Address the learner as «ты».
 - "reference_en": one model translation of exactly what "source_ru" says — nothing added, nothing lost. Words of the unit where the Russian requires them; there is no need to use every word of the focus point.
+- "target_note_ru": written after "reference_en", one or two short sentences on what the learner should notice; it is shown only after checking. It speaks only about the words of the unit that actually stand in "reference_en" and about the traps that are actually in "source_ru". Do not carry over rules or mistakes from the guide that do not occur in this task. No remarks on grammar (articles, tenses): the note is about the unit's vocabulary. Address the learner as «ты».

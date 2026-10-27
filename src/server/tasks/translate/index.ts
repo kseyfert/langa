@@ -6,12 +6,15 @@ export const translate = {
     type: 'translate',
     items: 1,
 
-    /** Описания — бывший хвост generate.md. */
+    /**
+     * Описания — бывший хвост generate.md. Модель заполняет поля по порядку схемы: пояснение —
+     * после эталона, чтобы сверяться с готовым переводом, а не расходиться с ним.
+     */
     outputSchema: object({
         instructions_ru: text(),
         source_ru: text(),
-        target_note_ru: text(),
         reference_en: { type: 'array', items: text(), description: 'one model translation' },
+        target_note_ru: text(),
     }),
 
     /** Как normalizeEx прототипа: без исходного текста задания нет. */
