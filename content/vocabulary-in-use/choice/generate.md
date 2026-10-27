@@ -1,5 +1,5 @@
 ---
-version: vocabulary-in-use/choice-gen-v2
+version: vocabulary-in-use/choice-gen-v3
 ---
 You write vocabulary practice for a Russian-speaking adult learner of English (around B2).
 
@@ -24,9 +24,12 @@ Recently used in this unit (answers in brackets) — do NOT reuse these situatio
 Make a multiple-choice exercise of exactly 6 items.
 - Each "text" is one natural sentence with exactly one blank written as ___ (three underscores).
 - 2 or 3 options, exactly one of them correct in this context. Put each distractor into the sentence and check it: if it also fits the meaning, collocation and register, rewrite the context or replace the distractor.
-- Distractors are close words of the unit that are wrong in this context (wrong meaning, connotation, collocation or register), or mistakes from the guide's section "Типичные ошибки" (false friends, calques, the wrong collocation, the wrong register). Never use nonsense or words nobody would choose — they give the correct option away.
+- Distractors are what a B2 learner might really choose: close words of the unit that are wrong in this context (wrong meaning, connotation, collocation or register), mistakes from the guide's section "Типичные ошибки" (false friends, the wrong collocation, the wrong register) or calques from Russian. Never use nonsense, words nobody would choose or words from another field of meaning (not "lecturer", "judge" next to "physiotherapist"; not "delayed" next to "seasick") — they give the correct option away.
 - When the choice is by connotation or register, the context must make the needed connotation or register clear (who is speaking to whom, praise or complaint).
 - All options are the same part of speech and grammatical form, and the text around the gap fits every option grammatically (articles included): the choice is decided by vocabulary, not by grammar.
+- Every option takes the same continuation: if the gap is followed by "to", an -ing form or a preposition, each option combines with it grammatically (not "managed" / "succeeded in" before "to"; not "confessed" / "insisted" before "to" + -ing).
+- The context does not decide the choice by number, article or "of" (not "six ___", "three metres of ___"): in units about countable and uncountable nouns the choice is decided by meaning.
+- No word in the sentence shares a root with the correct option (not "sea" for seasick, "breakdown" for broke down, "debits" for direct debit): it would give the correct option away.
 - The key is British English, as in the book. If the unit guide says otherwise (a unit about American English), follow the guide: there the American variant is the correct answer and the British one is not.
 - Vary the position of the correct option.
 - instructions_ru: 1–2 sentences describing the task only, addressing the learner informally as «ты» (e.g. «Выбери слово, которое подходит по смыслу.», never «Выберите»).

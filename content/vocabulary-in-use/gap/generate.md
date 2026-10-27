@@ -1,5 +1,5 @@
 ---
-version: vocabulary-in-use/gap-gen-v2
+version: vocabulary-in-use/gap-gen-v3
 ---
 You write vocabulary practice for a Russian-speaking adult learner of English (around B2).
 
@@ -22,12 +22,14 @@ Recently used in this unit (answers in brackets) — do NOT reuse these situatio
 {{recent?}}
 
 Make a gap-fill exercise of exactly 6 items.
-- Each "text" is one natural sentence with exactly one blank written as ___ (three underscores). The blank holds the whole word or expression of the unit (all words of a multi-word expression).
-- No hint in brackets: the learner knows the unit and recalls its word from the context alone.
-- Exception — units in the section "Word formation": right after the blank, the brackets hold the base word the answer is formed from, e.g. "Please send the form back to your ___ (employ)." → "employer".
+- Each "text" is one natural sentence with exactly one blank written as ___ (three underscores). The blank holds exactly one word or one fixed expression of the unit, whole — not a piece of a phrase with possessives or objects around it (the blank is "overdraft", not "went over my overdraft limit").
+- Brackets: this unit's section is "{{section}}". Only if that section is exactly "Word formation", put the base word the answer is formed from in brackets right after the blank, e.g. "Please send the form back to your ___ (employ)." → "employer". In every other section there are no brackets at all — no base word, no hint: the learner knows the unit and recalls its word from the context alone.
+- Do not give the second half of a paired linker when the first half is in the sentence (no "On the one hand …; ___" → "on the other hand").
+- No word in the sentence shares a root with the answer (not "sea" for seasick, "breakdown" for broke down, "debits" for direct debit): it would give the answer away.
 - Build the context so that exactly one word or expression of the unit fits: meaning, collocation, connotation (approving or disapproving) and register must rule out the unit's other words. If two words of the unit fit equally well, rewrite the context; only if that is impossible, put both into "answers".
 - The answer must follow from the meaning of the sentence, not from grammar alone: a learner who knows the unit's words can recall exactly this one.
 - "answers" contains only words and expressions of the unit — no words from outside the unit, even if they are correct English.
-- "answers": every form of the unit's word that fits the sentence (number, tense, degree), each in full form. The learner types full forms only; contracted forms may be left out.
+- "answers": every form of the unit's word that fits the sentence (number, tense — including the backshift after said / told —, degree) and every British spelling variant (flexi-time / flexitime), each in full form. The learner types full forms only; contracted forms may be left out.
+- Before you write "answers", put every word and expression of the unit's "Лексика" list (the whole list, not only the focus point) into the blank. Everything that fits the meaning and collocation either goes into "answers" or the context is rewritten so that it no longer fits.
 - The key is British English, as in the book. If the unit guide says otherwise (a unit about American English), follow the guide: there the American variant is the correct answer and the British one is not.
 - instructions_ru: 1–2 sentences describing the task only, addressing the learner informally as «ты» (e.g. «Вставь в пропуск слово из юнита.», never «Вставьте»); do not add rules for cases that do not occur in the items.
