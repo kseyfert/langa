@@ -8,7 +8,13 @@ import { dueAt, interval, progress, isDue, replay, type Config, type Evidence, t
 export const PLANNER_CONFIG = {
     /** Варианты таймера, минуты. На выбор заданий не влияют — только интерфейс. */
     SESSION_OPTIONS: [5, 10, 15, 20, 30] as const,
+    /**
+     * В «Закреплении» вес каждой ступени ниже верхней — в столько раз меньше предыдущей (§4):
+     * 0.4 при четырёх ступенях — 62 / 25 / 10 / 4%. 0 — всегда верхняя.
+     */
+    LOWER_TYPE_DECAY: 0.4,
 };
+export type PlannerConfig = typeof PLANNER_CONFIG;
 
 export type PlannerUnit = { id: number; position: number; started: boolean };
 export type PlannerExercise = { id: number; unitId: number; type: ExerciseType; createdAt: number };
@@ -21,16 +27,43 @@ export type Plan = { unitId: number; type: ExerciseType; tier: Tier };
 
 const DAY_MS = 86_400_000;
 
+/** Ступени лестницы, доступные при освоении M, снизу вверх: по ступени на значение fromM, группа — одна ступень. */
+function stepsUpTo(M: number, c: Config): number[] {
+    return [...new Set(c.TYPES.filter((t) => M >= t.fromM).map((t) => t.fromM))];
+}
+
 /**
- * Тип по освоению без забывания: верхний порог fromM области, не выше M (типы идут по нарастанию сложности).
- * На пороге один тип — он; группа — тот её тип, который юниту давали давнее всего (никогда — раньше всех),
- * при равенстве — первый по порядку области. shown — задания юнита. Без случайности.
+ * Тип ступени fromM: один тип — он; группа — тот её тип, который юниту давали давнее всего
+ * (никогда — раньше всех), при равенстве — первый по порядку области. shown — задания юнита.
  */
-export function typeFor(M: number, c: Config, shown: readonly { type: ExerciseType; createdAt: number }[] = []): ExerciseType {
-    const fromM = c.TYPES.findLast((t) => M >= t.fromM)!.fromM;
+function typeAt(fromM: number, c: Config, shown: readonly { type: ExerciseType; createdAt: number }[]): ExerciseType {
     const group = c.TYPES.filter((t) => t.fromM === fromM);
     const lastShown = (type: ExerciseType) => Math.max(-Infinity, ...shown.filter((e) => e.type === type).map((e) => e.createdAt));
     return group.reduce((a, b) => (lastShown(b.type) < lastShown(a.type) ? b : a)).type;
+}
+
+/**
+ * Тип по освоению без забывания на верхней ступени: последний порог fromM области, не выше M
+ * (типы идут по нарастанию сложности). Без случайности.
+ */
+export function typeFor(M: number, c: Config, shown: readonly { type: ExerciseType; createdAt: number }[] = []): ExerciseType {
+    return typeAt(stepsUpTo(M, c).at(-1)!, c, shown);
+}
+
+/**
+ * Ступень для «Закрепления» (§4): случайно среди доступных, вес верхней 1, каждой ниже —
+ * в decay раз меньше. Одна ступень или decay 0 — верхняя, rng не вызывается.
+ */
+export function consolidateStep(M: number, c: Config, rng: () => number, decay: number): number {
+    const steps = stepsUpTo(M, c).reverse();   // сверху вниз
+    if (steps.length === 1 || decay <= 0) return steps[0];
+    const weights = steps.map((_, i) => decay ** i);
+    let r = rng() * weights.reduce((a, b) => a + b, 0);
+    for (let i = 0; i < steps.length; i++) {
+        if (r < weights[i]) return steps[i];
+        r -= weights[i];
+    }
+    return steps.at(-1)!;   // r на самой границе суммы — от плавающей точки
 }
 
 /**
@@ -60,13 +93,18 @@ function rank(state: UnitState, history: Evidence[], attempted: boolean, now: nu
     return { tier: 'consolidate', key: progress(state, now, c) };
 }
 
-/** Следующее задание: юнит и тип. null — начатых юнитов нет. c — конфиг области. */
+/**
+ * Следующее задание: юнит и тип. null — начатых юнитов нет. c — конфиг области.
+ * rng — только для ступени в «Закреплении»; тесты подставляют свой.
+ */
 export function nextExercise(
     units: PlannerUnit[],
     exercises: PlannerExercise[],
     attempts: PlannerAttempt[],
     now: number,
     c: Config,
+    rng: () => number = Math.random,
+    pc: PlannerConfig = PLANNER_CONFIG,
 ): Plan | null {
     const candidates = units.filter((u) => u.started);
     if (!candidates.length) return null;
@@ -100,5 +138,11 @@ export function nextExercise(
     ranked.sort((a, b) => a.tier - b.tier || a.key - b.key || a.u.position - b.u.position);
 
     const best = ranked[0];
-    return { unitId: best.u.id, type: typeFor(best.state.M, c, exercises.filter((e) => e.unitId === best.u.id)), tier: TIERS[best.tier] };
+    const tier = TIERS[best.tier];
+    // Ступень легче верхней — только в «Закреплении»: в остальных уровнях задание двигает лестницу,
+    // а день в срок, обслуженный gap/choice, выше EASY_MAX_STAGE не поднимает.
+    const step = tier === 'consolidate'
+        ? consolidateStep(best.state.M, c, rng, pc.LOWER_TYPE_DECAY)
+        : stepsUpTo(best.state.M, c).at(-1)!;
+    return { unitId: best.u.id, type: typeAt(step, c, exercises.filter((e) => e.unitId === best.u.id)), tier };
 }

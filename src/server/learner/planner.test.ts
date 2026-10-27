@@ -6,7 +6,7 @@ import { readSettings } from '../content/settings';
 import { learnerConfig } from './config';
 import { evidenceOf } from './evidence';
 import { interval, replay, type Evidence } from './model';
-import { nextExercise, typeFor, type PlannerAttempt, type PlannerExercise, type PlannerUnit } from './planner';
+import { nextExercise, PLANNER_CONFIG, typeFor, type PlannerAttempt, type PlannerExercise, type PlannerUnit } from './planner';
 
 // Константы и лестница типов — Grammar In Use: сценарии собраны на её значениях (content/grammar-in-use/workspace.yaml).
 const C = readSettings('grammar-in-use').config;
@@ -14,6 +14,9 @@ const C = readSettings('grammar-in-use').config;
 const H = 3_600_000;
 const DAY = 24 * H;
 const T0 = new Date(2026, 0, 10, 12).getTime();
+
+/** rng для «Закрепления»: 0 — всегда верхняя ступень (вес верхней первый в розыгрыше). */
+const TOP = () => 0;
 
 const started = (...ids: number[]): PlannerUnit[] => ids.map((id) => ({ id, position: id, started: true }));
 
@@ -170,16 +173,17 @@ test('10: пропущенное задание — следующим друг�
     assert.equal(plan?.unitId, 13);
 });
 
-test('11: освоение перешло 30 после удачного gap — дальше choice', () => {
+// Юнит один и только что решён — «Закрепление»: верхнюю ступень фиксирует rng TOP.
+test('11: освоение перешло 30 после удачного gap — верхняя ступень choice', () => {
     assert.equal(typeFor(29, C), 'gap');
     assert.equal(typeFor(31, C), 'choice');
     const log = makeLog();
     log.solve(5, 'gap', T0, 1);
     assert.ok(log.state(5).M < 30);
-    assert.equal(nextExercise(started(5), log.exercises, log.attempts, T0 + H, C)?.type, 'gap');
+    assert.equal(nextExercise(started(5), log.exercises, log.attempts, T0 + H, C, TOP)?.type, 'gap');
     log.solve(5, 'gap', T0 + H, 1);
     assert.ok(log.state(5).M >= 30);
-    assert.equal(nextExercise(started(5), log.exercises, log.attempts, T0 + 2 * H, C)?.type, 'choice');
+    assert.equal(nextExercise(started(5), log.exercises, log.attempts, T0 + 2 * H, C, TOP)?.type, 'choice');
 });
 
 // При difficulty 70 у группы translate/free провал на M ~60 ожидаем (p ≈ 0.3) и стоит мало:
@@ -242,7 +246,7 @@ test('nextExercise чередует группу: free → translate → free', 
     const seq: string[] = ['free'];
     for (let k = 1; k <= 2; k++) {
         const at = T0 + (13 + k * 15) * DAY;
-        const type = nextExercise(started(5), log.exercises, log.attempts, at, C)!.type;
+        const type = nextExercise(started(5), log.exercises, log.attempts, at, C, TOP)!.type;
         seq.push(type);
         log.solve(5, type, at + H, 1);
     }
@@ -258,4 +262,87 @@ test('группа с разными константами или с первы
     assert.throws(() => learnerConfig([gap, tr, { ...fr, memoryWeight: 0.8 }]), /memoryWeight/);
     assert.throws(() => learnerConfig([gap, { ...tr, fromM: 0 }]), /группа с первым типом/);
     assert.throws(() => learnerConfig([gap, tr, { ...fr, fromM: 50, difficulty: 70 }]), /fromM/);
+});
+
+/** Юнит 5 на верхней ступени — группе translate/free: последним решён free. */
+function highUnit() {
+    const log = makeLog();
+    for (const [d, type] of [[0, 'gap'], [0, 'choice'], [2, 'rephrase'], [6, 'rephrase']] as const) log.solve(5, type, T0 + d * DAY, 1);
+    log.solve(5, 'free', T0 + 13 * DAY, 1);
+    assert.ok(log.state(5).M >= 55, `M ${log.state(5).M}`);
+    return log;
+}
+
+/** rng, который всегда отдаёт r. При четырёх ступенях и 0.4 веса 1 / 0.4 / 0.16 / 0.064, сумма 1.624. */
+const fixed = (r: number) => () => r;
+
+test('«Закрепление»: ступень по весам — группа, rephrase, choice, gap', () => {
+    const log = highUnit();
+    const at = T0 + 13 * DAY + 2 * H;   // только что решён, срок не пришёл
+    const plan = (r: number) => nextExercise(started(5), log.exercises, log.attempts, at, C, fixed(r))!;
+    assert.equal(plan(0).tier, 'consolidate');
+    // Границы долей: группа < 1/1.624 ≈ 0.616, rephrase < 1.4/1.624 ≈ 0.862, choice < 1.56/1.624 ≈ 0.961.
+    assert.equal(plan(0.6).type, 'translate');   // группа; free был последним — значит translate
+    assert.equal(plan(0.62).type, 'rephrase');
+    assert.equal(plan(0.85).type, 'rephrase');
+    assert.equal(plan(0.87).type, 'choice');
+    assert.equal(plan(0.95).type, 'choice');
+    assert.equal(plan(0.97).type, 'gap');
+    assert.equal(plan(0.999).type, 'gap');
+});
+
+test('«Закрепление»: доли ступеней — 62 / 25 / 10 / 4%', () => {
+    const log = highUnit();
+    const at = T0 + 13 * DAY + 2 * H;
+    const n = 1000;
+    const counts: Record<string, number> = {};
+    for (let i = 0; i < n; i++) {
+        const t = nextExercise(started(5), log.exercises, log.attempts, at, C, fixed((i + 0.5) / n))!.type;
+        counts[t] = (counts[t] ?? 0) + 1;
+    }
+    assert.deepEqual(
+        { group: counts.translate / n, rephrase: counts.rephrase / n, choice: counts.choice / n, gap: counts.gap / n },
+        { group: 0.616, rephrase: 0.246, choice: 0.099, gap: 0.039 },
+    );
+});
+
+test('«Закрепление»: внутри выпавшей группы тип чередуется как раньше', () => {
+    const log = highUnit();
+    const at = T0 + 13 * DAY + 2 * H;
+    assert.equal(nextExercise(started(5), log.exercises, log.attempts, at, C, TOP)!.type, 'translate');
+    log.solve(5, 'translate', at, 1);
+    assert.equal(nextExercise(started(5), log.exercises, log.attempts, at + 2 * H, C, TOP)!.type, 'free');
+});
+
+test('«Новый», «Провален», «Повторение» — всегда верхняя ступень', () => {
+    const LOWEST = fixed(0.999);   // в «Закреплении» дало бы gap
+    // Повторение: срок пришёл.
+    const due = highUnit();
+    const dueAt = T0 + 60 * DAY;
+    const p1 = nextExercise(started(5), due.exercises, due.attempts, dueAt, C, LOWEST)!;
+    assert.equal(p1.tier, 'due');
+    assert.equal(p1.type, 'translate');
+    // Провален: полный провал translate — верхняя ступень по текущему M, а не нижняя из розыгрыша.
+    const failed = highUnit();
+    failed.solve(5, 'translate', T0 + 13 * DAY + H, 0);
+    const p2 = nextExercise(started(5), failed.exercises, failed.attempts, T0 + 13 * DAY + 3 * H, C, LOWEST)!;
+    assert.equal(p2.tier, 'failed');
+    assert.equal(p2.type, typeFor(failed.state(5).M, C, failed.exercises));
+    assert.notEqual(p2.type, 'gap');
+    // Новый: юнит без попыток, M = INITIAL_MASTERY — rng выбор не меняет.
+    const fresh = makeLog();
+    const p3 = nextExercise(started(7), fresh.exercises, fresh.attempts, T0, C, LOWEST)!;
+    assert.equal(p3.tier, 'new');
+    assert.equal(p3.type, typeFor(C.INITIAL_MASTERY, C));
+});
+
+test('LOWER_TYPE_DECAY 0 — в «Закреплении» всегда верхняя ступень', () => {
+    const log = highUnit();
+    const at = T0 + 13 * DAY + 2 * H;
+    const off = { ...PLANNER_CONFIG, LOWER_TYPE_DECAY: 0 };
+    for (const r of [0, 0.5, 0.9, 0.999]) {
+        const plan = nextExercise(started(5), log.exercises, log.attempts, at, C, fixed(r), off)!;
+        assert.equal(plan.tier, 'consolidate');
+        assert.equal(plan.type, 'translate');
+    }
 });
