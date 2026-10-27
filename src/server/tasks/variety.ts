@@ -16,9 +16,10 @@ export async function recent(unitId: number): Promise<string[]> {
     return list.filter((ex) => ex.model !== 'mock').flatMap((ex) => typeOf(ex.type).sentences(ex.content));
 }
 
-/** Пункты раздела «## Употребление» из guide. */
-function uses(guide: string): string[] {
-    const section = guide.split(/^## /m).find((s) => s.startsWith('Употребление')) ?? '';
+/** Пункты раздела «## Употребление» из guide; null — раздела нет. Проверка при старте (checkContent) зовёт его же. */
+export function uses(guide: string): string[] | null {
+    const section = guide.split(/^## /m).find((s) => s.startsWith('Употребление'));
+    if (section == null) return null;
     return section.split('\n').filter((l) => l.startsWith('- ')).map((l) => l.slice(2).trim());
 }
 
@@ -38,7 +39,7 @@ function shuffle<T>(xs: T[]): T[] {
  * перемешивания, чтобы повторы ложились равномерно. Итог перемешан.
  */
 export function plan(guide: string, items: number, repeat?: (point: string) => string): string[] {
-    const points = uses(guide);
+    const points = uses(guide) ?? [];
     if (!points.length) return [];
     const rounds = Math.ceil(items / points.length);
     if (rounds > 1 && !repeat) throw new Error(`Пунктов «Употребления» меньше ${items}, а пометки повтора нет`);
