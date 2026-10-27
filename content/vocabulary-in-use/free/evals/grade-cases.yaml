@@ -84,144 +84,151 @@ tasks:
       focus:
         - "этажи: first floor, second floor — назвать этаж офиса или номера"
 
+
 cases:
   - id: 8-free-target
     task: 8-free
-    answer: ""
-    expect: {}
+    answer: "After a long day at work I am usually tense and a bit wound up, so I need some time alone to relax. I am also quite sensitive to criticism: I get upset easily, even when the comment is fair."
+    expect: {verdict: "correct_target", target: "correct", side_errors: []}
   - id: 8-free-non-target
     task: 8-free
-    answer: ""
-    expect: {}
-  - id: 8-free-target-error
+    answer: "After a long day at work I am usually tired and nervous, and I need some time alone. When someone criticises my work, I feel bad and take it personally, even when they are right."
+    expect: {verdict: "correct_non_target", target: "not_used", side_errors: []}
+  - id: 8-free-target-error   # sensible вместо sensitive; stressed out верно
     task: 8-free
-    answer: ""
-    expect: {}
-  - id: 8-free-collocation-error
+    answer: "After a long day I am usually stressed out, so I need an hour to calm down. I am also very sensible to criticism: I get upset easily, even when people are only trying to help me."
+    expect: {verdict: "incorrect", target: ["partial", "error"], side_errors: []}
+  - id: 8-free-collocation-error   # sensitive to, не on
     task: 8-free
-    answer: ""
-    expect: {}
-  - id: 8-free-edge
+    answer: "After a long day at work I am usually wound up and cannot sleep. I am also quite sensitive on criticism, so I get upset even when my boss makes a small comment about my work."
+    expect: {verdict: "incorrect", target: ["partial", "error"], side_errors: []}
+  - id: 8-free-edge   # sensible в верном значении «благоразумный»
     task: 8-free
-    answer: ""
-    expect: {}
+    answer: "I am a sensible person, so I try to listen to criticism calmly and think about whether it is fair. But after a long day I am often tense, and I can get annoyed very quickly."
+    expect: {verdict: "correct_target", target: "correct", side_errors: []}
+
   - id: 16-free-target
     task: 16-free
-    answer: ""
-    expect: {}
+    answer: "That is Anna, our receptionist: she greets visitors and answers the phone. The man next to her is our office administrator, and the woman in the glass office is my supervisor, who checks our work."
+    expect: {verdict: "correct_target", target: "correct", side_errors: []}
   - id: 16-free-non-target
     task: 16-free
-    answer: ""
-    expect: {}
-  - id: 16-free-target-error
+    answer: "That is Anna, who sits at the front desk and greets visitors. The man next to her keeps the office running, and the woman in the glass office is my boss, who checks our work every week."
+    expect: {verdict: "correct_non_target", target: "not_used", side_errors: []}
+  - id: 16-free-target-error   # receptionist в роли supervisor
     task: 16-free
-    answer: ""
-    expect: {}
-  - id: 16-free-collocation-error
+    answer: "That is Tom, our receptionist: he checks everybody's work and decides who gets a pay rise. The woman next to him greets visitors and answers the phone when they arrive."
+    expect: {verdict: "incorrect", target: ["error", "partial"], side_errors: []}
+  - id: 16-free-collocation-error   # do decisions — ошибка вне юнита (89), в other_issues
     task: 16-free
-    answer: ""
-    expect: {}
-  - id: 16-free-edge
+    answer: "That is Anna, our receptionist, who greets visitors. Next to her is the administrator who keeps the office running, and the executive upstairs does all the big decisions about money."
+    expect: {verdict: "correct_target", target: "correct", side_errors: []}
+  - id: 16-free-edge   # director — член правления, верно
     task: 16-free
-    answer: ""
-    expect: {}
+    answer: "That is Anna, our receptionist. The woman in the photo is one of our directors: she sits on the board and only comes in for meetings. The man by the window is my supervisor."
+    expect: {verdict: "correct_target", target: "correct", side_errors: []}
+
   - id: 40-free-target
     task: 40-free
-    answer: ""
-    expect: {}
+    answer: "I know my credit rating is not great, but I have paid off most of my old debts and now I have a steady income. I only want to borrow ten thousand euros. What interest rate would you charge on the loan?"
+    expect: {verdict: "correct_target", target: "correct", side_errors: []}
   - id: 40-free-non-target
     task: 40-free
-    answer: ""
-    expect: {}
-  - id: 40-free-target-error
+    answer: "I know I had problems paying money back in the past, but now I have a good job and I always pay on time. I only need ten thousand euros. How much extra would I have to pay back each month?"
+    expect: {verdict: "correct_non_target", target: "not_used", side_errors: []}
+  - id: 40-free-target-error   # *take a credit, *percent
     task: 40-free
-    answer: ""
-    expect: {}
-  - id: 40-free-collocation-error
+    answer: "I know my credit is not perfect, but I have a steady income now. I want to take a credit of ten thousand euros for my business. What percent will you take from me every year?"
+    expect: {verdict: "incorrect", target: ["error", "partial"], side_errors: []}
+  - id: 40-free-collocation-error   # take interest вместо charge
     task: 40-free
-    answer: ""
-    expect: {}
-  - id: 40-free-edge
+    answer: "I know my credit rating is not perfect, but I have a steady income now and no other debts. I only want ten thousand euros. What interest would you take on the loan?"
+    expect: {verdict: "incorrect", target: ["partial", "error"], side_errors: []}
+  - id: 40-free-edge   # credit history и lend — верно
     task: 40-free
-    answer: ""
-    expect: {}
+    answer: "I know my credit history is not perfect, but I have paid back all my old debts. Could you lend me ten thousand euros for two years, and how much interest would you charge me?"
+    expect: {verdict: "correct_target", target: "correct", side_errors: []}
+
   - id: 64-free-target
     task: 64-free
-    answer: ""
-    expect: {}
+    answer: "Quite the opposite, actually! I was extremely nervous. In fact, I hardly slept the night before, and my hands were shaking when I started speaking. Experience does not always help."
+    expect: {verdict: "correct_target", target: "correct", side_errors: []}
   - id: 64-free-non-target
     task: 64-free
-    answer: ""
-    expect: {}
-  - id: 64-free-target-error
+    answer: "No, not at all! I was extremely nervous. I hardly slept the night before, and my hands were shaking when I started. Doing a lot of presentations does not always help."
+    expect: {verdict: "correct_non_target", target: "not_used", side_errors: []}
+  - id: 64-free-target-error   # on the other hand не опровергает
     task: 64-free
-    answer: ""
-    expect: {}
-  - id: 64-free-collocation-error
+    answer: "Not really. On the other hand, I was extremely nervous: I hardly slept the night before, and my hands were shaking when I started. Experience does not always help."
+    expect: {verdict: "incorrect", target: ["error", "partial"], side_errors: []}
+  - id: 64-free-collocation-error   # *in the contrary
     task: 64-free
-    answer: ""
-    expect: {}
-  - id: 64-free-edge
+    answer: "Not at all! In the contrary, I was extremely nervous: I hardly slept the night before, and my hands were shaking when I started. Experience does not always help."
+    expect: {verdict: "incorrect", target: ["error", "partial"], side_errors: []}
+  - id: 64-free-edge   # on the contrary в верном значении
     task: 64-free
-    answer: ""
-    expect: {}
+    answer: "On the contrary, I was terrified! I have given lots of presentations, but I still get nervous every time, and yesterday my voice was shaking for the first five minutes."
+    expect: {verdict: "correct_target", target: "correct", side_errors: []}
+
   - id: 70-free-target
     task: 70-free
-    answer: ""
-    expect: {}
+    answer: "It is easy. You are the sender, because the money comes from you. Your friend is the payee, so her name and bank details go in this section. And this box is for your address, not hers."
+    expect: {verdict: "correct_target", target: "correct", side_errors: []}
   - id: 70-free-non-target
     task: 70-free
-    answer: ""
-    expect: {}
-  - id: 70-free-target-error
+    answer: "It is easy. You are the person who sends the money, so your name goes here. Your friend is the person who gets it, so her name and bank details go in this section."
+    expect: {verdict: "correct_non_target", target: "not_used", side_errors: []}
+  - id: 70-free-target-error   # payee и sender перепутаны
     task: 70-free
-    answer: ""
-    expect: {}
-  - id: 70-free-collocation-error
+    answer: "It is easy. You are the payee, because you are paying the money, so your name goes here. Your friend is the sender, so her name and bank details go in this section."
+    expect: {verdict: "incorrect", target: ["error", "partial"], side_errors: []}
+  - id: 70-free-collocation-error   # payee of, не from; sender верно
     task: 70-free
-    answer: ""
-    expect: {}
-  - id: 70-free-edge
+    answer: "It is easy. The sender of the money is you, so your name goes here. And the payee from the transfer is your friend, so her name and bank details go in this section."
+    expect: {verdict: "incorrect", target: ["partial", "error"], side_errors: []}
+  - id: 70-free-edge   # beneficiary вместо payee без ошибки
     task: 70-free
-    answer: ""
-    expect: {}
+    answer: "It is easy. You are the sender, so your name and address go at the top. Your friend is the beneficiary, so her name and bank details go in this section at the bottom."
+    expect: {verdict: "correct_target", target: "correct", side_errors: []}
+
   - id: 89-free-target
     task: 89-free
-    answer: ""
-    expect: {}
+    answer: "I am going to do up the kitchen and the bathroom first, because they are the oldest rooms. As for my coat, the zip is so stiff that I can hardly do it up, so I will buy a new one before the trip."
+    expect: {verdict: "correct_target", target: "correct", side_errors: []}
   - id: 89-free-non-target
     task: 89-free
-    answer: ""
-    expect: {}
-  - id: 89-free-target-error
+    answer: "I am going to renovate the kitchen and the bathroom first, because they are the oldest rooms. As for my coat, the zip is so stiff that I can hardly close it, so I will buy a new one before the trip."
+    expect: {verdict: "correct_non_target", target: "not_used", side_errors: []}
+  - id: 89-free-target-error   # make up вместо do up; do it up верно
     task: 89-free
-    answer: ""
-    expect: {}
-  - id: 89-free-collocation-error
+    answer: "I am going to make up the kitchen and the bathroom first, because they are the oldest rooms. As for my coat, the zip is so stiff that I can hardly do it up, so I will buy a new one."
+    expect: {verdict: "incorrect", target: ["partial", "error"], side_errors: []}
+  - id: 89-free-collocation-error   # *do up it
     task: 89-free
-    answer: ""
-    expect: {}
-  - id: 89-free-edge
+    answer: "I am going to do up the kitchen and the bathroom first, because they are the oldest rooms. As for my coat, the zip is so stiff that I can hardly do up it, so I will buy a new one."
+    expect: {verdict: "incorrect", target: ["partial", "error"], side_errors: []}
+  - id: 89-free-edge   # zip it up вместо второго do up
     task: 89-free
-    answer: ""
-    expect: {}
+    answer: "I am going to do up the whole flat this summer: new floors, new paint and a new kitchen. My coat is a problem too, because the zip is so stiff that I can never zip it up quickly."
+    expect: {verdict: "correct_target", target: "correct", side_errors: []}
+
   - id: 101-free-target
     task: 101-free
-    answer: ""
-    expect: {}
+    answer: "Come in through the main entrance and take the elevator to the second floor. Our office is the first door on the right. If the elevator is busy, the stairs are just behind the front desk."
+    expect: {verdict: "correct_target", target: "correct", side_errors: []}
   - id: 101-free-non-target
     task: 101-free
-    answer: ""
-    expect: {}
-  - id: 101-free-target-error
+    answer: "Come in through the main entrance and go up one flight of stairs. Our office is the first door on the right. If you get lost, just call me again and I will come down to meet you."
+    expect: {verdict: "correct_non_target", target: "not_used", side_errors: []}
+  - id: 101-free-target-error   # first floor по-британски; elevator верно
     task: 101-free
-    answer: ""
-    expect: {}
-  - id: 101-free-collocation-error
+    answer: "Come in through the main entrance and take the elevator to the first floor, because we are one level above the street. Our office is the first door on the right."
+    expect: {verdict: "incorrect", target: ["partial", "error"], side_errors: []}
+  - id: 101-free-collocation-error   # on the second floor, не in
     task: 101-free
-    answer: ""
-    expect: {}
-  - id: 101-free-edge
+    answer: "Come in through the main entrance and take the elevator. We are in the second floor, and our office is the first door on the right. Just call me when you get there."
+    expect: {verdict: "incorrect", target: ["partial", "error"], side_errors: []}
+  - id: 101-free-edge   # британское lift; second floor верно
     task: 101-free
-    answer: ""
-    expect: {}
+    answer: "Come in through the main entrance and take the lift to the second floor. Our office is the first door on the right. If the lift is busy, the stairs are just behind the front desk."
+    expect: {verdict: "incorrect", target: ["partial", "error"], side_errors: []}

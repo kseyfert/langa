@@ -146,6 +146,8 @@ function got(ev: OpenEvaluation, units: Units, c: Config): string[] {
     const counted = new Set(sideErrors(ev, c));
     return [
         `${ev.verdict} · target ${ev.target.status}${ev.target.score === null ? '' : ` (${ev.target.score})`}`,
+        // Что именно модель сочла целевым и почему — без этого несовпадение не разобрать.
+        `target: «${ev.target.fragment || '—'}»${ev.target.fix ? ` → «${ev.target.fix}»` : ''} — ${ev.target.comment_ru || '—'}`,
         side.length
             ? `побочные: ${side.map((o) => `${unit(units, o.unit_id)} — ${o.status} (${o.score}${counted.has(o) ? '' : `, от порога ${c.FAIL_THRESHOLD * 100} — не в рейтинг`}): «${o.fragment}» → «${o.fix}»`).join('; ')}`
             : 'побочные: нет',

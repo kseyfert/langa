@@ -91,144 +91,151 @@ tasks:
       focus:
         - "пешком по городу: sidewalk, crosswalk, line, subway — объяснить дорогу, очередь в музей"
 
+
 cases:
   - id: 8-translate-target
     task: 8-translate
-    answer: ""
-    expect: {}
+    answer: "I would not take Oleg onto the team: he is rude to clients and is always interrupting his colleagues. Marina, on the other hand, is very reliable and sincere, you can trust her with any information, and she is never envious of other people's success."
+    expect: {verdict: "correct_target", target: "correct", side_errors: []}
   - id: 8-translate-non-target
     task: 8-translate
-    answer: ""
-    expect: {}
-  - id: 8-translate-target-error
+    answer: "I would not hire Oleg: he is not polite to clients and he always interrupts his colleagues. But Marina is a very good person who always tells the truth, you can tell her anything, and she is always happy when other people do well."
+    expect: {verdict: "correct_non_target", target: "not_used", side_errors: []}
+  - id: 8-translate-target-error   # sensitive вместо sincere; остальное верно
     task: 8-translate
-    answer: ""
-    expect: {}
-  - id: 8-translate-collocation-error
+    answer: "I would not take Oleg onto the team: he is rude to clients and always interrupts his colleagues. Marina, however, is very reliable and sensitive, you can trust her with any information, and she is never jealous of other people's success."
+    expect: {verdict: "incorrect", target: ["partial", "error"], side_errors: []}
+  - id: 8-translate-collocation-error   # jealous of, не at
     task: 8-translate
-    answer: ""
-    expect: {}
-  - id: 8-translate-edge
+    answer: "I would not take Oleg onto the team: he is rude to clients and always interrupts his colleagues. Marina, however, is very reliable and sincere, you can trust her with any information, and she is never jealous at other people's success."
+    expect: {verdict: "incorrect", target: ["partial", "error"], side_errors: []}
+  - id: 8-translate-edge   # синонимы из юнита вместо слов эталона
     task: 8-translate
-    answer: ""
-    expect: {}
+    answer: "I would not take Oleg onto the team: he is impolite to clients and always interrupts his colleagues. Marina, however, is honest and trustworthy, you can tell her anything, and she is never envious of other people's success."
+    expect: {verdict: "correct_target", target: "correct", side_errors: []}
+
   - id: 16-translate-target
     task: 16-translate
-    answer: ""
-    expect: {}
+    answer: "\"What do you do?\" \"I am in publishing, but I mostly make a living from translation. And you?\""
+    expect: {verdict: "correct_target", target: "correct", side_errors: []}
   - id: 16-translate-non-target
     task: 16-translate
-    answer: ""
-    expect: {}
-  - id: 16-translate-target-error
+    answer: "\"What is your job?\" \"I work for a publishing company, but most of my money comes from translations. What about you?\""
+    expect: {verdict: "correct_non_target", target: "not_used", side_errors: []}
+  - id: 16-translate-target-error   # *What is your work, *do a living
     task: 16-translate
-    answer: ""
-    expect: {}
-  - id: 16-translate-collocation-error
+    answer: "\"What is your work?\" \"I am in publishing, but I mostly do a living from translating. And you?\""
+    expect: {verdict: "incorrect", target: ["error", "partial"], side_errors: []}
+  - id: 16-translate-collocation-error   # make a living from / by, не with
     task: 16-translate
-    answer: ""
-    expect: {}
-  - id: 16-translate-edge
+    answer: "\"What do you do for a living?\" \"I am in publishing, but I mostly make a living with translations. And you?\""
+    expect: {verdict: "incorrect", target: ["partial", "error"], side_errors: []}
+  - id: 16-translate-edge   # перестроено, слова юнита верно
     task: 16-translate
-    answer: ""
-    expect: {}
+    answer: "\"What do you do for a living?\" \"I work in publishing, but translation is how I really make a living. What about you?\""
+    expect: {verdict: "correct_target", target: "correct", side_errors: []}
+
   - id: 40-translate-target
     task: 40-translate
-    answer: ""
-    expect: {}
+    answer: "I went to the bank to get a loan, but the manager said that because of my credit rating they would charge me higher interest. Now I am not sure whether I should borrow money at all."
+    expect: {verdict: "correct_target", target: "correct", side_errors: []}
   - id: 40-translate-non-target
     task: 40-translate
-    answer: ""
-    expect: {}
-  - id: 40-translate-target-error
+    answer: "I went to the bank to ask for money, but the manager told me that because I had problems paying money back in the past, I would have to pay more. Now I am not sure I should take money from anyone at all."
+    expect: {verdict: "correct_non_target", target: "not_used", side_errors: []}
+  - id: 40-translate-target-error   # *a credit, *percent
     task: 40-translate
-    answer: ""
-    expect: {}
-  - id: 40-translate-collocation-error
+    answer: "I went to the bank for a credit, but the manager said that because of my credit rating they would take a higher percent from me. Now I am not sure whether I should borrow money at all."
+    expect: {verdict: "incorrect", target: ["error", "partial"], side_errors: []}
+  - id: 40-translate-collocation-error   # interest неисчисл.; charge sb interest, не from
     task: 40-translate
-    answer: ""
-    expect: {}
-  - id: 40-translate-edge
+    answer: "I went to the bank for a loan, but the manager said that because of my credit rating they would charge higher interests from me. Now I am not sure whether I should borrow money at all."
+    expect: {verdict: "incorrect", target: ["partial", "error"], side_errors: []}
+  - id: 40-translate-edge   # credit history — нормальный английский
     task: 40-translate
-    answer: ""
-    expect: {}
+    answer: "I went to the bank for a loan, but the manager said that because of my credit history they would charge me a higher interest rate. Now I am wondering whether to borrow money at all."
+    expect: {verdict: "correct_target", target: "correct", side_errors: []}
+
   - id: 64-translate-target
     task: 64-translate
-    answer: ""
-    expect: {}
+    answer: "Are you surprised that Max did not come to the party? He was off sick all week, so there is nothing strange about it. After all, he has only just recovered."
+    expect: {verdict: "correct_target", target: "correct", side_errors: []}
   - id: 64-translate-non-target
     task: 64-translate
-    answer: ""
-    expect: {}
-  - id: 64-translate-target-error
+    answer: "Are you surprised that Max did not come to the party? He was ill all week, so it is not strange. Remember, he has only just recovered."
+    expect: {verdict: "correct_non_target", target: "not_used", side_errors: []}
+  - id: 64-translate-target-error   # on the contrary вместо after all
     task: 64-translate
-    answer: ""
-    expect: {}
-  - id: 64-translate-collocation-error
+    answer: "Are you surprised that Max did not come to the party? On the contrary, it is not strange: he was ill all week, and he has only just recovered."
+    expect: {verdict: "incorrect", target: ["error", "partial"], side_errors: []}
+  - id: 64-translate-collocation-error   # after all of that — «после всего этого», смысл другой
     task: 64-translate
-    answer: ""
-    expect: {}
-  - id: 64-translate-edge
+    answer: "Are you surprised that Max did not come to the party? He was off sick all week, so it is not strange. After all of that, he has only just recovered."
+    expect: {verdict: "incorrect", target: ["error", "partial"], side_errors: []}
+  - id: 64-translate-edge   # in the end вместо after all — типичная ошибка
     task: 64-translate
-    answer: ""
-    expect: {}
+    answer: "Are you surprised that Max did not come to the party? He was off sick all week, so it is not strange. In the end, he has only just recovered."
+    expect: {verdict: "incorrect", target: ["error", "not_used"], side_errors: []}
+
   - id: 70-translate-target
     task: 70-translate
-    answer: ""
-    expect: {}
+    answer: "The lease says that the tenant has to pay the rent by the fifth of each month. If the money is transferred by the tenant's employer and not by the tenant, the landlady's name must still be written in the payee field."
+    expect: {verdict: "correct_target", target: "correct", side_errors: []}
   - id: 70-translate-non-target
     task: 70-translate
-    answer: ""
-    expect: {}
-  - id: 70-translate-target-error
+    answer: "The lease says that the tenant has to pay the rent by the fifth of each month. If the money is sent by the company where the tenant works, you still need to write the landlady's name in the box for the person who receives the payment."
+    expect: {verdict: "correct_non_target", target: "not_used", side_errors: []}
+  - id: 70-translate-target-error   # employee вместо employer, payer вместо payee
     task: 70-translate
-    answer: ""
-    expect: {}
-  - id: 70-translate-collocation-error
+    answer: "The lease says that the tenant has to pay the rent by the fifth of each month. If the money is transferred by the tenant's employee and not by the tenant, the landlady's name must still be written in the payer field."
+    expect: {verdict: "incorrect", target: ["error", "partial"], side_errors: []}
+  - id: 70-translate-collocation-error   # addressee — у писем; в платеже payee
     task: 70-translate
-    answer: ""
-    expect: {}
-  - id: 70-translate-edge
+    answer: "The lease says that the tenant has to pay the rent by the fifth of each month. If the money is transferred by the tenant's employer, the landlady's name must still be written in the addressee field."
+    expect: {verdict: "incorrect", target: ["partial", "error"], side_errors: []}
+  - id: 70-translate-edge   # recipient вместо payee без ошибки; employer верно
     task: 70-translate
-    answer: ""
-    expect: {}
+    answer: "The lease says that the tenant has to pay the rent by the fifth of each month. If the tenant's employer pays instead of the tenant, the landlady must still be named as the recipient."
+    expect: {verdict: "correct_target", target: "correct", side_errors: []}
+
   - id: 89-translate-target
     task: 89-translate
-    answer: ""
-    expect: {}
+    answer: "We have just come back from the hotel, where they kept us waiting at reception for two hours. What do you make of the way they tried to make up for it with a free dinner and a bottle of wine? I do not think that makes up for a ruined first day."
+    expect: {verdict: "correct_target", target: "correct", side_errors: []}
   - id: 89-translate-non-target
     task: 89-translate
-    answer: ""
-    expect: {}
-  - id: 89-translate-target-error
+    answer: "We have just come back from the hotel, where we waited at reception for two hours. What do you think about how they tried to compensate for it with a free dinner and a bottle of wine? In my opinion, that cannot compensate for a spoiled first day."
+    expect: {verdict: "correct_non_target", target: "not_used", side_errors: []}
+  - id: 89-translate-target-error   # *make about, make up без for
     task: 89-translate
-    answer: ""
-    expect: {}
-  - id: 89-translate-collocation-error
+    answer: "We have just come back from the hotel, where they kept us waiting at reception for two hours. What do you make about the way they tried to make up it with a free dinner and a bottle of wine? I do not think that makes up a ruined first day."
+    expect: {verdict: "incorrect", target: ["error", "partial"], side_errors: []}
+  - id: 89-translate-collocation-error   # второй make up без for
     task: 89-translate
-    answer: ""
-    expect: {}
-  - id: 89-translate-edge
+    answer: "We have just come back from the hotel, where they kept us waiting at reception for two hours. What do you make of the way they tried to make up for it with a free dinner and a bottle of wine? I do not think that makes up a ruined first day."
+    expect: {verdict: "incorrect", target: ["partial", "error"], side_errors: []}
+  - id: 89-translate-edge   # make it up to us — верно
     task: 89-translate
-    answer: ""
-    expect: {}
+    answer: "We have just come back from the hotel, where they kept us waiting at reception for two hours. What do you make of their attempt to make it up to us with a free dinner and a bottle of wine? I do not think it makes up for a ruined first day."
+    expect: {verdict: "correct_target", target: "correct", side_errors: []}
+
   - id: 101-translate-target
     task: 101-translate
-    answer: ""
-    expect: {}
+    answer: "When you get out of the subway, walk straight along the sidewalk to the intersection and use the crosswalk to cross the street. The line for the museum usually goes all the way to the corner, so you had better get in line early."
+    expect: {verdict: "correct_target", target: "correct", side_errors: []}
   - id: 101-translate-non-target
     task: 101-translate
-    answer: ""
-    expect: {}
-  - id: 101-translate-target-error
+    answer: "When you leave the metro station, go straight to the intersection and cross the street at the traffic lights. There are usually lots of people waiting to get into the museum, all the way to the corner, so get there early."
+    expect: {verdict: "correct_non_target", target: "not_used", side_errors: []}
+  - id: 101-translate-target-error   # британские слова
     task: 101-translate
-    answer: ""
-    expect: {}
-  - id: 101-translate-collocation-error
+    answer: "When you come out of the underground, walk straight along the pavement to the junction and use the zebra crossing. The queue for the museum usually stretches to the corner, so it is better to join it early."
+    expect: {verdict: "incorrect", target: ["error", "partial"], side_errors: []}
+  - id: 101-translate-collocation-error   # along / on the sidewalk, не in
     task: 101-translate
-    answer: ""
-    expect: {}
-  - id: 101-translate-edge
+    answer: "When you come out of the subway, walk straight in the sidewalk to the intersection and use the crosswalk. The line for the museum usually stretches to the corner, so it is better to get in line early."
+    expect: {verdict: "incorrect", target: ["partial", "error"], side_errors: []}
+  - id: 101-translate-edge   # line обойдено общими словами, остальное верно
     task: 101-translate
-    answer: ""
-    expect: {}
+    answer: "When you come out of the subway, walk straight along the sidewalk to the intersection and use the crosswalk. There are usually a lot of people waiting outside the museum, so it is better to get there early."
+    expect: {verdict: "correct_target", target: "correct", side_errors: []}
