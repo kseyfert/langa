@@ -16,7 +16,7 @@ export const contentPath = (key: string, ...parts: string[]) => path.join(proces
 export const contentFile = (key: string, ...parts: string[]) => ['content', key, ...parts].join('/');
 
 export type WorkspaceSettings = {
-    /** Типы области по нарастанию сложности; других планировщик не выдаёт. */
+    /** Типы области по нарастанию сложности; других планировщик не выдаёт. Пусто — заданий по области нет. */
     types: ExerciseType[];
     /** Темы контекста заданий. */
     topics: string[];
@@ -35,11 +35,13 @@ export function readSettings(key: string): WorkspaceSettings {
     }
     const extra = Object.keys(raw).filter((k) => !['types', 'topics', 'rating'].includes(k));
     const topics = raw.topics;
-    const topicsOk = Array.isArray(topics) && topics.length > 0 && topics.every((t) => typeof t === 'string' && t.trim());
+    // Темы нужны только генерации: у области без типов (types: []) список может быть пустым.
+    const needTopics = !Array.isArray(raw.types) || raw.types.length > 0;
+    const topicsOk = Array.isArray(topics) && (topics.length > 0 || !needTopics) && topics.every((t) => typeof t === 'string' && t.trim());
     let config: Config;
     try {
         if (extra.length) throw new Error(`лишние разделы ${extra.join(', ')}`);
-        if (!topicsOk) throw new Error('topics: нужен непустой список строк');
+        if (!topicsOk) throw new Error(`topics: нужен ${needTopics ? 'непустой ' : ''}список строк`);
         config = learnerConfig(raw.types, raw.rating);
     } catch (e) {
         throw new Error(`${file}: ${e instanceof Error ? e.message : String(e)}`);

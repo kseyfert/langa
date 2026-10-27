@@ -22,6 +22,7 @@ export async function startExercise(unitId: number, type: string | null = null):
         const unit = await catalog.getUnit(unitId);
         if (!catalog.hasTasks(unit)) return { ok: false, error: 'По этому юниту заданий нет: guide пуст' };
         const { types } = await workspaceContent(unit.workspaceId);
+        if (!types.length) return { ok: false, error: 'В этой области заданий пока нет: типы не подключены' };
         const chosen = types.find((t) => t === type) ?? types[Math.floor(Math.random() * types.length)];
         return { ok: true, exercise: await tasks.get(unitId, chosen) };
     } catch (e) {

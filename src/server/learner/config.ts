@@ -59,9 +59,9 @@ function ratingProblems(rating: Record<string, unknown>, c: Record<string, unkno
     return out;
 }
 
-/** Что не так в лестнице типов; пусто — всё в порядке. */
+/** Что не так в лестнице типов; пусто — всё в порядке. Пустой список допустим: область без заданий. */
 function typeProblems(types: unknown): string[] {
-    if (!Array.isArray(types) || !types.length) return ['types: нужен непустой список'];
+    if (!Array.isArray(types)) return ['types: нужен список'];
     const out: string[] = [];
     const seen = new Set<unknown>();
     types.forEach((t: Record<string, unknown>, i) => {

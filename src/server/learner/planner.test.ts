@@ -70,6 +70,18 @@ test('1: нет начатых юнитов — нет задания', () => {
     assert.equal(nextExercise([{ id: 5, position: 5, started: false }], [], [], T0, C), null);
 });
 
+test('1а: область без типов — настройки допустимы, задания нет', () => {
+    // Vocabulary In Use до подключения типов (content/vocabulary-in-use/workspace.yaml, types: []).
+    // readSettings — та же проверка, что при старте сервера (checkContent): не бросает.
+    const { types, config } = readSettings('vocabulary-in-use');
+    assert.deepEqual(types, []);
+    const log = makeLog();
+    log.solve(5, 'gap', T0, 1);   // даже с историей по юниту
+    assert.equal(nextExercise(started(5, 6), log.exercises, log.attempts, T0 + DAY, config), null);
+    // Непустая лестница проверяется как раньше.
+    assert.throws(() => learnerConfig([{ type: 'choice', fromM: 30, difficulty: 30, levelCap: 60, memoryWeight: 0.25, easy: true }]), /fromM/);
+});
+
 test('2: новые юниты по порядку книги, по одному gap', () => {
     const log = makeLog();
     const units = started(7, 5, 6);

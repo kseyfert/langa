@@ -98,7 +98,8 @@ export default async function WorkspacePage({ params }: { params: Promise<{ id: 
                 )}
             </div>
 
-            {units.length > 0 && <SessionPlayer workspaceId={workspace.id} />}
+            {/* Без типов (workspace.yaml, types: []) планировщику нечего выдать — сессии нет. */}
+            {units.length > 0 && types.length > 0 && <SessionPlayer workspaceId={workspace.id} />}
             {units.length > 0 && <UnitMap sections={mapSections} />}
 
             {units.length === 0 ? (

@@ -115,7 +115,7 @@ export function stepRng(unitId: number, shownCount: number): () => number {
 }
 
 /**
- * Следующее задание: юнит и тип. null — начатых юнитов нет. c — конфиг области.
+ * Следующее задание: юнит и тип. null — начатых юнитов нет или у области нет типов. c — конфиг области.
  * rng — только для ступени в «Закреплении»; не задан — stepRng по выбранному юниту. Тесты подставляют свой.
  */
 export function nextExercise(
@@ -128,7 +128,7 @@ export function nextExercise(
     pc: PlannerConfig = PLANNER_CONFIG,
 ): Plan | null {
     const candidates = units.filter((u) => u.started);
-    if (!candidates.length) return null;
+    if (!candidates.length || !c.TYPES.length) return null;
 
     const exById = new Map(exercises.map((e) => [e.id, e]));
     const startedIds = new Set(candidates.map((u) => u.id));

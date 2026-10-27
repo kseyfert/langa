@@ -197,7 +197,7 @@ export async function sessionSummary(exerciseIds: number[], now = Date.now()): P
     return [...touched.values()].filter((u) => shown(u.before) !== shown(u.after));
 }
 
-/** Следующее задание сессии в рабочей области по планировщику; null — начатых юнитов в ней нет. */
+/** Следующее задание сессии в рабочей области по планировщику; null — начатых юнитов в ней нет или у неё нет типов. */
 export async function planNext(workspaceId: number, now = Date.now()): Promise<Plan | null> {
     // Заглушки в рейтинг не идут (см. unitRatings); задания других областей планировщику не нужны.
     const scope = and(ne(exercises.model, 'mock'), eq(units.workspaceId, workspaceId));

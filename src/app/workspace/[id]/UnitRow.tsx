@@ -107,8 +107,9 @@ export function UnitRow({ id: unitId, number, title, summaryRu, guideHtml, deps,
                     {title}
                 </button>
                 {/* ▶ и тип — один виджет: тип выезжает из-под ▶ при наведении. Под словом типа —
-                    прозрачный select: список открывается системный, а вид — свой. */}
-                {hasTasks && <span className={`catalog__run${loading ? ' catalog__run--busy' : ''}`}>
+                    прозрачный select: список открывается системный, а вид — свой. У области без типов
+                    виджета нет: предложить нечего. */}
+                {hasTasks && types.length > 0 && <span className={`catalog__run${loading ? ' catalog__run--busy' : ''}`}>
                     {loading ? (
                         <span className="icon-btn catalog__play" role="status" aria-label="Составляю задание…"><span className="spinner" /></span>
                     ) : (
