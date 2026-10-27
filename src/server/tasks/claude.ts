@@ -4,6 +4,7 @@ import { propagateAttributes, startObservation } from '@langfuse/tracing';
 import { context, trace } from '@opentelemetry/api';
 import type { ExerciseType } from '../exercises/types';
 import { BAD_FORMAT } from './define';
+import { trimBraceTails } from './trim';
 import { TaskError } from './types';
 
 export const MODEL_GENERATE = process.env.CLAUDE_MODEL_GENERATE || 'claude-sonnet-5-5';
@@ -135,7 +136,8 @@ async function traced(name: CallInfo['call'], prompt: string, model: string, sys
     let json;
     try {
         // Со схемой ответ — ровно JSON: терпимый разбор только спрятал бы нарушение формата.
-        json = schema ? JSON.parse(text) : parseJsonLoose(text);
+        // Хвостовые «}» в строках — артефакт модели, его режем здесь, одно место на все типы (trim.ts).
+        json = schema ? trimBraceTails(JSON.parse(text)) : parseJsonLoose(text);
     } catch {
         return fail(BAD_FORMAT, 'ответ не разбирается как JSON');
     }
