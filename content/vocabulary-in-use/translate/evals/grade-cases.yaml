@@ -126,9 +126,9 @@ cases:
     task: 16-translate
     answer: "\"What is your work?\" \"I am in publishing, but I mostly do a living from translating. And you?\""
     expect: {verdict: "incorrect", target: ["error", "partial"], side_errors: []}
-  - id: 16-translate-collocation-error   # make a living from / by, не with
+  - id: 16-translate-collocation-error   # make a living from / by, не of
     task: 16-translate
-    answer: "\"What do you do for a living?\" \"I am in publishing, but I mostly make a living with translations. And you?\""
+    answer: "\"What do you do for a living?\" \"I am in publishing, but I mostly make a living of translations. And you?\""
     expect: {verdict: "incorrect", target: ["partial", "error"], side_errors: []}
   - id: 16-translate-edge   # перестроено, слова юнита верно
     task: 16-translate
@@ -139,10 +139,10 @@ cases:
     task: 40-translate
     answer: "I went to the bank to get a loan, but the manager said that because of my credit rating they would charge me higher interest. Now I am not sure whether I should borrow money at all."
     expect: {verdict: "correct_target", target: "correct", side_errors: []}
-  - id: 40-translate-non-target
+  - id: 40-translate-non-target   # обход общими словами теряет точность
     task: 40-translate
     answer: "I went to the bank to ask for money, but the manager told me that because I had problems paying money back in the past, I would have to pay more. Now I am not sure I should take money from anyone at all."
-    expect: {verdict: "correct_non_target", target: "not_used", side_errors: []}
+    expect: {verdict: "incorrect", target: "not_used", side_errors: []}
   - id: 40-translate-target-error   # *a credit, *percent
     task: 40-translate
     answer: "I went to the bank for a credit, but the manager said that because of my credit rating they would take a higher percent from me. Now I am not sure whether I should borrow money at all."
@@ -223,10 +223,10 @@ cases:
     task: 101-translate
     answer: "When you get out of the subway, walk straight along the sidewalk to the intersection and use the crosswalk to cross the street. The line for the museum usually goes all the way to the corner, so you had better get in line early."
     expect: {verdict: "correct_target", target: "correct", side_errors: []}
-  - id: 101-translate-non-target
+  - id: 101-translate-non-target   # обход общими словами теряет точность; у юнита 101 ветки non-target нет
     task: 101-translate
     answer: "When you leave the metro station, go straight to the intersection and cross the street at the traffic lights. There are usually lots of people waiting to get into the museum, all the way to the corner, so get there early."
-    expect: {verdict: "correct_non_target", target: "not_used", side_errors: []}
+    expect: {verdict: "incorrect", target: "not_used", side_errors: []}
   - id: 101-translate-target-error   # британские слова
     task: 101-translate
     answer: "When you come out of the underground, walk straight along the pavement to the junction and use the zebra crossing. The queue for the museum usually stretches to the corner, so it is better to join it early."
