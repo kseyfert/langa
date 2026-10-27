@@ -7,7 +7,7 @@ import { DEFAULTS, type Config, type RatingConstants } from './model';
 /** Ступень лестницы типов области (workspace.yaml, types). */
 export type TypeStep = {
     type: ExerciseType;
-    /** С какого освоения M планировщик даёт этот тип; у первого — 0. */
+    /** С какого освоения M планировщик даёт этот тип; у первого — 0. Соседи с одним fromM — группа, их чередуют. */
     fromM: number;
     difficulty: number;
     levelCap: number;
@@ -16,6 +16,8 @@ export type TypeStep = {
 };
 
 const STEP_KEYS = ['type', 'fromM', 'difficulty', 'levelCap', 'memoryWeight', 'easy'] as const;
+/** Что у типов одной группы (одинаковый fromM) обязано совпадать. */
+const GROUP_KEYS = ['difficulty', 'levelCap', 'memoryWeight', 'easy'] as const;
 
 /** Допустимые значения общих констант — колонка «Диапазон» rating-model.md §0. int — только целые. */
 const RANGES: { [K in keyof RatingConstants]?: { min: number; max: number; int?: boolean } } = {
@@ -71,11 +73,18 @@ function typeProblems(types: unknown): string[] {
         if (seen.has(t.type)) out.push(`${at}: тип повторяется`);
         seen.add(t.type);
         const prev = types[i - 1] as Record<string, unknown> | undefined;
-        if (i === 0 ? t.fromM !== 0 : !inRange(t.fromM, 0, 100) || !(isNum(prev?.fromM) && (t.fromM as number) > prev.fromM)) {
-            out.push(`${at}: fromM ${JSON.stringify(t.fromM)} — у первого типа 0, дальше 0–100 по возрастанию`);
+        if (i === 0 ? t.fromM !== 0 : !inRange(t.fromM, 0, 100) || !(isNum(prev?.fromM) && (t.fromM as number) >= prev.fromM)) {
+            out.push(`${at}: fromM ${JSON.stringify(t.fromM)} — у первого типа 0, дальше 0–100 по неубыванию`);
+        } else if (i > 0 && t.fromM === 0) {
+            out.push(`${at}: fromM 0 — группа с первым типом невозможна`);
         }
-        if (!inRange(t.difficulty, 0, 100) || (i > 0 && isNum(prev?.difficulty) && (t.difficulty as number) <= prev.difficulty)) {
-            out.push(`${at}: difficulty ${JSON.stringify(t.difficulty)} — 0–100, по возрастанию`);
+        if (!inRange(t.difficulty, 0, 100) || (i > 0 && isNum(prev?.difficulty) && (t.difficulty as number) < prev.difficulty)) {
+            out.push(`${at}: difficulty ${JSON.stringify(t.difficulty)} — 0–100, по неубыванию`);
+        }
+        // Соседи с одним fromM — группа: планировщик их чередует, поэтому и для модели они одно и то же.
+        if (i > 0 && isNum(t.fromM) && t.fromM === prev?.fromM) {
+            const differ = GROUP_KEYS.filter((k) => t[k] !== prev[k]);
+            if (differ.length) out.push(`${at}: в группе с ${String(prev.type)} (fromM ${t.fromM}) должны совпадать ${differ.join(', ')}`);
         }
         if (!inRange(t.levelCap, 30, 100) || (isNum(t.difficulty) && (t.levelCap as number) <= t.difficulty)) {
             out.push(`${at}: levelCap ${JSON.stringify(t.levelCap)} — 30–100, выше difficulty`);

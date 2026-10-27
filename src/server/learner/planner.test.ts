@@ -182,14 +182,16 @@ test('11: освоение перешло 30 после удачного gap —
     assert.equal(nextExercise(started(5), log.exercises, log.attempts, T0 + 2 * H, C)?.type, 'choice');
 });
 
-test('12: проваленный translate опускает тип до rephrase', () => {
+// При difficulty 70 у группы translate/free провал на M ~60 ожидаем (p ≈ 0.3) и стоит мало:
+// r 0.2 — минус ~2.4, даже три подряд оставляют M выше 55. Ниже порога опускает только полный провал.
+test('12: полностью проваленный translate опускает тип до rephrase', () => {
     assert.equal(typeFor(58, C), 'translate');
     assert.equal(typeFor(52, C), 'rephrase');
     const log = makeLog();
     for (const [d, type] of [[0, 'gap'], [0, 'choice'], [2, 'rephrase'], [6, 'rephrase']] as const) log.solve(5, type, T0 + d * DAY, 1);
     const before = log.state(5).M;
     assert.ok(before >= 55 && before < 65, `M до провала ${before}`);
-    log.solve(5, 'translate', T0 + 13 * DAY, 0.2);
+    log.solve(5, 'translate', T0 + 13 * DAY, 0);
     const after = log.state(5).M;
     assert.ok(after >= 42 && after < 55, `M после провала ${after}`);
     assert.equal(nextExercise(started(5), log.exercises, log.attempts, T0 + 13 * DAY + H, C)?.type, 'rephrase');
@@ -214,4 +216,46 @@ test('настройки области вне диапазонов rating-model
     assert.throws(() => learnerConfig([gap], { FAIL_THRESHOLD: 0.9 }), /FAIL_THRESHOLD/);
     assert.throws(() => learnerConfig([gap], { NO_SUCH: 1 }), /NO_SUCH/);
     assert.throws(() => learnerConfig([{ ...gap, fromM: 10 }]), /fromM/);
+});
+
+test('группа translate/free: чередуются — давнее всего показанный тип, никогда не данный — раньше', () => {
+    assert.equal(typeFor(60, C), 'translate');   // никому не давали — первый по порядку области
+    const log = makeLog();
+    log.show(5, 'free', T0);
+    assert.equal(typeFor(60, C, log.exercises), 'translate');
+    log.show(5, 'translate', T0 + H);
+    assert.equal(typeFor(60, C, log.exercises), 'free');
+    log.show(5, 'free', T0 + 2 * H);
+    assert.equal(typeFor(60, C, log.exercises), 'translate');
+    // Задания других юнитов nextExercise в выбор не передаёт.
+    log.show(6, 'translate', T0 + 3 * H);
+    assert.equal(typeFor(60, C, log.exercises.filter((e) => e.unitId === 5)), 'translate');
+    // Одиночный тип — по fromM, задания юнита ни при чём.
+    assert.equal(typeFor(50, C, log.exercises), 'rephrase');
+});
+
+test('nextExercise чередует группу: free → translate → free', () => {
+    const log = makeLog();
+    for (const [d, type] of [[0, 'gap'], [0, 'choice'], [2, 'rephrase'], [6, 'rephrase']] as const) log.solve(5, type, T0 + d * DAY, 1);
+    log.solve(5, 'free', T0 + 13 * DAY, 1);
+    assert.ok(log.state(5).M >= 55, `M ${log.state(5).M}`);
+    const seq: string[] = ['free'];
+    for (let k = 1; k <= 2; k++) {
+        const at = T0 + (13 + k * 15) * DAY;
+        const type = nextExercise(started(5), log.exercises, log.attempts, at, C)!.type;
+        seq.push(type);
+        log.solve(5, type, at + H, 1);
+    }
+    assert.deepEqual(seq, ['free', 'translate', 'free']);
+});
+
+test('группа с разными константами или с первым типом — ошибка конфига', () => {
+    const gap = { type: 'gap', fromM: 0, difficulty: 20, levelCap: 50, memoryWeight: 0.2, easy: true };
+    const tr = { type: 'translate', fromM: 55, difficulty: 70, levelCap: 100, memoryWeight: 1, easy: false };
+    const fr = { ...tr, type: 'free' };
+    assert.doesNotThrow(() => learnerConfig([gap, tr, fr]));
+    assert.throws(() => learnerConfig([gap, tr, { ...fr, difficulty: 75 }]), /должны совпадать difficulty/);
+    assert.throws(() => learnerConfig([gap, tr, { ...fr, memoryWeight: 0.8 }]), /memoryWeight/);
+    assert.throws(() => learnerConfig([gap, { ...tr, fromM: 0 }]), /группа с первым типом/);
+    assert.throws(() => learnerConfig([gap, tr, { ...fr, fromM: 50, difficulty: 70 }]), /fromM/);
 });

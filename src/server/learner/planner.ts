@@ -21,9 +21,16 @@ export type Plan = { unitId: number; type: ExerciseType; tier: Tier };
 
 const DAY_MS = 86_400_000;
 
-/** Тип по освоению без забывания: последний тип области, чей порог fromM не выше M. Типы идут по нарастанию сложности. */
-export function typeFor(M: number, c: Config): ExerciseType {
-    return c.TYPES.findLast((t) => M >= t.fromM)!.type;
+/**
+ * Тип по освоению без забывания: верхний порог fromM области, не выше M (типы идут по нарастанию сложности).
+ * На пороге один тип — он; группа — тот её тип, который юниту давали давнее всего (никогда — раньше всех),
+ * при равенстве — первый по порядку области. shown — задания юнита. Без случайности.
+ */
+export function typeFor(M: number, c: Config, shown: readonly { type: ExerciseType; createdAt: number }[] = []): ExerciseType {
+    const fromM = c.TYPES.findLast((t) => M >= t.fromM)!.fromM;
+    const group = c.TYPES.filter((t) => t.fromM === fromM);
+    const lastShown = (type: ExerciseType) => Math.max(-Infinity, ...shown.filter((e) => e.type === type).map((e) => e.createdAt));
+    return group.reduce((a, b) => (lastShown(b.type) < lastShown(a.type) ? b : a)).type;
 }
 
 /**
@@ -93,5 +100,5 @@ export function nextExercise(
     ranked.sort((a, b) => a.tier - b.tier || a.key - b.key || a.u.position - b.u.position);
 
     const best = ranked[0];
-    return { unitId: best.u.id, type: typeFor(best.state.M, c), tier: TIERS[best.tier] };
+    return { unitId: best.u.id, type: typeFor(best.state.M, c, exercises.filter((e) => e.unitId === best.u.id)), tier: TIERS[best.tier] };
 }

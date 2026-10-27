@@ -2,14 +2,16 @@
 # неверное значение — сервер не стартует.
 
 # Лестница типов по нарастанию сложности. Планировщик выдаёт только эти типы:
-# тип юнита — последний, чей fromM не выше освоения M (planner.md §4).
+# тип юнита — по верхнему fromM, не выше освоения M (planner.md §4). Соседи с одним fromM — группа:
+# планировщик их чередует, константы у них совпадают. translate и free — группа: free можно решить
+# верно, обходя отдельные конструкции юнита, translate без конструкции не решить.
 # difficulty, levelCap, memoryWeight, easy — константы типа в модели ученика (rating-model.md §0).
 types:
   - { type: gap,       fromM: 0,  difficulty: 20, levelCap: 50,  memoryWeight: 0.2,  easy: true }
   - { type: choice,    fromM: 30, difficulty: 30, levelCap: 60,  memoryWeight: 0.25, easy: true }
   - { type: rephrase,  fromM: 42, difficulty: 50, levelCap: 80,  memoryWeight: 0.6,  easy: false }
-  - { type: translate, fromM: 55, difficulty: 60, levelCap: 90,  memoryWeight: 0.8,  easy: false }
-  - { type: free,      fromM: 65, difficulty: 70, levelCap: 100, memoryWeight: 1.0,  easy: false }
+  - { type: translate, fromM: 55, difficulty: 70, levelCap: 100, memoryWeight: 1.0,  easy: false }
+  - { type: free,      fromM: 55, difficulty: 70, levelCap: 100, memoryWeight: 1.0,  easy: false }
 
 # Темы контекста заданий — из прототипа (TOPICS): разнообразят задания одного юнита.
 topics:

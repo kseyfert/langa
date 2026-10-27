@@ -50,13 +50,13 @@ content/<key>/
 Файлы в корне `<type>/` — промпты вызовов приложения; в `evals/` — набор `<type>-<вид>`: `<вид>-cases.yaml` и `<вид>-judge.md`. У всех файлов одного вызова — одна версия во front matter; имена версий уникальны глобально (`exercise-spec.md` §7). Общих текстов между типами и областями нет.
 
 **`workspace.yaml`:**
-- `types` — лестница типов области по нарастанию сложности: `{ type, fromM, difficulty, levelCap, memoryWeight, easy }`. Планировщик выдаёт только эти типы: тип юнита — последний, чей `fromM` не выше освоения (у первого `fromM: 0`). `difficulty`, `levelCap`, `memoryWeight`, `easy` — константы типа в модели ученика (`DIFFICULTY`, `LEVEL_CAP`, `MEMORY_WEIGHT`, `EASY_TYPES`, `rating-model.md` §0). Эти же типы предлагает выбор у ▶ в строке юнита.
+- `types` — лестница типов области по нарастанию сложности: `{ type, fromM, difficulty, levelCap, memoryWeight, easy }`. Планировщик выдаёт только эти типы: тип юнита — по верхнему `fromM`, не выше освоения (у первого `fromM: 0`). Соседние типы с одинаковым `fromM` — **группа**: планировщик их чередует (давнее всего данный юниту тип — первым), константы у них совпадают; группа с первым типом невозможна (`planner.md` §4; у Grammar In Use — translate и free). `difficulty`, `levelCap`, `memoryWeight`, `easy` — константы типа в модели ученика (`DIFFICULTY`, `LEVEL_CAP`, `MEMORY_WEIGHT`, `EASY_TYPES`, `rating-model.md` §0). Эти же типы предлагает выбор у ▶ в строке юнита.
 - `topics` — темы контекста заданий.
 - `rating` — переопределения общих констант модели (`rating-model.md` §0); пусто — умолчания из `learner/model.ts` (`DEFAULTS`).
 
 Конфиг модели ученика и планировщика области — общие умолчания плюс `workspace.yaml` (`learner/config.ts`, `learnerConfig`); состояния юнитов считаются по конфигу их области.
 
-**Проверка при старте** (`checkContent`, из `src/instrumentation.node.ts`): у каждой области из базы есть `content/<key>/workspace.yaml`, значения — в диапазонах `rating-model.md` §0 (лестница: `fromM` и `difficulty` по возрастанию, `levelCap` выше `difficulty`), у каждого типа из `types` — нужные md с одной версией на вызов, имена версий не повторяются. Иначе — сообщение со всеми проблемами и выход с кодом 1: сервер не стартует.
+**Проверка при старте** (`checkContent`, из `src/instrumentation.node.ts`): у каждой области из базы есть `content/<key>/workspace.yaml`, значения — в диапазонах `rating-model.md` §0 (лестница: `fromM` и `difficulty` по неубыванию, `levelCap` выше `difficulty`; у типов группы совпадают `difficulty`, `levelCap`, `memoryWeight`, `easy`; `fromM` 0 — только у первого типа), у каждого типа из `types` — нужные md с одной версией на вызов, имена версий не повторяются. Иначе — сообщение со всеми проблемами и выход с кодом 1: сервер не стартует.
 
 ## Добавить новый тип
 
@@ -71,7 +71,7 @@ content/<key>/
 
 ## Подключить тип к области
 
-1. **`workspace.yaml`** — строка в `types` на место по сложности: `fromM` (с какого освоения его давать) и константы `difficulty`, `levelCap`, `memoryWeight`, `easy` в диапазонах `rating-model.md` §0; соседям при необходимости поправить `fromM`.
+1. **`workspace.yaml`** — строка в `types` на место по сложности: `fromM` (с какого освоения его давать; тот же, что у соседа, — группа с ним, константы те же) и константы `difficulty`, `levelCap`, `memoryWeight`, `easy` в диапазонах `rating-model.md` §0; соседям при необходимости поправить `fromM`.
 2. **Промпты** — `content/<key>/<type>/`: `generate.md` (и `focus-repeat.md` при `items > 1`, `grade-system.md` и `grade-user.md` у проверки моделью) под материал области; версии — с префиксом области (`<key>/<type>-gen-v1`). Правила, которые они требуют, — в `content/<key>/README.md`.
 3. **Evals и судья** — `content/<key>/<type>/evals/`: `generate-cases.yaml` и `generate-judge.md`, у проверки моделью — `grade-cases.yaml` (задания и ответы с ожиданиями); порядок — `architecture.md`, «Evals».
 4. **Проверка** — `npm run build` и старт сервера: `checkContent` скажет, чего не хватает; `npm run eval -- <набор> <key> --dry-run` — случаи читаются.
