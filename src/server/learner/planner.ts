@@ -94,8 +94,29 @@ function rank(state: UnitState, history: Evidence[], attempted: boolean, now: nu
 }
 
 /**
+ * Генератор для ступени в «Закреплении» (§4), детерминированный по юниту и числу его показанных
+ * заданий (с пропущенными). Одно состояние — одна ступень: заготовка следующего задания
+ * (prepareNextExercise) и сама выдача (nextSessionExercise) зовут планировщик порознь и должны
+ * совпасть, иначе заготовка выбрасывается. После показа задания число растёт — и ступень разыгрывается заново.
+ */
+export function stepRng(unitId: number, shownCount: number): () => number {
+    // Сид — перемешивание пары (murmur3 fmix32), дальше mulberry32: соседние юниты и счётчики дают несвязанные числа.
+    let h = Math.imul(unitId, 0x9e3779b1) ^ Math.imul(shownCount + 1, 0x85ebca6b);
+    h = Math.imul(h ^ (h >>> 16), 0x85ebca6b);
+    h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
+    let a = (h ^ (h >>> 16)) >>> 0;
+    return () => {
+        a = (a + 0x6d2b79f5) >>> 0;
+        let t = a;
+        t = Math.imul(t ^ (t >>> 15), t | 1);
+        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+}
+
+/**
  * Следующее задание: юнит и тип. null — начатых юнитов нет. c — конфиг области.
- * rng — только для ступени в «Закреплении»; тесты подставляют свой.
+ * rng — только для ступени в «Закреплении»; не задан — stepRng по выбранному юниту. Тесты подставляют свой.
  */
 export function nextExercise(
     units: PlannerUnit[],
@@ -103,7 +124,7 @@ export function nextExercise(
     attempts: PlannerAttempt[],
     now: number,
     c: Config,
-    rng: () => number = Math.random,
+    rng?: () => number,
     pc: PlannerConfig = PLANNER_CONFIG,
 ): Plan | null {
     const candidates = units.filter((u) => u.started);
@@ -141,8 +162,9 @@ export function nextExercise(
     const tier = TIERS[best.tier];
     // Ступень легче верхней — только в «Закреплении»: в остальных уровнях задание двигает лестницу,
     // а день в срок, обслуженный gap/choice, выше EASY_MAX_STAGE не поднимает.
+    const shown = exercises.filter((e) => e.unitId === best.u.id);
     const step = tier === 'consolidate'
-        ? consolidateStep(best.state.M, c, rng, pc.LOWER_TYPE_DECAY)
+        ? consolidateStep(best.state.M, c, rng ?? stepRng(best.u.id, shown.length), pc.LOWER_TYPE_DECAY)
         : stepsUpTo(best.state.M, c).at(-1)!;
-    return { unitId: best.u.id, type: typeAt(step, c, exercises.filter((e) => e.unitId === best.u.id)), tier };
+    return { unitId: best.u.id, type: typeAt(step, c, shown), tier };
 }

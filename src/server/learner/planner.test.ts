@@ -6,7 +6,7 @@ import { readSettings } from '../content/settings';
 import { learnerConfig } from './config';
 import { evidenceOf } from './evidence';
 import { interval, replay, type Evidence } from './model';
-import { nextExercise, PLANNER_CONFIG, typeFor, type PlannerAttempt, type PlannerExercise, type PlannerUnit } from './planner';
+import { consolidateStep, nextExercise, PLANNER_CONFIG, stepRng, typeFor, type PlannerAttempt, type PlannerExercise, type PlannerUnit } from './planner';
 
 // Константы и лестница типов — Grammar In Use: сценарии собраны на её значениях (content/grammar-in-use/workspace.yaml).
 const C = readSettings('grammar-in-use').config;
@@ -345,4 +345,35 @@ test('LOWER_TYPE_DECAY 0 — в «Закреплении» всегда верх
         assert.equal(plan.tier, 'consolidate');
         assert.equal(plan.type, 'translate');
     }
+});
+
+test('stepRng: на разных сидах доли ступеней — 62 / 25 / 10 / 4%', () => {
+    const counts = new Map<number, number>();
+    let n = 0;
+    for (let unit = 1; unit <= 200; unit++) {
+        for (let shown = 0; shown < 100; shown++, n++) {
+            const step = consolidateStep(60, C, stepRng(unit, shown), PLANNER_CONFIG.LOWER_TYPE_DECAY);
+            counts.set(step, (counts.get(step) ?? 0) + 1);
+        }
+    }
+    // Ступени по fromM: 55 — группа, 42 — rephrase, 30 — choice, 0 — gap.
+    for (const [fromM, want] of [[55, 0.616], [42, 0.246], [30, 0.099], [0, 0.039]]) {
+        const got = (counts.get(fromM) ?? 0) / n;
+        assert.ok(Math.abs(got - want) < 0.015, `ступень ${fromM}: ${got.toFixed(3)}, ждали ${want}`);
+    }
+});
+
+test('без своего rng одно состояние — один план: заготовка и выдача совпадают; после показа — розыгрыш заново', () => {
+    const log = highUnit();
+    const at = T0 + 13 * DAY + 2 * H;
+    const types = new Set<string>();
+    for (let k = 0; k < 40; k++) {
+        const a = nextExercise(started(5), log.exercises, log.attempts, at, C)!;
+        const b = nextExercise(started(5), log.exercises, log.attempts, at + 60_000, C)!;
+        assert.equal(a.tier, 'consolidate');
+        assert.deepEqual(a, b);
+        types.add(a.type);
+        log.show(5, 'gap', at - H + k);   // показанное и пропущенное задание меняет сид (и не меняет уровень)
+    }
+    assert.ok(types.size > 1, `за 40 состояний выпал только ${[...types]}`);
 });
