@@ -23,7 +23,7 @@
 ## Что делает общий код
 
 - **Реестр** (`tasks/registry.ts`, `typeOf(type)`) — единственный список определений. Из него берут конвейер, проверка, `publicContent` и `addAttempt` в `exercises` и `variety`.
-- **Конвейер генерации** (`tasks/generate.ts`, `generate(type, unitId, { topic?, recent? })`) — один на все типы: юнит и его область (тип должен быть в её `types`), тема (случайная из `topics` области или из evals), недавние задания (`variety.recent`, или из evals), план фокуса на `items` пунктов (с `focus-repeat.md`, если `items > 1`), загрузка промптов типа из `content/<key>/<type>/`, вызов модели со схемой типа, `normalize`, версия промпта. В `generate.md` подставляет общие значения — `book`, `section`, `number`, `title`, `guide`, `topic`, `seed`, `focus` (при `items > 1` — нумерованный план, иначе сам пункт), `recent` — и `generateValues` типа.
+- **Конвейер генерации** (`tasks/generate.ts`, `generate(type, unitId, { topic?, recent? })`) — один на все типы: юнит и его область (тип должен быть в её `types`), тема (случайная из `topics` области или из evals; тем нет — пустая строка), недавние задания (`variety.recent`, или из evals), план фокуса на `items` пунктов (с `focus-repeat.md`, если `items > 1`), загрузка промптов типа из `content/<key>/<type>/`, вызов модели со схемой типа, `normalize`, версия промпта. В `generate.md` подставляет общие значения — `book`, `section`, `number`, `title`, `guide`, `topic`, `seed`, `focus` (при `items > 1` — нумерованный план, иначе сам пункт), `recent` — и `generateValues` типа.
 - **Проверка** (`tasks/grade.ts`, `grade(def, unitId, content, answer)`) — выбор по `check.by`. По ключу — `ClosedEvaluation` из `score`. Моделью — вызов с `grade-system.md` (каталог книги) и `grade-user.md` (юнит, `check.task(c)`, ответ) из области юнита, общая схема ответа и нормализация в `OpenEvaluation`.
 - **Задания** (`tasks/index.ts`) — заготовка и выдача, `parseAnswer` → `grade` → запись попытки; трейсы и ошибки вызовов — `tasks/claude.ts`.
 - **Содержимое области** (`src/server/content/`) — чтение и проверка `workspace.yaml` (`readSettings`, `workspaceContent(workspaceId)`), пути внутри `content/<key>/`, проверка при старте (`checkContent`).
@@ -51,12 +51,12 @@ content/<key>/
 
 **`workspace.yaml`:**
 - `types` — лестница типов области по нарастанию сложности: `{ type, fromM, difficulty, levelCap, memoryWeight, easy }`. Планировщик выдаёт только эти типы: тип юнита — по верхнему `fromM`, не выше освоения (у первого `fromM: 0`). Соседние типы с одинаковым `fromM` — **группа**: планировщик их чередует (давнее всего данный юниту тип — первым), константы у них совпадают; группа с первым типом невозможна (`planner.md` §4; у Grammar In Use — translate и free). `difficulty`, `levelCap`, `memoryWeight`, `easy` — константы типа в модели ученика (`DIFFICULTY`, `LEVEL_CAP`, `MEMORY_WEIGHT`, `EASY_TYPES`, `rating-model.md` §0). Эти же типы предлагает выбор у ▶ в строке юнита. Пустой список (`types: []`) допустим — область без заданий (ниже, «Подключить тип к области»).
-- `topics` — темы контекста заданий; при пустом `types` может быть пустым.
+- `topics` — темы контекста заданий. Пустой список допустим: тема не выбирается, в `exercises.topic` пишется пустая строка, а промпты генерации области `{{topic}}` не используют (проверка при старте) — так у Vocabulary In Use, где ситуация задана в каждом пункте «## Употребление».
 - `rating` — переопределения общих констант модели (`rating-model.md` §0); пусто — умолчания из `learner/model.ts` (`DEFAULTS`).
 
 Конфиг модели ученика и планировщика области — общие умолчания плюс `workspace.yaml` (`learner/config.ts`, `learnerConfig`); состояния юнитов считаются по конфигу их области.
 
-**Проверка при старте** (`checkContent`, из `src/instrumentation.node.ts`): у каждой области из базы есть `content/<key>/workspace.yaml`, значения — в диапазонах `rating-model.md` §0 (лестница пустая или: `fromM` и `difficulty` по неубыванию, `levelCap` выше `difficulty`; у типов группы совпадают `difficulty`, `levelCap`, `memoryWeight`, `easy`; `fromM` 0 — только у первого типа), у каждого типа из `types` — нужные md с одной версией на вызов, имена версий не повторяются. Иначе — сообщение со всеми проблемами и выход с кодом 1: сервер не стартует.
+**Проверка при старте** (`checkContent`, из `src/instrumentation.node.ts`): у каждой области из базы есть `content/<key>/workspace.yaml`, значения — в диапазонах `rating-model.md` §0 (лестница пустая или: `fromM` и `difficulty` по неубыванию, `levelCap` выше `difficulty`; у типов группы совпадают `difficulty`, `levelCap`, `memoryWeight`, `easy`; `fromM` 0 — только у первого типа), у каждого типа из `types` — нужные md с одной версией на вызов, имена версий не повторяются; при пустом `topics` в промптах генерации нет `{{topic}}`. Иначе — сообщение со всеми проблемами и выход с кодом 1: сервер не стартует.
 
 ## Добавить новый тип
 
@@ -71,7 +71,7 @@ content/<key>/
 
 ## Подключить тип к области
 
-Область может существовать без типов: `types: []` (и `topics: []`) в `workspace.yaml`. Она видна в каталоге — юниты, guide, отметка «в работе», — но заданий по ней нет: планировщик возвращает null, плеера сессии и ▶ с выбором типа у юнитов нет. Так заводят область, у которой юниты и guide появляются в базе раньше промптов и evals (`content/vocabulary-in-use/`). Первый подключённый тип — с `fromM: 0`, вместе с ним — непустые `topics`.
+Область может существовать без типов: `types: []` (и `topics: []`) в `workspace.yaml`. Она видна в каталоге — юниты, guide, отметка «в работе», — но заданий по ней нет: планировщик возвращает null, плеера сессии и ▶ с выбором типа у юнитов нет. Так заводят область, у которой юниты и guide появляются в базе раньше промптов и evals (`content/vocabulary-in-use/`). Первый подключённый тип — с `fromM: 0`.
 
 1. **`workspace.yaml`** — строка в `types` на место по сложности: `fromM` (с какого освоения его давать; тот же, что у соседа, — группа с ним, константы те же) и константы `difficulty`, `levelCap`, `memoryWeight`, `easy` в диапазонах `rating-model.md` §0; соседям при необходимости поправить `fromM`.
 2. **Промпты** — `content/<key>/<type>/`: `generate.md` (и `focus-repeat.md` при `items > 1`, `grade-system.md` и `grade-user.md` у проверки моделью) под материал области; версии — с префиксом области (`<key>/<type>-gen-v1`). Правила, которые они требуют, — в `content/<key>/README.md`.

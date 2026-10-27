@@ -71,10 +71,9 @@ test('1: нет начатых юнитов — нет задания', () => {
 });
 
 test('1а: область без типов — настройки допустимы, задания нет', () => {
-    // Vocabulary In Use до подключения типов (content/vocabulary-in-use/workspace.yaml, types: []).
-    // readSettings — та же проверка, что при старте сервера (checkContent): не бросает.
-    const { types, config } = readSettings('vocabulary-in-use');
-    assert.deepEqual(types, []);
+    // workspace.yaml с types: [] — learnerConfig та же проверка, что readSettings при старте сервера: не бросает.
+    const config = learnerConfig([], {});
+    assert.deepEqual(config.TYPES, []);
     const log = makeLog();
     log.solve(5, 'gap', T0, 1);   // даже с историей по юниту
     assert.equal(nextExercise(started(5, 6), log.exercises, log.attempts, T0 + DAY, config), null);

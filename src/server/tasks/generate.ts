@@ -23,7 +23,8 @@ export async function generate(type: ExerciseType, unitId: number, opts: Generat
     if (!ws.types.includes(type)) throw new TaskError(`Тип ${type} не подключён к области`);
     // Пометка повтора нужна, только когда пунктов в задании больше одного: иначе повторов не бывает.
     const p = prompts<'generate' | 'focus-repeat'>(ws.key, type, def.items > 1 ? ['generate', 'focus-repeat'] : ['generate']);
-    const topic = opts.topic ?? ws.topics[Math.floor(Math.random() * ws.topics.length)];
+    // Тем у области нет — темы нет: в exercises.topic пустая строка, промпты области {{topic}} не используют.
+    const topic = opts.topic ?? (ws.topics.length ? ws.topics[Math.floor(Math.random() * ws.topics.length)] : '');
     const focus = plan(unit.guide, def.items, def.items > 1 ? (point) => p.fill('focus-repeat', { point }) : undefined);
     const prompt = p.fill('generate', {
         ...unitValues(unit), topic, seed: seed(),

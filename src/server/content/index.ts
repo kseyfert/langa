@@ -29,7 +29,8 @@ export function callsOf(type: Parameters<typeof typeOf>[0]): { call: 'generate' 
 /**
  * Проверка при старте сервера (instrumentation.node.ts): у каждой области из базы есть
  * content/<key>/workspace.yaml с допустимыми значениями, у каждого её типа — нужные md
- * с одной версией на вызов, а имена версий не повторяются между вызовами и областями.
+ * с одной версией на вызов, а имена версий не повторяются между вызовами и областями; у области
+ * без тем (topics: []) промпты генерации не используют {{topic}} — иначе подставилась бы пустая тема.
  * Иначе — ошибка со всеми проблемами сразу: сервер не должен стартовать с битым содержимым.
  *
  * Возвращает предупреждения — о guide юнитов, с которыми задания выйдут однообразнее (guideWarnings);
@@ -55,6 +56,10 @@ export async function checkContent(): Promise<string[]> {
                 if (missing.length) {
                     problems.push(`${contentFile(ws.key, type)}: нет ${missing.map((n) => `${n}.md`).join(', ')}`);
                     continue;
+                }
+                if (call === 'generate' && !settings.topics.length) {
+                    const withTopic = names.filter((n) => /\{\{topic\??\}\}/.test(fs.readFileSync(contentPath(ws.key, type, `${n}.md`), 'utf8')));
+                    if (withTopic.length) problems.push(`${contentFile(ws.key, type, withTopic[0] + '.md')}: {{topic}}, а topics в workspace.yaml пуст`);
                 }
                 try {
                     const { version } = prompts(ws.key, type, names);

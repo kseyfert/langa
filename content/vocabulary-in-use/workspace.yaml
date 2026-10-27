@@ -1,12 +1,18 @@
 # Настройки области Vocabulary In Use. Проверяются при старте сервера (specs/exercise-types.md):
 # неверное значение — сервер не стартует.
 
-# Типов пока нет: область видна в каталоге (юниты, guide, «в работе»), но заданий по ней нет —
-# планировщик ничего не выдаёт, ▶ у юнитов и плеера сессии нет. Типы подключаются по
-# specs/exercise-types.md, «Подключить тип к области»: строка здесь, промпты и evals в папке типа.
-types: []
+# Лестница типов — та же, что у Grammar In Use (пороги, константы, группа translate и free):
+# задания по лексике растут в той же последовательности — узнать слово, выбрать, применить самому.
+# difficulty, levelCap, memoryWeight, easy — константы типа в модели ученика (rating-model.md §0).
+types:
+  - { type: gap,       fromM: 0,  difficulty: 20, levelCap: 50,  memoryWeight: 0.2,  easy: true }
+  - { type: choice,    fromM: 30, difficulty: 30, levelCap: 60,  memoryWeight: 0.25, easy: true }
+  - { type: rephrase,  fromM: 42, difficulty: 50, levelCap: 80,  memoryWeight: 0.6,  easy: false }
+  - { type: translate, fromM: 55, difficulty: 70, levelCap: 100, memoryWeight: 1.0,  easy: false }
+  - { type: free,      fromM: 55, difficulty: 70, levelCap: 100, memoryWeight: 1.0,  easy: false }
 
-# Темы контекста заданий. Нужны только генерации: пока типов нет, список может быть пустым.
+# Тем нет: в guide лексики у каждого пункта «## Употребление» своя ситуация, она и задаёт контекст.
+# Поэтому промпты области {{topic}} не используют (проверка при старте следит за этим).
 topics: []
 
 # Переопределения общих констант модели ученика (rating-model.md §0). Пока — все по умолчанию.
