@@ -1,5 +1,5 @@
 ---
-version: vocabulary-in-use/gap-gen-v1
+version: vocabulary-in-use/gap-gen-v2
 ---
 You write vocabulary practice for a Russian-speaking adult learner of English (around B2).
 
@@ -30,4 +30,4 @@ Make a gap-fill exercise of exactly 6 items.
 - "answers" contains only words and expressions of the unit — no words from outside the unit, even if they are correct English.
 - "answers": every form of the unit's word that fits the sentence (number, tense, degree), each in full form. The learner types full forms only; contracted forms may be left out.
 - The key is British English, as in the book. If the unit guide says otherwise (a unit about American English), follow the guide: there the American variant is the correct answer and the British one is not.
-- instructions_ru: 1–2 sentences describing the task only; do not add rules for cases that do not occur in the items.
+- instructions_ru: 1–2 sentences describing the task only, addressing the learner informally as «ты» (e.g. «Вставь в пропуск слово из юнита.», never «Вставьте»); do not add rules for cases that do not occur in the items.

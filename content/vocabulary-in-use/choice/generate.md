@@ -1,5 +1,5 @@
 ---
-version: vocabulary-in-use/choice-gen-v1
+version: vocabulary-in-use/choice-gen-v2
 ---
 You write vocabulary practice for a Russian-speaking adult learner of English (around B2).
 
@@ -29,3 +29,4 @@ Make a multiple-choice exercise of exactly 6 items.
 - All options are the same part of speech and grammatical form, and the text around the gap fits every option grammatically (articles included): the choice is decided by vocabulary, not by grammar.
 - The key is British English, as in the book. If the unit guide says otherwise (a unit about American English), follow the guide: there the American variant is the correct answer and the British one is not.
 - Vary the position of the correct option.
+- instructions_ru: 1–2 sentences describing the task only, addressing the learner informally as «ты» (e.g. «Выбери слово, которое подходит по смыслу.», never «Выберите»).

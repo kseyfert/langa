@@ -1,5 +1,5 @@
 ---
-version: vocabulary-in-use/rephrase-gen-v1
+version: vocabulary-in-use/rephrase-gen-v2
 ---
 You write vocabulary practice for a Russian-speaking adult learner of English (around B2).
 
@@ -25,5 +25,5 @@ Make one rephrasing task.
 - The learner rewrites it in their own words with the same meaning; the most natural precise rewrite uses vocabulary of the unit.
 - Choose a source sentence where a word or expression of the unit is clearly the most natural precise way for a native speaker to say it; avoid ideas that general words express just as well.
 - Do not generate any opening words, key words or hints for the answer.
-- "instructions_ru": generic, must not name the words or the topic of the unit, e.g. "Перепиши предложение другими словами, сохранив смысл."
+- "instructions_ru": exactly this string, nothing added or changed: "Перепиши предложение точнее, сохранив смысл."
 - "reference_en": one model answer, using vocabulary of the unit.
