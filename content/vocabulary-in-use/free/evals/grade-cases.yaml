@@ -1,0 +1,227 @@
+# Случаи набора free-grade для рабочей области Vocabulary In Use (область — папка content/<key>/).
+# Источник истины — этот файл: запуск синхронизирует его в датасет Langfuse
+# vocabulary-in-use/free-grade (новые и изменённые случаи — upsert, удалённые — в архив).
+#
+# tasks — задания (content как в exercises.content), cases ссылаются на них по task.
+# Случай: answer — ответ ученика; expect:
+#   verdict      — correct_target / correct_non_target / incorrect, или список допустимых;
+#   target       — ожидаемый target.status: correct / error / partial / not_used, или список допустимых;
+#   side_errors  — у этой области всегда []: побочных юнитов нет (README области), и no_false_side
+#                  проверяет, что проверка не назвала ни одного побочного с ошибкой; side_found не нужен.
+# Ветки: target — верно с лексикой юнита; non-target — верно общими словами; target-error — не то
+# слово юнита, не тот оттенок или регистр; collocation-error — неверный предлог или коллокация
+# при слове юнита; edge — пограничный случай.
+# Пока answer пуст или в expect нет verdict и target, случай не заполнен и в прогон не идёт.
+tasks:
+  - id: 8-free
+    unit_id: 173   # 8. Describing people: personality
+    # сгенерировано без записи в базу, vocabulary-in-use/free-gen-v1, 2026-10-27
+    content:
+      instructions_ru: Ответь по-английски в 2–4 предложениях.
+      prompt_en: Think about how you feel after a really long day at work, and how you usually react when someone criticises something you've done. What are you like in those moments?
+      reference_en:
+        - After a long day I'm usually completely stressed out and wound up, so I need an hour to become relaxed again. I'm also quite sensitive to criticism, and I get upset easily, even though I try to be sensible about it.
+      focus:
+        - "напряжение и чувствительность: tense, wound up, stressed out, relaxed; sensible против sensitive — после рабочего дня, реакция на критику"
+  - id: 16-free
+    unit_id: 181   # 16. Work
+    # сгенерировано без записи в базу, vocabulary-in-use/free-gen-v1, 2026-10-27
+    content:
+      instructions_ru: Ответь по-английски в 2–4 предложениях.
+      prompt_en: Your cousin is starting her first day at the company where you work, and you're showing her around the office. Who do you point out to her, and what does each person do?
+      reference_en:
+        - That's Mark at the front desk, he's our receptionist and greets every visitor. Over there is Priya, the administrator who keeps the whole office running. Her supervisor checks our work, and the executive upstairs makes the big decisions.
+      focus:
+        - "люди в офисе: director, executive, administrator, receptionist, supervisor — экскурсия по компании"
+  - id: 40-free
+    unit_id: 205   # 40. Money
+    # сгенерировано без записи в базу, vocabulary-in-use/free-gen-v1, 2026-10-27
+    content:
+      instructions_ru: Ответь по-английски в 2–4 предложениях.
+      prompt_en: You want to take out money from a bank to start a small business, but the bank manager hesitates and says your history of paying people back worries her. What do you say to convince her, and what do you ask about the cost?
+      reference_en:
+        - I know my credit rating isn't perfect, but I've paid off my old debts and I have a steady income now. I only want to borrow a small amount. Could you tell me what interest rate you would charge on the loan?
+      focus:
+        - "надёжность заёмщика: credit rating, borrow, charge interest — разговор с банком о кредите"
+  - id: 64-free
+    unit_id: 229   # 64. Concession and contrast
+    # сгенерировано без записи в базу, vocabulary-in-use/free-gen-v1, 2026-10-27
+    content:
+      instructions_ru: Ответь по-английски в 2–4 предложениях.
+      prompt_en: Your colleague says, "I guess you were really relaxed before your presentation, since you've done so many of them." But you were actually extremely nervous. What do you say to her?
+      reference_en:
+        - Quite the opposite, actually! I was terrified. In fact, the more presentations I give, the more nervous I get. On the contrary, I think the fear helped me, because I prepared much harder than usual.
+      focus:
+        - "опровергнуть неверное ожидание: in fact, the reverse was true, quite the opposite, on the contrary — ответ на ошибочное предположение"
+  - id: 70-free
+    unit_id: 235   # 70. Suffixes
+    # сгенерировано без записи в базу, vocabulary-in-use/free-gen-v1, 2026-10-27
+    content:
+      instructions_ru: Ответь по-английски в 2–4 предложениях.
+      prompt_en: You are helping your cousin fill in a form to send money to a friend abroad through a bank. She is confused about who is who on the form. How do you explain it to her?
+      reference_en:
+        - Don't worry, it's simple. You're the sender, because you're sending the money. Your friend is the payee, so you write her name and bank details in that section. Her name must match her ID exactly, or the bank may refuse the transfer.
+      focus:
+        - "кто делает и кто получает: employer / employee, sender / addressee, payee — договор, денежный перевод"
+  - id: 89-free
+    unit_id: 254   # 89. Expressions with do and make
+    # сгенерировано без записи в базу, vocabulary-in-use/free-gen-v1, 2026-10-27
+    content:
+      instructions_ru: Ответь по-английски в 2–4 предложениях.
+      prompt_en: You've just bought an old flat that needs a lot of work, and a friend asks what you plan to change. Also, you're leaving for a cold trip and your coat has a stiff zip. What would you tell your friend?
+      reference_en:
+        - "I'm going to do up the whole flat this summer: new floors, fresh paint and a new kitchen. I'll do most of it myself to save money. And this coat is a nightmare, I can never do it up quickly when it's freezing."
+      focus:
+        - "do up: застегнуть, отремонтировать — одежда, квартира"
+  - id: 101-free
+    unit_id: 266   # 101. US English
+    # сгенерировано без записи в базу, vocabulary-in-use/free-gen-v1, 2026-10-27
+    content:
+      instructions_ru: Ответь по-английски в 2–4 предложениях.
+      prompt_en: You work in an office in Boston, one level above the street entrance. A visitor calls you from outside the building and asks how to find you. What do you tell her?
+      reference_en:
+        - Come in through the main entrance and take the elevator. We're on the second floor, right across from the coffee shop. If the elevator is slow, the stairs are on your left. Just call me when you get there.
+      focus:
+        - "этажи: first floor, second floor — назвать этаж офиса или номера"
+
+cases:
+  - id: 8-free-target
+    task: 8-free
+    answer: ""
+    expect: {}
+  - id: 8-free-non-target
+    task: 8-free
+    answer: ""
+    expect: {}
+  - id: 8-free-target-error
+    task: 8-free
+    answer: ""
+    expect: {}
+  - id: 8-free-collocation-error
+    task: 8-free
+    answer: ""
+    expect: {}
+  - id: 8-free-edge
+    task: 8-free
+    answer: ""
+    expect: {}
+  - id: 16-free-target
+    task: 16-free
+    answer: ""
+    expect: {}
+  - id: 16-free-non-target
+    task: 16-free
+    answer: ""
+    expect: {}
+  - id: 16-free-target-error
+    task: 16-free
+    answer: ""
+    expect: {}
+  - id: 16-free-collocation-error
+    task: 16-free
+    answer: ""
+    expect: {}
+  - id: 16-free-edge
+    task: 16-free
+    answer: ""
+    expect: {}
+  - id: 40-free-target
+    task: 40-free
+    answer: ""
+    expect: {}
+  - id: 40-free-non-target
+    task: 40-free
+    answer: ""
+    expect: {}
+  - id: 40-free-target-error
+    task: 40-free
+    answer: ""
+    expect: {}
+  - id: 40-free-collocation-error
+    task: 40-free
+    answer: ""
+    expect: {}
+  - id: 40-free-edge
+    task: 40-free
+    answer: ""
+    expect: {}
+  - id: 64-free-target
+    task: 64-free
+    answer: ""
+    expect: {}
+  - id: 64-free-non-target
+    task: 64-free
+    answer: ""
+    expect: {}
+  - id: 64-free-target-error
+    task: 64-free
+    answer: ""
+    expect: {}
+  - id: 64-free-collocation-error
+    task: 64-free
+    answer: ""
+    expect: {}
+  - id: 64-free-edge
+    task: 64-free
+    answer: ""
+    expect: {}
+  - id: 70-free-target
+    task: 70-free
+    answer: ""
+    expect: {}
+  - id: 70-free-non-target
+    task: 70-free
+    answer: ""
+    expect: {}
+  - id: 70-free-target-error
+    task: 70-free
+    answer: ""
+    expect: {}
+  - id: 70-free-collocation-error
+    task: 70-free
+    answer: ""
+    expect: {}
+  - id: 70-free-edge
+    task: 70-free
+    answer: ""
+    expect: {}
+  - id: 89-free-target
+    task: 89-free
+    answer: ""
+    expect: {}
+  - id: 89-free-non-target
+    task: 89-free
+    answer: ""
+    expect: {}
+  - id: 89-free-target-error
+    task: 89-free
+    answer: ""
+    expect: {}
+  - id: 89-free-collocation-error
+    task: 89-free
+    answer: ""
+    expect: {}
+  - id: 89-free-edge
+    task: 89-free
+    answer: ""
+    expect: {}
+  - id: 101-free-target
+    task: 101-free
+    answer: ""
+    expect: {}
+  - id: 101-free-non-target
+    task: 101-free
+    answer: ""
+    expect: {}
+  - id: 101-free-target-error
+    task: 101-free
+    answer: ""
+    expect: {}
+  - id: 101-free-collocation-error
+    task: 101-free
+    answer: ""
+    expect: {}
+  - id: 101-free-edge
+    task: 101-free
+    answer: ""
+    expect: {}

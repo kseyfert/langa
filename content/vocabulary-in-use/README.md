@@ -50,6 +50,6 @@
 
 ## Версии
 
-**Текущие версии.** Генерация — `vocabulary-in-use/gap-gen-v2`, `vocabulary-in-use/choice-gen-v2`, `vocabulary-in-use/rephrase-gen-v2`, `vocabulary-in-use/translate-gen-v1`, `vocabulary-in-use/free-gen-v1`; проверка — `vocabulary-in-use/rephrase-grade-v3`, `vocabulary-in-use/translate-grade-v3`, `vocabulary-in-use/free-grade-v3`. Evals пока нет.
+**Текущие версии.** Генерация — `vocabulary-in-use/gap-gen-v2`, `vocabulary-in-use/choice-gen-v2`, `vocabulary-in-use/rephrase-gen-v2`, `vocabulary-in-use/translate-gen-v1`, `vocabulary-in-use/free-gen-v1`; проверка — `vocabulary-in-use/rephrase-grade-v3`, `vocabulary-in-use/translate-grade-v3`, `vocabulary-in-use/free-grade-v3`. Судьи evals генерации — `vocabulary-in-use/<тип>-judge-v1` (у gap и choice без `aux_inside`: раздел `criteria` в `generate-cases.yaml`); случаи проверки — заготовка (`grade-cases.yaml`, ответы и ожидания не заполнены).
 
 **История.** v2 — по пробной генерации: проверка без каталога и побочных юнитов, `instructions_ru` gap и choice на «ты», фиксированная инструкция rephrase. Проверка v3 — явное правило про предлог и коллокацию при слове юнита.

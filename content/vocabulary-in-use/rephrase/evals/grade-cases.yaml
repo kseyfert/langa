@@ -1,0 +1,227 @@
+# Случаи набора rephrase-grade для рабочей области Vocabulary In Use (область — папка content/<key>/).
+# Источник истины — этот файл: запуск синхронизирует его в датасет Langfuse
+# vocabulary-in-use/rephrase-grade (новые и изменённые случаи — upsert, удалённые — в архив).
+#
+# tasks — задания (content как в exercises.content), cases ссылаются на них по task.
+# Случай: answer — ответ ученика; expect:
+#   verdict      — correct_target / correct_non_target / incorrect, или список допустимых;
+#   target       — ожидаемый target.status: correct / error / partial / not_used, или список допустимых;
+#   side_errors  — у этой области всегда []: побочных юнитов нет (README области), и no_false_side
+#                  проверяет, что проверка не назвала ни одного побочного с ошибкой; side_found не нужен.
+# Ветки: target — верно с лексикой юнита; non-target — верно общими словами; target-error — не то
+# слово юнита, не тот оттенок или регистр; collocation-error — неверный предлог или коллокация
+# при слове юнита; edge — пограничный случай.
+# Пока answer пуст или в expect нет verdict и target, случай не заполнен и в прогон не идёт.
+tasks:
+  - id: 8-rephrase
+    unit_id: 173   # 8. Describing people: personality
+    # сгенерировано без записи в базу, vocabulary-in-use/rephrase-gen-v2, 2026-10-27
+    content:
+      instructions_ru: Перепиши предложение точнее, сохранив смысл.
+      source_en: My uncle has plenty of money, but he hates spending it and will walk three miles rather than pay for a bus ticket, and he always complains when anyone else buys a round of drinks.
+      reference_en:
+        - "My uncle is really tight-fisted: he has plenty of money, but he'd walk three miles rather than pay for a bus ticket, and he always grumbles when anyone else buys a round."
+      focus:
+        - "упрямство и бережливость с двумя оттенками: determined / obstinate, pig-headed; thrifty, economical / stingy, mean, tight-fisted — похвалить или упрекнуть одного и того же человека"
+  - id: 16-rephrase
+    unit_id: 181   # 16. Work
+    # сгенерировано без записи в базу, vocabulary-in-use/rephrase-gen-v2, 2026-10-27
+    content:
+      instructions_ru: Перепиши предложение точнее, сохранив смысл.
+      source_en: Our pipes under the kitchen sink started leaking last night, so this morning I phoned a man who fixes water pipes and taps for a living.
+      reference_en:
+        - Our pipes under the kitchen sink started leaking last night, so this morning I phoned a plumber.
+      focus:
+        - "ремёсла: plumber, carpenter, firefighter, childminder — бытовые проблемы, кого вызвать"
+  - id: 40-rephrase
+    unit_id: 205   # 40. Money
+    # сгенерировано без записи в базу, vocabulary-in-use/rephrase-gen-v2, 2026-10-27
+    content:
+      instructions_ru: Перепиши предложение точнее, сохранив смысл.
+      source_en: By the twenty-fifth of the month, Dana had spent more than the bank allowed her to take out beyond what she actually had, so the bank refused her card payment and charged her a fee.
+      reference_en:
+        - By the twenty-fifth of the month, Dana had gone over her overdraft limit, so the bank refused her card payment and charged her a fee.
+      focus:
+        - "баланс: in credit, overdrawn, in the red, go over your overdraft limit — конец месяца, жалоба на банк"
+  - id: 64-rephrase
+    unit_id: 229   # 64. Concession and contrast
+    # сгенерировано без записи в базу, vocabulary-in-use/rephrase-gen-v2, 2026-10-27
+    content:
+      instructions_ru: Перепиши предложение точнее, сохранив смысл.
+      source_en: The hotel review I wrote was mostly negative, and I will say in fairness that the breakfast was good, but even so I would not recommend staying there.
+      reference_en:
+        - Admittedly, the breakfast was good; nevertheless, I would not recommend staying at this hotel.
+      focus:
+        - "формальная уступка: admittedly, nevertheless — отчёт, эссе, отзыв"
+  - id: 70-rephrase
+    unit_id: 235   # 70. Suffixes
+    # сгенерировано без записи в базу, vocabulary-in-use/rephrase-gen-v2, 2026-10-27
+    content:
+      instructions_ru: Перепиши предложение точнее, сохранив смысл.
+      source_en: My aunt spent thirty years as a person who studies matter, energy and forces, and now she works as someone who watches over a team of people running the machines in a bottling plant.
+      reference_en:
+        - My aunt spent thirty years as a physicist, and now she works as a supervisor of a team of machine operators in a bottling plant.
+      focus:
+        - "профессии и убеждения: supervisor, operator, physicist, typist, journalism, Buddhism — рассказать о людях"
+  - id: 89-rephrase
+    unit_id: 254   # 89. Expressions with do and make
+    # сгенерировано без записи в базу, vocabulary-in-use/rephrase-gen-v2, 2026-10-27
+    content:
+      instructions_ru: Перепиши предложение точнее, сохранив смысл.
+      source_en: After weeks of arguing about where to hold the team's annual conference, Priya finally chose a venue yesterday and told everyone it was settled.
+      reference_en:
+        - After weeks of arguing about where to hold the team's annual conference, Priya finally made a decision yesterday and told everyone it was settled.
+      focus:
+        - "make + решения и договорённости: a decision, arrangements, an agreement, a suggestion, an effort, an attempt — планы, работа"
+  - id: 101-rephrase
+    unit_id: 266   # 101. US English
+    # сгенерировано без записи в базу, vocabulary-in-use/rephrase-gen-v2, 2026-10-27
+    content:
+      instructions_ru: Перепиши предложение точнее, сохранив смысл.
+      source_en: To get to the museum from the train station, take the underground two stops, then use the marked place where cars must stop for people to walk across the road, and join the row of people waiting by the paved path outside the entrance.
+      reference_en:
+        - To get to the museum from the train station, take the subway two stops, then use the crosswalk and get in the line on the sidewalk outside the entrance.
+      focus:
+        - "пешком по городу: sidewalk, crosswalk, line, subway — объяснить дорогу, очередь в музей"
+
+cases:
+  - id: 8-rephrase-target
+    task: 8-rephrase
+    answer: ""
+    expect: {}
+  - id: 8-rephrase-non-target
+    task: 8-rephrase
+    answer: ""
+    expect: {}
+  - id: 8-rephrase-target-error
+    task: 8-rephrase
+    answer: ""
+    expect: {}
+  - id: 8-rephrase-collocation-error
+    task: 8-rephrase
+    answer: ""
+    expect: {}
+  - id: 8-rephrase-edge
+    task: 8-rephrase
+    answer: ""
+    expect: {}
+  - id: 16-rephrase-target
+    task: 16-rephrase
+    answer: ""
+    expect: {}
+  - id: 16-rephrase-non-target
+    task: 16-rephrase
+    answer: ""
+    expect: {}
+  - id: 16-rephrase-target-error
+    task: 16-rephrase
+    answer: ""
+    expect: {}
+  - id: 16-rephrase-collocation-error
+    task: 16-rephrase
+    answer: ""
+    expect: {}
+  - id: 16-rephrase-edge
+    task: 16-rephrase
+    answer: ""
+    expect: {}
+  - id: 40-rephrase-target
+    task: 40-rephrase
+    answer: ""
+    expect: {}
+  - id: 40-rephrase-non-target
+    task: 40-rephrase
+    answer: ""
+    expect: {}
+  - id: 40-rephrase-target-error
+    task: 40-rephrase
+    answer: ""
+    expect: {}
+  - id: 40-rephrase-collocation-error
+    task: 40-rephrase
+    answer: ""
+    expect: {}
+  - id: 40-rephrase-edge
+    task: 40-rephrase
+    answer: ""
+    expect: {}
+  - id: 64-rephrase-target
+    task: 64-rephrase
+    answer: ""
+    expect: {}
+  - id: 64-rephrase-non-target
+    task: 64-rephrase
+    answer: ""
+    expect: {}
+  - id: 64-rephrase-target-error
+    task: 64-rephrase
+    answer: ""
+    expect: {}
+  - id: 64-rephrase-collocation-error
+    task: 64-rephrase
+    answer: ""
+    expect: {}
+  - id: 64-rephrase-edge
+    task: 64-rephrase
+    answer: ""
+    expect: {}
+  - id: 70-rephrase-target
+    task: 70-rephrase
+    answer: ""
+    expect: {}
+  - id: 70-rephrase-non-target
+    task: 70-rephrase
+    answer: ""
+    expect: {}
+  - id: 70-rephrase-target-error
+    task: 70-rephrase
+    answer: ""
+    expect: {}
+  - id: 70-rephrase-collocation-error
+    task: 70-rephrase
+    answer: ""
+    expect: {}
+  - id: 70-rephrase-edge
+    task: 70-rephrase
+    answer: ""
+    expect: {}
+  - id: 89-rephrase-target
+    task: 89-rephrase
+    answer: ""
+    expect: {}
+  - id: 89-rephrase-non-target
+    task: 89-rephrase
+    answer: ""
+    expect: {}
+  - id: 89-rephrase-target-error
+    task: 89-rephrase
+    answer: ""
+    expect: {}
+  - id: 89-rephrase-collocation-error
+    task: 89-rephrase
+    answer: ""
+    expect: {}
+  - id: 89-rephrase-edge
+    task: 89-rephrase
+    answer: ""
+    expect: {}
+  - id: 101-rephrase-target
+    task: 101-rephrase
+    answer: ""
+    expect: {}
+  - id: 101-rephrase-non-target
+    task: 101-rephrase
+    answer: ""
+    expect: {}
+  - id: 101-rephrase-target-error
+    task: 101-rephrase
+    answer: ""
+    expect: {}
+  - id: 101-rephrase-collocation-error
+    task: 101-rephrase
+    answer: ""
+    expect: {}
+  - id: 101-rephrase-edge
+    task: 101-rephrase
+    answer: ""
+    expect: {}

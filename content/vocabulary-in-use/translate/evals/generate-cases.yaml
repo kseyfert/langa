@@ -1,0 +1,36 @@
+# Случаи набора translate-generate для рабочей области Vocabulary In Use (область — папка content/<key>/).
+# Источник истины — этот файл: запуск синхронизирует его в датасет Langfuse
+# vocabulary-in-use/translate-generate (новые и изменённые случаи — upsert, удалённые — в архив).
+# Темы нет: у области topics: [], ситуацию задаёт пункт «## Употребление» guide.
+# unit_id — id юнита в базе, не номер в книге; в комментарии — номер и название.
+# 14 юнитов разной природы: темы, функции речи, словообразование, грамматика слова, US English.
+
+cases:
+  - id: weather
+    unit_id: 171   # 6. The weather
+  - id: personality
+    unit_id: 173   # 8. Describing people: personality
+  - id: work
+    unit_id: 181   # 16. Work
+  - id: travel
+    unit_id: 196   # 31. Travel
+  - id: money
+    unit_id: 205   # 40. Money
+  - id: speaking
+    unit_id: 210   # 45. Speaking
+  - id: obligation
+    unit_id: 220   # 55. Obligation, need, possibility and probability
+  - id: success
+    unit_id: 225   # 60. Success, failure and difficulty
+  - id: concession
+    unit_id: 229   # 64. Concession and contrast
+  - id: suffixes
+    unit_id: 235   # 70. Suffixes
+  - id: binomials
+    unit_id: 242   # 77. Binomials
+  - id: countable-uncountable
+    unit_id: 250   # 85. Countable and uncountable nouns with different meanings
+  - id: do-make
+    unit_id: 254   # 89. Expressions with do and make
+  - id: us-english
+    unit_id: 266   # 101. US English

@@ -1,0 +1,71 @@
+# Случаи набора gap-generate для рабочей области Vocabulary In Use (область — папка content/<key>/).
+# Источник истины — этот файл: запуск синхронизирует его в датасет Langfuse
+# vocabulary-in-use/gap-generate (новые и изменённые случаи — upsert, удалённые — в архив).
+# Темы нет: у области topics: [], ситуацию задаёт пункт «## Употребление» guide.
+# unit_id — id юнита в базе, не номер в книге; в комментарии — номер и название.
+# 14 юнитов разной природы: темы, функции речи, словообразование, грамматика слова, US English.
+
+# Критерии судьи этой области (evals/suite.ts, areaCriteria): aux_inside грамматического судьи
+# для лексики не нужен — вспомогательных глаголов в пропуске нет.
+criteria: [rule, key_complete, not_guessable, focus_match, explain_ok]
+
+cases:
+  - id: weather
+    unit_id: 171   # 6. The weather
+  - id: personality
+    unit_id: 173   # 8. Describing people: personality
+  - id: work
+    unit_id: 181   # 16. Work
+  - id: travel
+    unit_id: 196   # 31. Travel
+  - id: money
+    unit_id: 205   # 40. Money
+  - id: speaking
+    unit_id: 210   # 45. Speaking
+  - id: obligation
+    unit_id: 220   # 55. Obligation, need, possibility and probability
+  - id: success
+    unit_id: 225   # 60. Success, failure and difficulty
+  - id: concession
+    unit_id: 229   # 64. Concession and contrast
+  - id: suffixes
+    unit_id: 235   # 70. Suffixes
+  - id: binomials
+    unit_id: 242   # 77. Binomials
+  - id: countable-uncountable
+    unit_id: 250   # 85. Countable and uncountable nouns with different meanings
+  - id: do-make
+    unit_id: 254   # 89. Expressions with do and make
+  - id: us-english
+    unit_id: 266   # 101. US English
+
+# Контрольные случаи судьи: готовое задание с известным дефектом (из пробы
+# evals/reports/vocabulary-in-use_trial_2026-10-27.md, генерация vocabulary-in-use/gap-gen-v1)
+# и критерии, которые судья обязан провалить. Задание — из одного пункта: судья оценивает
+# пункты по отдельности, остальные пять к дефекту ничего не добавляют. Оценка — control_caught,
+# отдельно от средних обычных случаев. Прогон только их: --controls-only.
+controls:
+  - id: control-gap-89-making-a-loss
+    unit_id: 254   # 89. Expressions with do and make
+    # в ключе «making a loss», а «a loss» уже стоит после пропуска: заполненное предложение неверно
+    expect_fail: [rule]
+    content:
+      instructions_ru: Вставьте в пропуск нужное слово или выражение из юнита (с do или make) так, чтобы предложение подходило по смыслу.
+      items:
+        - text: Bad weather kept customers away all summer, and the ice-cream stand finished the season ___ a loss.
+          answers: [making a loss]
+          explain_ru: "Из-за отсутствия покупателей торговля шла в убыток: make a loss — «нести убытки»."
+      focus:
+        - "make + деньги и итог: a profit, a loss, a success of, the best of, the most of — бизнес, ситуация"
+  - id: control-gap-64-admit-only
+    unit_id: 229   # 64. Concession and contrast
+    # в ключе только admit, хотя acknowledge, accept, concede того же пункта подходят по смыслу
+    expect_fail: [key_complete]
+    content:
+      instructions_ru: Вставьте в пропуск слово или выражение из юнита о уступке и контрасте, которое лучше всего подходит по смыслу.
+      items:
+        - text: I'll ___ that I sent the wrong file, which was careless of me, but nobody told me the deadline had moved.
+          answers: [admit]
+          explain_ru: Признание собственной ошибки выражается глаголом admit.
+      focus:
+        - "признать и возразить: acknowledge, accept, admit, concede — спор на работе, переговоры"

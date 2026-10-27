@@ -6,7 +6,7 @@ import { askJson } from '../src/server/tasks/claude';
 import { generate } from '../src/server/tasks/generate';
 import { prompts, promptSet, unitValues } from '../src/server/tasks/prompt';
 import { FREE_LENGTH } from '../src/server/tasks/types';
-import { itemProblems, suiteFile, topicCases, type Problem, type Suite, type SuiteCase } from './suite';
+import { areaCriteria, controlCases, isControl, itemProblems, suiteFile, topicCases, type Control, type Problem, type Suite } from './suite';
 
 // Общее у наборов генерации открытых типов (rephrase-generate, translate-generate, free-generate;
 // architecture.md, «Evals»): настоящая генерация без записи в базу, оценки кодом и судьёй.
@@ -20,9 +20,6 @@ const JUDGE_MODEL = 'claude-opus-5-5';
 
 /** Обычный случай — юнит и тема; контрольный — готовое задание, генерации нет. */
 export type Input = { unit_id: number; topic: string } | { unit_id: number; content: Content };
-/** Ожидание контрольного случая: критерии, которые судья обязан провалить. */
-type Control = { expect_fail: string[] };
-const isControl = (expected: unknown): expected is Control => Array.isArray((expected as Control | undefined)?.expect_fail);
 export type Output = { content: Content } | { error: string };
 
 /**
@@ -132,24 +129,6 @@ function controlProblems(r: ExperimentItemResult, criteria: Criterion[]): string
     ];
 }
 
-/**
- * Контрольные случаи (раздел controls): готовое задание с известным дефектом и критерии,
- * которые судья обязан провалить. Проверяют, что судья поймает дефект, которого нет в текущей генерации.
- */
-function controls(data: unknown, file: string, criteria: Criterion[]): SuiteCase[] {
-    const keys = new Set(criteria.map((c) => c.key));
-    const list = (data as { controls?: { id: string; unit_id: number; content: Content; expect_fail: string[] }[] }).controls ?? [];
-    return list.map((c) => {
-        const bad = (c.expect_fail ?? []).filter((k) => !keys.has(k));
-        if (!c.expect_fail?.length || bad.length) throw new Error(`${file}: контроль ${c.id}: expect_fail — непустой список из ${[...keys].join(', ')}${bad.length ? `; лишние: ${bad.join(', ')}` : ''}`);
-        if (!c.content) throw new Error(`${file}: контроль ${c.id}: нет content`);
-        return {
-            id: c.id, unit_id: c.unit_id, input: { unit_id: c.unit_id, content: c.content }, expected: { expect_fail: c.expect_fail },
-            label: `контроль · ${c.expect_fail.join(', ')}`, control: true,
-        };
-    });
-}
-
 const judgePrompts = (file: string) => promptSet([{ name: 'judge' as const, file, text: fs.readFileSync(file, 'utf8') }]);
 
 const code = (s: string) => `\`${s.replace(/`/g, "'")}\``;
@@ -180,12 +159,13 @@ function reportItem(criteria: Criterion[]) {
     };
 }
 
-/** Набор генерации одного открытого типа по области; criteria — общие и свои критерии судьи. */
-export const openGenerateSuite = (type: OpenType, criteria: Criterion[]) => (area: string): Suite => {
+/** Набор генерации одного открытого типа по области; all — общие и свои критерии судьи, область выбирает из них. */
+export const openGenerateSuite = (type: OpenType, all: Criterion[]) => (area: string): Suite => {
     const file = suiteFile(area, `${type}-generate`, 'judge.md');
+    const criteria = areaCriteria(area, `${type}-generate`, all);
     return {
         versions: () => ({ prompt: prompts(area, type, ['generate']).version, judge: judgePrompts(file).version }),
-        cases: (data, f) => [...topicCases(data), ...controls(data, f, criteria)],
+        cases: (data, f) => [...topicCases(data), ...controlCases(data, f, criteria.map((c) => c.key))],
         async task(input) {
             const i = input as Input;
             if ('content' in i) return { content: i.content } satisfies Output;

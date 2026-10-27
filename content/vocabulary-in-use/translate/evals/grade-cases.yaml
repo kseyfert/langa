@@ -1,0 +1,234 @@
+# Случаи набора translate-grade для рабочей области Vocabulary In Use (область — папка content/<key>/).
+# Источник истины — этот файл: запуск синхронизирует его в датасет Langfuse
+# vocabulary-in-use/translate-grade (новые и изменённые случаи — upsert, удалённые — в архив).
+#
+# tasks — задания (content как в exercises.content), cases ссылаются на них по task.
+# Случай: answer — ответ ученика; expect:
+#   verdict      — correct_target / correct_non_target / incorrect, или список допустимых;
+#   target       — ожидаемый target.status: correct / error / partial / not_used, или список допустимых;
+#   side_errors  — у этой области всегда []: побочных юнитов нет (README области), и no_false_side
+#                  проверяет, что проверка не назвала ни одного побочного с ошибкой; side_found не нужен.
+# Ветки: target — верно с лексикой юнита; non-target — верно общими словами; target-error — не то
+# слово юнита, не тот оттенок или регистр; collocation-error — неверный предлог или коллокация
+# при слове юнита; edge — пограничный случай.
+# Пока answer пуст или в expect нет verdict и target, случай не заполнен и в прогон не идёт.
+tasks:
+  - id: 8-translate
+    unit_id: 173   # 8. Describing people: personality
+    # сгенерировано без записи в базу, vocabulary-in-use/translate-gen-v1, 2026-10-27
+    content:
+      instructions_ru: Переведи на английский.
+      source_ru: "Я бы не стал брать Олега в команду: он груб с клиентами и вечно перебивает коллег. Зато Марина очень надёжная и искренняя, ей можно доверять любую информацию, и она никогда не завидует чужим успехам."
+      target_note_ru: Обрати внимание, что «груб» и «невоспитанный» передаются разными словами с разным оттенком (rude / ill-mannered), а «надёжная», «искренняя» и «завистливая» требуют точных прилагательных, а не общих good или bad.
+      reference_en:
+        - "I wouldn't take Oleg onto the team: he's rude to clients and keeps interrupting his colleagues. Marina, on the other hand, is very reliable and sincere, you can trust her with any information, and she's never jealous of other people's success."
+      focus:
+        - "вежливость и честность: rude, ill-mannered, discourteous, honest, trustworthy, reliable, sincere; jealous, envious — рекомендация или жалоба на сотрудника"
+  - id: 16-translate
+    unit_id: 181   # 16. Work
+    # сгенерировано без записи в базу, vocabulary-in-use/translate-gen-v1, 2026-10-27
+    content:
+      instructions_ru: Переведи на английский.
+      source_ru: — Чем ты занимаешься? — Я работаю в издательском бизнесе, но на жизнь в основном зарабатываю переводами. А ты?
+      target_note_ru: Вопрос «чем занимаешься?» — это What do you do (for a living)?, а не *What is your work?. «Зарабатывать на жизнь» — make a living, а сфера деятельности передаётся через I'm in publishing.
+      reference_en:
+        - "\"What do you do for a living?\" \"I'm in publishing, but I mostly make a living from translating. What about you?\""
+      focus:
+        - "род занятий: What do you do for a living?, I'm in banking, make a living — знакомство"
+  - id: 40-translate
+    unit_id: 205   # 40. Money
+    # сгенерировано без записи в базу, vocabulary-in-use/translate-gen-v1, 2026-10-27
+    content:
+      instructions_ru: Переведи на английский.
+      source_ru: Я пришёл в банк за кредитом, а менеджер сказал, что из-за моей кредитной истории они будут брать с меня более высокий процент. Теперь думаю, стоит ли вообще брать деньги в долг.
+      target_note_ru: Русское «кредит» здесь — loan, а не credit; «кредитная история» — credit rating, «брать деньги в долг» — borrow. «Брать процент» — charge interest, а interest не имеет формы множественного числа в таком значении.
+      reference_en:
+        - I went to the bank for a loan, but the manager said that because of my credit rating they would charge me a higher interest rate. Now I'm wondering whether it's worth borrowing money at all.
+      focus:
+        - "надёжность заёмщика: credit rating, borrow, charge interest — разговор с банком о кредите"
+  - id: 64-translate
+    unit_id: 229   # 64. Concession and contrast
+    # сгенерировано без записи в базу, vocabulary-in-use/translate-gen-v1, 2026-10-27
+    content:
+      instructions_ru: Переведи на английский.
+      source_ru: — Ты удивлён, что Макс не пришёл на вечеринку? Ведь он же всю неделю сидел на больничном, так что ничего странного. Как-никак человек только что выздоровел.
+      target_note_ru: "Обрати внимание: «ведь, как-никак», напоминание об очевидном — это after all, а не finally или in the end, которые значат «наконец, в итоге»."
+      reference_en:
+        - Are you surprised Max didn't come to the party? He was off sick all week, so it's hardly strange. After all, he's only just got better.
+      focus:
+        - "напомнить очевидное: after all — ответ на удивление или жалобу"
+  - id: 70-translate
+    unit_id: 235   # 70. Suffixes
+    # сгенерировано без записи в базу, vocabulary-in-use/translate-gen-v1, 2026-10-27
+    content:
+      instructions_ru: Переведи на английский.
+      source_ru: В договоре аренды сказано, что наниматель обязан платить за квартиру до пятого числа каждого месяца. Если деньги переводит не сам жилец, а его работодатель, то в графе «получатель платежа» всё равно нужно указать имя хозяйки.
+      target_note_ru: "Обрати внимание на пары суффиксов: -er / -or обозначает того, кто действует (employer), а -ee или -ee-подобные слова — того, кто получает или на кого направлено действие (payee). Не путай их и не заменяй общими словами вроде «the person who gets the money»."
+      reference_en:
+        - The lease says the tenant must pay the rent by the fifth of every month. Even if the money is sent by the tenant's employer rather than by the tenant, the landlady's name still has to be entered in the payee field.
+      focus:
+        - "кто делает и кто получает: employer / employee, sender / addressee, payee — договор, денежный перевод"
+  - id: 89-translate
+    unit_id: 254   # 89. Expressions with do and make
+    # сгенерировано без записи в базу, vocabulary-in-use/translate-gen-v1, 2026-10-27
+    content:
+      instructions_ru: Переведи на английский.
+      source_ru: Мы только что вернулись из отеля, где нас продержали два часа у стойки регистрации. Что ты думаешь о том, как они пытались это загладить — бесплатным ужином и бутылкой вина? По-моему, этим не возместишь испорченный первый день.
+      target_note_ru: Мнение о чём-то выражается через «What do you make of …?» (а не *about), а «возместить, загладить» — это make up for с предлогом. Не путай его с make up в значении «выдумать».
+      reference_en:
+        - We've just got back from the hotel, where they kept us waiting at reception for two hours. What do you make of the way they tried to make up for it with a free dinner and a bottle of wine? I don't think that makes up for a ruined first day.
+      focus:
+        - "мнение и компенсация: What do you make of …?, make up for — новая программа, отель"
+  - id: 101-translate
+    unit_id: 266   # 101. US English
+    # сгенерировано без записи в базу, vocabulary-in-use/translate-gen-v1, 2026-10-27
+    content:
+      instructions_ru: Переведи на английский.
+      source_ru: Выйдешь из метро — иди прямо по тротуару до перекрёстка, там через пешеходный переход на другую сторону. Очередь в музей обычно тянется до самого угла, так что лучше встать в неё пораньше.
+      target_note_ru: "Ты употребил американские слова subway, sidewalk, crosswalk и line, а не британские underground, pavement, zebra crossing и queue? Обрати внимание и на слово block: «до угла» можно передать как to the corner."
+      reference_en:
+        - When you come out of the subway, walk straight along the sidewalk to the intersection, then use the crosswalk to get to the other side. The line for the museum usually stretches all the way to the corner, so it's better to get in it early.
+      focus:
+        - "пешком по городу: sidewalk, crosswalk, line, subway — объяснить дорогу, очередь в музей"
+
+cases:
+  - id: 8-translate-target
+    task: 8-translate
+    answer: ""
+    expect: {}
+  - id: 8-translate-non-target
+    task: 8-translate
+    answer: ""
+    expect: {}
+  - id: 8-translate-target-error
+    task: 8-translate
+    answer: ""
+    expect: {}
+  - id: 8-translate-collocation-error
+    task: 8-translate
+    answer: ""
+    expect: {}
+  - id: 8-translate-edge
+    task: 8-translate
+    answer: ""
+    expect: {}
+  - id: 16-translate-target
+    task: 16-translate
+    answer: ""
+    expect: {}
+  - id: 16-translate-non-target
+    task: 16-translate
+    answer: ""
+    expect: {}
+  - id: 16-translate-target-error
+    task: 16-translate
+    answer: ""
+    expect: {}
+  - id: 16-translate-collocation-error
+    task: 16-translate
+    answer: ""
+    expect: {}
+  - id: 16-translate-edge
+    task: 16-translate
+    answer: ""
+    expect: {}
+  - id: 40-translate-target
+    task: 40-translate
+    answer: ""
+    expect: {}
+  - id: 40-translate-non-target
+    task: 40-translate
+    answer: ""
+    expect: {}
+  - id: 40-translate-target-error
+    task: 40-translate
+    answer: ""
+    expect: {}
+  - id: 40-translate-collocation-error
+    task: 40-translate
+    answer: ""
+    expect: {}
+  - id: 40-translate-edge
+    task: 40-translate
+    answer: ""
+    expect: {}
+  - id: 64-translate-target
+    task: 64-translate
+    answer: ""
+    expect: {}
+  - id: 64-translate-non-target
+    task: 64-translate
+    answer: ""
+    expect: {}
+  - id: 64-translate-target-error
+    task: 64-translate
+    answer: ""
+    expect: {}
+  - id: 64-translate-collocation-error
+    task: 64-translate
+    answer: ""
+    expect: {}
+  - id: 64-translate-edge
+    task: 64-translate
+    answer: ""
+    expect: {}
+  - id: 70-translate-target
+    task: 70-translate
+    answer: ""
+    expect: {}
+  - id: 70-translate-non-target
+    task: 70-translate
+    answer: ""
+    expect: {}
+  - id: 70-translate-target-error
+    task: 70-translate
+    answer: ""
+    expect: {}
+  - id: 70-translate-collocation-error
+    task: 70-translate
+    answer: ""
+    expect: {}
+  - id: 70-translate-edge
+    task: 70-translate
+    answer: ""
+    expect: {}
+  - id: 89-translate-target
+    task: 89-translate
+    answer: ""
+    expect: {}
+  - id: 89-translate-non-target
+    task: 89-translate
+    answer: ""
+    expect: {}
+  - id: 89-translate-target-error
+    task: 89-translate
+    answer: ""
+    expect: {}
+  - id: 89-translate-collocation-error
+    task: 89-translate
+    answer: ""
+    expect: {}
+  - id: 89-translate-edge
+    task: 89-translate
+    answer: ""
+    expect: {}
+  - id: 101-translate-target
+    task: 101-translate
+    answer: ""
+    expect: {}
+  - id: 101-translate-non-target
+    task: 101-translate
+    answer: ""
+    expect: {}
+  - id: 101-translate-target-error
+    task: 101-translate
+    answer: ""
+    expect: {}
+  - id: 101-translate-collocation-error
+    task: 101-translate
+    answer: ""
+    expect: {}
+  - id: 101-translate-edge
+    task: 101-translate
+    answer: ""
+    expect: {}
