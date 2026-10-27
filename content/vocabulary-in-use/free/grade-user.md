@@ -1,5 +1,5 @@
 ---
-version: vocabulary-in-use/free-grade-v2
+version: vocabulary-in-use/free-grade-v3
 ---
 TARGET UNIT:
 {{book}} · {{section}} · Unit {{number}}: {{title}}

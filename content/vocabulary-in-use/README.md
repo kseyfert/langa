@@ -9,6 +9,7 @@
 - **Верно с целевой** (`correct_target`): использована лексика юнита — точно по смыслу и с правильной сочетаемостью.
 - **Верно без неё** (`correct_non_target`): грамотно и по смыслу, но общими словами вне юнита (*a good person* вместо *reliable*).
 - **Ошибка целевого юнита** (`error`): слово юнита не по смыслу (*sensible* вместо *sensitive*), неверная коллокация, не тот оттенок (*stubborn*, где хвалят), не тот регистр — если guide помечает регистр (разг. / письм.).
+- **Неверный предлог или коллокация при слове юнита** (*mean on money*, *honest to*, *shrewd with*) — тоже ошибка целевого юнита, а не `other_issues`: `partial`, если в ответе есть и верные употребления лексики юнита, иначе `error`. Правило в промпте явное: без него модель считала такие ответы верными и в пробе v2 пропускала ошибку во всех повторах.
 
 ## Ключ и формы
 
@@ -49,6 +50,6 @@
 
 ## Версии
 
-**Текущие версии.** Генерация — `vocabulary-in-use/gap-gen-v2`, `vocabulary-in-use/choice-gen-v2`, `vocabulary-in-use/rephrase-gen-v2`, `vocabulary-in-use/translate-gen-v1`, `vocabulary-in-use/free-gen-v1`; проверка — `vocabulary-in-use/rephrase-grade-v2`, `vocabulary-in-use/translate-grade-v2`, `vocabulary-in-use/free-grade-v2`. Evals пока нет.
+**Текущие версии.** Генерация — `vocabulary-in-use/gap-gen-v2`, `vocabulary-in-use/choice-gen-v2`, `vocabulary-in-use/rephrase-gen-v2`, `vocabulary-in-use/translate-gen-v1`, `vocabulary-in-use/free-gen-v1`; проверка — `vocabulary-in-use/rephrase-grade-v3`, `vocabulary-in-use/translate-grade-v3`, `vocabulary-in-use/free-grade-v3`. Evals пока нет.
 
-**История.** v2 — по пробной генерации: проверка без каталога и побочных юнитов, `instructions_ru` gap и choice на «ты», фиксированная инструкция rephrase.
+**История.** v2 — по пробной генерации: проверка без каталога и побочных юнитов, `instructions_ru` gap и choice на «ты», фиксированная инструкция rephrase. Проверка v3 — явное правило про предлог и коллокацию при слове юнита.

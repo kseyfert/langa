@@ -1,5 +1,5 @@
 ---
-version: vocabulary-in-use/translate-grade-v2
+version: vocabulary-in-use/translate-grade-v3
 ---
 TARGET UNIT:
 {{book}} · {{section}} · Unit {{number}}: {{title}}
