@@ -153,10 +153,10 @@ cases:
     task: 64-rephrase
     answer: "My hotel review was mostly negative. Admittedly, the breakfast was good; nevertheless, I would not recommend staying there."
     expect: {verdict: "correct_target", target: "correct", side_errors: []}
-  - id: 64-rephrase-non-target
+  - id: 64-rephrase-non-target   # обход общими словами теряет точность
     task: 64-rephrase
     answer: "My hotel review was mostly negative. The breakfast was good, but I still would not recommend staying there."
-    expect: {verdict: "correct_non_target", target: "not_used", side_errors: []}
+    expect: {verdict: "incorrect", target: "not_used", side_errors: []}
   - id: 64-rephrase-target-error   # on the contrary не вводит уступку
     task: 64-rephrase
     answer: "My hotel review was mostly negative. On the contrary, the breakfast was good, but even so I would not recommend staying there."
