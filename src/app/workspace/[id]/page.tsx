@@ -1,11 +1,11 @@
 import { marked } from 'marked';
 import { notFound } from 'next/navigation';
 import { getWorkspace, hasTasks, listUnits, type Unit, type Workspace } from '@/server/catalog';
-import { unitStatus } from '@/components/unitStatus';
+import { UnitMap } from '@/components/UnitMap';
+import { unitMapSections } from '@/components/unitMapSections';
 import { workspaceContent } from '@/server/content';
 import { unitRatings, type UnitRating } from '@/server/learner';
 import { SessionPlayer } from './SessionPlayer';
-import { UnitMap, type MapSection } from './UnitMap';
 import { UnitRow, type Dep } from './UnitRow';
 import './Catalog.css';
 
@@ -70,15 +70,6 @@ export default async function WorkspacePage({ params }: { params: Promise<{ id: 
         });
 
     const books = groupByBook(units);
-    // Статус — тот же, что красит строку юнита (UnitRow): одно правило unitStatus.
-    const mapSections: MapSection[] = books.flatMap((b) => b.sections).map((s) => ({
-        key: s.key,
-        name: s.name,
-        units: s.units.map((u) => ({
-            id: u.id, number: u.number, title: u.title,
-            status: unitStatus(u.started, hasTasks(u), ratings.get(u.id)?.mastered ?? false),
-        })),
-    }));
     // Счётчики — по уникальным названиям: разорванная книга остаётся одной книгой.
     const bookCount = new Set(units.map((u) => u.book)).size;
     const sections = new Set(units.map((u) => `${u.book}/${u.section}`)).size;
@@ -100,7 +91,7 @@ export default async function WorkspacePage({ params }: { params: Promise<{ id: 
 
             {/* Без типов (workspace.yaml, types: []) планировщику нечего выдать — сессии нет. */}
             {units.length > 0 && types.length > 0 && <SessionPlayer workspaceId={workspace.id} />}
-            {units.length > 0 && <UnitMap sections={mapSections} />}
+            {units.length > 0 && <UnitMap sections={unitMapSections(units, ratings)} />}
 
             {units.length === 0 ? (
                 <p className="hint muted">

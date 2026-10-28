@@ -1,5 +1,7 @@
 import Link from 'next/link';
 import { hasTasks, listUnits, listWorkspaces, type Unit, type Workspace } from '@/server/catalog';
+import { UnitMap } from '@/components/UnitMap';
+import { unitMapSections } from '@/components/unitMapSections';
 import { unitStatus } from '@/components/unitStatus';
 import { unitRatings, type UnitRating } from '@/server/learner';
 import './Workspaces.css';
@@ -38,13 +40,15 @@ export default async function CatalogPage() {
                         const mastered = statuses.filter((s) => s === 'mastered').length;
                         const learning = statuses.filter((s) => s === 'learning').length;
                         return (
-                            <li key={w.id}>
-                                <Link href={`/workspace/${w.id}`} className="spaces__item">
+                            <li key={w.id} className="spaces__item">
+                                <Link href={`/workspace/${w.id}`} className="spaces__head">
                                     <span className="spaces__name">{w.name}</span>
                                     <span className="spaces__meta mono muted">
                                         юнитов {units.length} · в работе {learning} · освоено {mastered}
                                     </span>
                                 </Link>
+                                {/* Карта — вне ссылки строки: квадрат ведёт к строке своего юнита в области. */}
+                                {units.length > 0 && <UnitMap sections={unitMapSections(units, ratings)} base={`/workspace/${w.id}`} />}
                             </li>
                         );
                     })}

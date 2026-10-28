@@ -2,7 +2,7 @@
 // юниты, задания и попытки как они лежат в базе, на выходе — одно следующее задание.
 import type { Evaluation, ExerciseType } from '../exercises/types';
 import { evidenceOf } from './evidence';
-import { dueAt, interval, progress, isDue, replay, type Config, type Evidence, type UnitState } from './model';
+import { dueAt, interval, isDue, level, replay, type Config, type Evidence, type UnitState } from './model';
 
 // Типы и пороги между ними (§4) — из конфига области (c.TYPES, content/<key>/workspace.yaml).
 export const PLANNER_CONFIG = {
@@ -90,7 +90,9 @@ function rank(state: UnitState, history: Evidence[], attempted: boolean, now: nu
         const due = dueAt(state, c);
         return { tier: 'due', key: due == null ? -Infinity : -(now - due) / (interval(state, c) * DAY_MS) };
     }
-    return { tier: 'consolidate', key: progress(state, now, c) };
+    // По уровню, а не по прогрессу: прогресс упирается в потолок ступени, а раннее повторение ступень
+    // не поднимает — юниты с низкой ступенью навсегда оставались «наименьшими» и шли по кругу.
+    return { tier: 'consolidate', key: level(state, now, c) };
 }
 
 /**
@@ -150,13 +152,17 @@ export function nextExercise(
     const last = exercises.reduce<PlannerExercise | null>((l, e) => (!l || e.createdAt > l.createdAt ? e : l), null);
     const pool = last && candidates.length > 1 ? candidates.filter((u) => u.id !== last.unitId) : candidates;
 
+    const lastShown = new Map<number, number>();
+    for (const e of exercises) lastShown.set(e.unitId, Math.max(lastShown.get(e.unitId) ?? -Infinity, e.createdAt));
     const ranked = pool.map((u) => {
         const history = histories.get(u.id) ?? [];
         const state = replay(history, c);
         const { tier, key } = rank(state, history, attempted.has(u.id), now, c);
-        return { u, state, tier: TIERS.indexOf(tier), key };
+        // При равенстве в «Закреплении» — давнее всего показанный, а не первый по книге: иначе те же юниты по кругу.
+        const since = tier === 'consolidate' ? lastShown.get(u.id) ?? -Infinity : 0;
+        return { u, state, tier: TIERS.indexOf(tier), key, since };
     });
-    ranked.sort((a, b) => a.tier - b.tier || a.key - b.key || a.u.position - b.u.position);
+    ranked.sort((a, b) => a.tier - b.tier || a.key - b.key || a.since - b.since || a.u.position - b.u.position);
 
     const best = ranked[0];
     const tier = TIERS[best.tier];

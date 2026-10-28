@@ -1,16 +1,20 @@
 /* Список рабочих областей — как строки каталога: линейки, без плашек. */
 .spaces { list-style: none; margin: 0; padding: 0; border-top: var(--line); }
-/* Строка целиком — ссылка: область открывается кликом в любое место строки.
+/* Строка области: шапка-ссылка (название и счётчики) и под ней карта юнитов.
+   Карта вне ссылки — у её квадратов свои ссылки на строки юнитов, вложенные ссылки недопустимы.
    Отступ по бокам и отрицательное поле — как у строки юнита, чтобы подсветка
    не прилипала к тексту, а название стояло на одной вертикали с заголовком. */
 .spaces__item {
-    display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-4);
+    display: flex; flex-direction: column; gap: var(--s-2);
     padding: var(--s-3) var(--s-2);
     margin-inline: calc(-1 * var(--s-2));
     border-bottom: var(--line);
-    color: inherit; text-decoration: none;
     transition: background 120ms;
 }
 .spaces__item:hover { background: var(--paper-deep); }
+.spaces__head {
+    display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-4);
+    color: inherit; text-decoration: none;
+}
 .spaces__name { font-weight: 550; }
 .spaces__meta { font-size: var(--t-xs); white-space: nowrap; }

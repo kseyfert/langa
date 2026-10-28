@@ -137,6 +137,15 @@ export function SessionPlayer({ workspaceId }: { workspaceId: number }) {
             .then(() => setCopied('ok'), () => setCopied('cancel'))
             .finally(() => setTimeout(() => setCopied(null), 1000));
     };
+    // Одна и та же кнопка в задании и на экране итога: левый нижний угол тела рамки.
+    const copyButton = (
+        <span className={`player__copy${copied ? ' player__copy--done' : ''}`}>
+            <button type="button" className="icon-btn" onClick={copyShot} tabIndex={-1}
+                title={copied === 'cancel' ? 'Не скопировалось' : 'Скопировать картинкой'} aria-label="Скопировать плеер картинкой">
+                <Icon name={copied ?? 'copy'} />
+            </button>
+        </span>
+    );
 
     const togglePause = () => {
         if (pausedAt == null) return setPausedAt(Date.now());
@@ -287,6 +296,7 @@ export function SessionPlayer({ workspaceId }: { workspaceId: number }) {
                 ) : (
                     <p className="error">{summary.error}</p>
                 )}
+                {summary?.ok && copyButton}
             </div>
             <div className="player__bottom">
                 <button type="button" className="player__next" onClick={finish} ref={focusQuietly}>Завершить</button>
@@ -325,14 +335,7 @@ export function SessionPlayer({ workspaceId }: { workspaceId: number }) {
                         </ActionsSlot.Provider>
                     </div>
                 )}
-                {current && !loading && (
-                    <span className={`player__copy${copied ? ' player__copy--done' : ''}`}>
-                        <button type="button" className="icon-btn" onClick={copyShot} tabIndex={-1}
-                            title={copied === 'cancel' ? 'Не скопировалось' : 'Скопировать картинкой'} aria-label="Скопировать плеер картинкой">
-                            <Icon name={copied ?? 'copy'} />
-                        </button>
-                    </span>
-                )}
+                {current && !loading && copyButton}
             </div>
 
             <div className={`player__bottom${done == null ? '' : done ? ' player__bottom--ok' : ' player__bottom--bad'}`} inert={paused}>

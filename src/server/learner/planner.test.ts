@@ -5,7 +5,7 @@ import type { ExerciseType, OpenEvaluation } from '../exercises/types';
 import { readSettings } from '../content/settings';
 import { learnerConfig } from './config';
 import { evidenceOf } from './evidence';
-import { interval, replay, type Evidence } from './model';
+import { interval, level, progress, replay, type Evidence } from './model';
 import { consolidateStep, nextExercise, PLANNER_CONFIG, stepRng, typeFor, type PlannerAttempt, type PlannerExercise, type PlannerUnit } from './planner';
 
 // Константы и лестница типов — Grammar In Use: сценарии собраны на её значениях (content/grammar-in-use/workspace.yaml).
@@ -146,6 +146,24 @@ test('6: порядок повторений — по относительной
     const plan = nextExercise(started(1, 2, 3), log.exercises, log.attempts, now, C);
     assert.equal(plan?.unitId, 1);
     assert.equal(plan?.tier, 'due');
+});
+
+test('18: «Закрепление» — по уровню, а не по прогрессу, упёртому в потолок ступени', () => {
+    const log = makeLog();
+    // Юнит 1: много верных free в два ранних дня — уровень высокий, ступень «4 дня», прогресс упёрт в потолок 48.
+    for (const d of [6, 6, 6, 8, 8, 8, 8]) log.solve(1, 'free', T0 + d * DAY, 1);
+    // Юнит 2: ответы в срок довели до ступени «14 дней», уровень ниже, чем у юнита 1, но выше его потолка.
+    for (const [t, d, r] of [['gap', 0, 1], ['choice', 1, 1], ['choice', 3, 1], ['rephrase', 7, 0.9], ['rephrase', 9, 0.9]] as const) log.solve(2, t, T0 + d * DAY, r);
+    // Юнит 3 — последний показанный, в выбор не идёт.
+    log.solve(3, 'free', T0 + 9 * DAY + 30 * 60_000, 1);
+    const now = T0 + 9 * DAY + 60 * 60_000;
+    assert.equal(interval(log.state(1), C), 4);
+    assert.equal(interval(log.state(2), C), 14);
+    assert.ok(progress(log.state(1), now, C) < progress(log.state(2), now, C), 'по прогрессу первым был бы юнит 1');
+    assert.ok(level(log.state(2), now, C) < level(log.state(1), now, C));
+    const plan = nextExercise(started(1, 2, 3), log.exercises, log.attempts, now, C, TOP);
+    assert.equal(plan?.tier, 'consolidate');
+    assert.equal(plan?.unitId, 2);
 });
 
 test('7: побочная ошибка не делает юнит кандидатом, если он не начат', () => {
