@@ -3,6 +3,14 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { embedFor, renderArticle } from './article';
 
+/** Список слов плейсхолдера YouGlish из data-yg-items; null — плейсхолдера нет. */
+function ygItems(html: string): unknown {
+    const m = /data-yg-items="([^"]*)"/.exec(html);
+    if (!m) return null;
+    return JSON.parse(m[1].replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&'));
+}
+const yg = (word: string, accent = 'uk') => `https://youglish.com/pronounce/${word}/english/${accent}`;
+
 test('YouTube: watch, youtu.be, t и start → iframe youtube-nocookie', () => {
     assert.deepEqual(embedFor('https://www.youtube.com/watch?v=dQw4w9WgXcQ'), { kind: 'youtube', id: 'dQw4w9WgXcQ', start: null });
     assert.deepEqual(embedFor('https://youtu.be/dQw4w9WgXcQ?t=90'), { kind: 'youtube', id: 'dQw4w9WgXcQ', start: 90 });
@@ -35,9 +43,39 @@ test('YouGlish → плейсхолдер со словом и акцентом,
     assert.equal(embedFor('https://youglish.com/pronounce/thought/french'), null);
     assert.equal(embedFor('https://youglish.com/pronounce/thought/english/xx'), null);
     const html = renderArticle('https://youglish.com/pronounce/thought/english/uk');
-    assert.match(html, /<button type="button" class="btn article__yg" data-yg-word="thought" data-yg-accent="uk">/);
+    assert.deepEqual(ygItems(html), [{ word: 'thought', accent: 'uk', label: 'thought' }]);
+    assert.match(html, /<button type="button" class="btn article__yg" data-yg-items=/);
     assert.match(html, /thought<\/span> — в живой речи \(YouGlish\)/);
     assert.doesNotMatch(html, /<script|widget\.js/);
+});
+
+test('YouGlish: абзац из ссылок — один виджет со списком слов в порядке ссылок', () => {
+    // Подписанные ссылки через « · »: подпись — текст ссылки.
+    const signed = renderArticle(`[made](${yg('made')}) · [mad](${yg('mad')}) · [pain](${yg('pain')}) · [pan](${yg('pan')})`);
+    assert.deepEqual(ygItems(signed), ['made', 'mad', 'pain', 'pan'].map((w) => ({ word: w, accent: 'uk', label: w })));
+    assert.match(signed, /made · mad · pain · pan<\/span> — в живой речи \(YouGlish\)/);
+    assert.equal((signed.match(/<button/g) ?? []).length, 1);
+    // Голые URL через пробел и через запятую: подпись — слово из адреса.
+    assert.deepEqual(ygItems(renderArticle(`${yg('ship')} ${yg('sheep')}`)), [
+        { word: 'ship', accent: 'uk', label: 'ship' }, { word: 'sheep', accent: 'uk', label: 'sheep' },
+    ]);
+    assert.deepEqual(ygItems(renderArticle(`${yg('ship')}, ${yg('sheep')}`)), [
+        { word: 'ship', accent: 'uk', label: 'ship' }, { word: 'sheep', accent: 'uk', label: 'sheep' },
+    ]);
+    // Разные акценты — у каждого пункта свой.
+    assert.deepEqual(ygItems(renderArticle(`[water UK](${yg('water', 'uk')}) · [water US](${yg('water', 'us')})`)), [
+        { word: 'water', accent: 'uk', label: 'water UK' }, { word: 'water', accent: 'us', label: 'water US' },
+    ]);
+});
+
+test('YouGlish: текст или ссылка мимо белого списка в абзаце — обычные ссылки, не виджет', () => {
+    const mixed = renderArticle(`Сравни ${yg('ship')} и ${yg('sheep')}`);
+    assert.equal(ygItems(mixed), null);
+    assert.match(mixed, /<p>Сравни <a href="https:\/\/youglish\.com\/pronounce\/ship\/english\/uk">/);
+    const foreign = renderArticle(`[ship](${yg('ship')}) · [sheep](https://example.com/sheep)`);
+    assert.equal(ygItems(foreign), null);
+    assert.match(foreign, /<a href="https:\/\/example\.com\/sheep">sheep<\/a>/);
+    assert.equal(ygItems(renderArticle(`${yg('ship')} ${yg('sheep', 'xx')}`)), null);
 });
 
 test('ссылка не одна в абзаце или не из белого списка — остаётся ссылкой', () => {

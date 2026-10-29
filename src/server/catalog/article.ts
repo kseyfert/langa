@@ -1,4 +1,4 @@
-import { Marked, type Tokens } from 'marked';
+import { Marked, type Token, type Tokens } from 'marked';
 
 /**
  * Хосты, с которых ссылка в статье становится встроенным элементом (catalog-spec.md, «Статья юнита»).
@@ -60,14 +60,41 @@ export function embedFor(href: string): Embed | null {
     return null;
 }
 
+/** Пункт виджета YouGlish; label — текст ссылки, у голого URL — слово из адреса. */
+export type YouglishItem = { word: string; accent: string | null; label: string };
+
+/**
+ * Абзац только из ссылок YouGlish (голые URL или [подпись](URL)) через пробелы, запятые или « · » —
+ * список слов одного виджета в порядке ссылок; что-то ещё в абзаце или ссылка мимо белого списка — null.
+ */
+function youglishList(tokens: Token[]): YouglishItem[] | null {
+    const items: YouglishItem[] = [];
+    for (const t of tokens) {
+        if (t.type === 'text' && /^[\s,·]*$/.test(t.raw)) continue;
+        if (t.type !== 'link') return null;
+        const link = t as Tokens.Link;
+        const e = embedFor(link.href);
+        if (e?.kind !== 'youglish') return null;
+        items.push({ word: e.word, accent: e.accent, label: link.text && link.text !== link.href ? link.text : e.word });
+    }
+    return items.length ? items : null;
+}
+
 const escape = (s: string) =>
     s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 /** Значок ▶ — тот же путь, что play в Icon.tsx: символ ▶ на части систем рисуется эмодзи. */
 const PLAY = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3.2v9.6L12.6 8z"/></svg>';
 
-/** caption — текст ссылки; у голого URL он равен адресу, и подписи нет. */
-function embedHtml(e: Embed, caption: string | null): string {
+/** Плейсхолдер YouGlish: виджет и скрипт грузит по нажатию Article.tsx, список слов — в data-yg-items. */
+function youglishHtml(items: YouglishItem[]): string {
+    const words = items.map((i) => escape(i.label)).join(' · ');
+    return `<p><button type="button" class="btn article__yg" data-yg-items="${escape(JSON.stringify(items))}">`
+        + `${PLAY}<span><span class="article__yg-word">${words}</span> — в живой речи (YouGlish)</span></button></p>\n`;
+}
+
+/** caption — текст ссылки; у голого URL он равен адресу, и подписи нет. YouGlish — youglishHtml. */
+function embedHtml(e: Exclude<Embed, { kind: 'youglish' }>, caption: string | null): string {
     switch (e.kind) {
         case 'youtube': {
             const src = `https://www.youtube-nocookie.com/embed/${e.id}${e.start ? `?start=${e.start}` : ''}`;
@@ -78,10 +105,6 @@ function embedHtml(e: Embed, caption: string | null): string {
         case 'audio':
             return `<figure class="article__audio"><audio controls preload="none" src="${escape(e.src)}"></audio>`
                 + (caption ? `<figcaption>${escape(caption)}</figcaption>` : '') + '</figure>\n';
-        case 'youglish':
-            // Плейсхолдер: виджет и скрипт YouGlish грузит по нажатию Article.tsx.
-            return `<p><button type="button" class="btn article__yg" data-yg-word="${escape(e.word)}"`
-                + `${e.accent ? ` data-yg-accent="${e.accent}"` : ''}>${PLAY}<span><span class="article__yg-word">${escape(e.word)}</span> — в живой речи (YouGlish)</span></button></p>\n`;
     }
 }
 
@@ -89,13 +112,16 @@ const SAFE_HREF = /^(https?:|mailto:|#|\/)/i;
 
 const marked = new Marked({
     renderer: {
-        // Ссылка одна в своём абзаце (голый URL или [подпись](URL)) с адресом из EMBED_HOSTS — встроенный элемент.
+        // Абзац из ссылок YouGlish — один виджет со списком слов. Иначе ссылка одна в своём абзаце
+        // (голый URL или [подпись](URL)) с адресом из EMBED_HOSTS — встроенный элемент.
         paragraph({ tokens }: Tokens.Paragraph) {
+            const words = youglishList(tokens);
+            if (words) return youglishHtml(words);
             const solo = tokens.filter((t) => !(t.type === 'text' && !t.raw.trim()));
             if (solo.length !== 1 || solo[0].type !== 'link') return false;
             const link = solo[0] as Tokens.Link;
             const embed = embedFor(link.href);
-            if (!embed) return false;
+            if (!embed || embed.kind === 'youglish') return false;
             return embedHtml(embed, link.text && link.text !== link.href ? link.text : null);
         },
         // Сырой HTML в статье не исполняется — показывается текстом.
