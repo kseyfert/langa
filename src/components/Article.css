@@ -26,19 +26,8 @@
 .article__audio audio { max-width: 100%; }
 .article__audio figcaption { font-size: var(--t-xs); color: var(--ink-soft); }
 
-/* Плейсхолдер YouGlish — обычная контурная кнопка: до нажатия ничего не грузится. */
-.article__yg { display: inline-flex; align-items: center; gap: var(--s-2); }
-.article__yg svg { color: var(--speak); flex: none; }
-.article__yg-word { font-weight: 550; }
-/* Открытый виджет прячет плейсхолдер атрибутом hidden — а display выше его перебил бы. */
-.article__yg[hidden] { display: none; }
-/* Пока грузится скрипт — спиннер на месте ▶ (design.md, «Движение»); кнопка не бледнеет: она не выключена, а ждёт. */
-.article__yg--busy:disabled { opacity: 1; cursor: progress; }
-.article__yg--busy svg {
-    border-radius: 50%; border: 1.5px solid var(--rule); border-top-color: var(--speak);
-    animation: spinner 0.8s linear infinite;
-}
-.article__yg--busy svg path { display: none; }
+/* Место виджета YouGlish: до него — «Загружаю…» одной строкой (design.md, «Компоновка экрана»). */
+.article__yg > .muted { margin: 0; }
 
 /* Открытый виджет: наше сверху (управление, субтитр), их iframe снизу. Лежит на фоне строки, а он
    меняется — поэтому своя подложка, как «Как лучше» в разборе ответа. */
@@ -50,7 +39,35 @@
 .yg__bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-1); }
 .yg__controls { margin-left: auto; display: flex; align-items: center; gap: var(--s-1); }
 /* Акцент у подписи слова — мельче её. */
-.yg__accent { margin-left: var(--s-1); font-size: 0.6875rem; letter-spacing: 0.04em; opacity: 0.7; }
+/* Акцент — мелким индексом у слова: различает пункты, но не спорит со словом. */
+.yg__accent { margin-left: 1px; font-size: 0.5rem; line-height: 0; vertical-align: sub; opacity: 0.7; }
+/* Переключатель слов: без рамок, окно на три слова. Лента и подложка выбранного едут 200ms
+   той же кривой, что раскрытие строки (design.md, «Движение») — смена слова видна, а не перескакивает. */
+.yg__words { display: inline-flex; align-items: center; }
+.yg__step {
+    width: var(--s-3); height: var(--s-5); padding: 0; border: 0; border-radius: var(--radius);
+    display: inline-flex; align-items: center; justify-content: center;
+    background: transparent; color: var(--ink-soft); cursor: pointer;
+}
+.yg__step:hover:not(:disabled) { color: var(--ink); }
+.yg__step:disabled { opacity: 0.35; cursor: default; }
+/* Ширина окна постоянная — по самому широкому окну из трёх слов: стрелки не ездят с лентой. */
+.yg__window { overflow: hidden; }
+.yg__track { position: relative; display: flex; transition: transform 200ms cubic-bezier(0.2, 0, 0, 1); }
+.yg__pill {
+    position: absolute; top: 0; bottom: 0; left: 0;
+    background: var(--paper-deep); border-radius: var(--radius);
+    transition: transform 200ms cubic-bezier(0.2, 0, 0, 1), width 200ms cubic-bezier(0.2, 0, 0, 1);
+}
+/* position — чтобы слово лежало над подложкой; вес у всех один: выбор не меняет ширину слов. */
+.yg__opt {
+    position: relative; padding: 1px 3px; border: 0; background: transparent;
+    font: inherit; font-size: var(--t-xs); color: var(--ink-soft); white-space: nowrap; cursor: pointer;
+    transition: color 120ms, opacity 200ms cubic-bezier(0.2, 0, 0, 1);
+}
+.yg__opt--out { opacity: 0; pointer-events: none; }
+.yg__opt:hover { color: var(--ink); }
+.yg__opt--on { color: var(--ink); }
 .yg__word { font-weight: 550; }
 .yg__speed { margin-inline: var(--s-2); }
 /* Место на две строки: субтитры приходят и уходят, высота виджета не меняется. Текст прижат вниз —

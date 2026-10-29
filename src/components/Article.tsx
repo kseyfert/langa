@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, type MouseEvent } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '@/components/Icon';
 import type { YouglishItem } from '@/server/catalog/article';
@@ -77,11 +77,71 @@ function captionParts(caption: string): string[] {
     return text.split(/\[\[\[(.*?)\]\]\]/);
 }
 
+/** Сколько слов видно в переключателе; остальные — за краем окна. */
+const WORDS_VISIBLE = 3;
+
+/**
+ * Переключатель слов: окно на WORDS_VISIBLE слов, выбранное по возможности в середине. Смена слова —
+ * подложка выбранного и лента едут к новому месту (transition в CSS), а не перескакивают. Шаг к
+ * соседнему слову — треугольники на краях: не шевроны, как у кнопок примеров справа.
+ */
+function WordPicker({ items, pick, onPick }: { items: YouglishItem[]; pick: number; onPick: (i: number) => void }) {
+    const n = items.length;
+    const off = Math.max(0, Math.min(pick - 1, n - WORDS_VISIBLE));
+    const last = Math.min(off + WORDS_VISIBLE, n) - 1;
+    const opts = useRef<(HTMLButtonElement | null)[]>([]);
+    const [geo, setGeo] = useState<{ x: number; w: number; px: number; pw: number } | null>(null);
+    const steps = n > WORDS_VISIBLE;
+
+    // До отрисовки: сдвиг ленты и подложка — по замеру слов, ширина у них разная. Окно — по самому
+    // широкому из возможных окон, постоянное: стрелки по краям не ездят вместе с лентой;
+    // тройка поуже стоит в нём по центру.
+    useLayoutEffect(() => {
+        const els = opts.current.slice(0, n) as HTMLButtonElement[];
+        const span = (a: number, b: number) => els[b].offsetLeft + els[b].offsetWidth - els[a].offsetLeft;
+        let w = 0;
+        for (let o = 0; o + WORDS_VISIBLE <= n || o === 0; o++) w = Math.max(w, span(o, Math.min(o + WORDS_VISIBLE, n) - 1));
+        setGeo({ x: els[off].offsetLeft - (w - span(off, last)) / 2, w, px: els[pick].offsetLeft, pw: els[pick].offsetWidth });
+    }, [n, off, last, pick]);
+
+    return (
+        <span className="yg__words">
+            {steps && (
+                <button type="button" className="yg__step" title="Предыдущее слово" aria-label="Предыдущее слово"
+                    disabled={pick === 0} onClick={() => onPick(pick - 1)}>
+                    <svg width="8" height="8" viewBox="0 0 8 8" aria-hidden="true"><path d="M6 1L2 4l4 3z" fill="currentColor" /></svg>
+                </button>
+            )}
+            <span className="yg__window" style={geo ? { width: geo.w } : undefined}>
+                <span className="yg__track" role="radiogroup" aria-label="Слово" style={geo ? { transform: `translateX(${-geo.x}px)` } : undefined}>
+                    {geo && <span className="yg__pill" style={{ transform: `translateX(${geo.px}px)`, width: geo.pw }} />}
+                    {items.map((it, i) => (
+                        // Слова вне трёх видимых — без Tab (фокус прокрутил бы окно мимо сдвига ленты) и прозрачные:
+                        // окно шире узкой тройки, и соседнее слово иначе выглядывало бы обрезанным.
+                        <button key={i} ref={(el) => { opts.current[i] = el; }} type="button" role="radio" aria-checked={pick === i}
+                            tabIndex={i >= off && i <= last ? 0 : -1}
+                            className={`yg__opt${pick === i ? ' yg__opt--on' : ''}${i < off || i > last ? ' yg__opt--out' : ''}`} onClick={() => onPick(i)}>
+                            {it.label}
+                            {it.accent && <sub className="yg__accent">{it.accent}</sub>}
+                        </button>
+                    ))}
+                </span>
+            </span>
+            {steps && (
+                <button type="button" className="yg__step" title="Следующее слово" aria-label="Следующее слово"
+                    disabled={pick === n - 1} onClick={() => onPick(pick + 1)}>
+                    <svg width="8" height="8" viewBox="0 0 8 8" aria-hidden="true"><path d="M2 1l4 3-4 3z" fill="currentColor" /></svg>
+                </button>
+            )}
+        </span>
+    );
+}
+
 /**
  * Виджет на список слов (абзац из ссылок YouGlish): переключатель слов в шапке, выбрано первое.
  * Скорость одна на виджет и переживает смену слова и примера.
  */
-function Youglish({ YG, items, onClose }: { YG: YGApi; items: YouglishItem[]; onClose: () => void }) {
+function Youglish({ YG, items }: { YG: YGApi; items: YouglishItem[] }) {
     const frame = useRef<HTMLDivElement>(null);
     const widget = useRef<YGWidget | null>(null);
     const [pick, setPick] = useState(0);
@@ -89,8 +149,6 @@ function Youglish({ YG, items, onClose }: { YG: YGApi; items: YouglishItem[]; on
     const [total, setTotal] = useState<number | null>(null);
     const [speed, setSpeed] = useState(1);
     const speedRef = useRef(speed);
-    // Акцент — у подписи, только если в списке они разные: иначе он ничего не различает.
-    const accents = new Set(items.map((i) => i.accent)).size > 1;
 
     useEffect(() => {
         // widget.js заменяет свой элемент через outerHTML — поэтому ему отдаётся не узел React, а вложенный.
@@ -139,17 +197,12 @@ function Youglish({ YG, items, onClose }: { YG: YGApi; items: YouglishItem[]; on
         <div className="yg">
             <div className="yg__bar">
                 {items.length > 1 ? (
-                    <span className="choice yg__words" role="radiogroup" aria-label="Слово">
-                        {items.map((it, i) => (
-                            <button key={i} type="button" role="radio" aria-checked={pick === i}
-                                className={`choice__opt${pick === i ? ' choice__opt--on' : ''}`} onClick={() => setPick(i)}>
-                                {it.label}
-                                {accents && it.accent && <span className="yg__accent">{it.accent.toUpperCase()}</span>}
-                            </button>
-                        ))}
-                    </span>
+                    <WordPicker items={items} pick={pick} onPick={setPick} />
                 ) : (
-                    <span className="yg__word">{items[0].label}</span>
+                    <span className="yg__word">
+                        {items[0].label}
+                        {items[0].accent && <sub className="yg__accent">{items[0].accent}</sub>}
+                    </span>
                 )}
                 {/* Управление — одной группой у правого края: не влезло рядом со словами — переносится целиком. */}
                 <span className="yg__controls">
@@ -173,9 +226,6 @@ function Youglish({ YG, items, onClose }: { YG: YGApi; items: YouglishItem[]; on
                             </button>
                         ))}
                     </span>
-                    <button type="button" className="icon-btn" title="Свернуть" aria-label="Свернуть" onClick={onClose}>
-                        <Icon name="cancel" />
-                    </button>
                 </span>
             </div>
             {/* Место — всегда на две строки: субтитры меняются, а виджет не прыгает. Текст прижат вниз, к видео. */}
@@ -192,53 +242,50 @@ function Youglish({ YG, items, onClose }: { YG: YGApi; items: YouglishItem[]; on
     );
 }
 
-type Open = { key: number; host: HTMLElement; btn: HTMLButtonElement; items: YouglishItem[] };
+type Open = { key: number; host: HTMLElement; items: YouglishItem[] };
 
 /**
  * Статья юнита (catalog-spec.md, «Статья юнита»): HTML готовит на сервере renderArticle. Здесь — только
- * плейсхолдеры YouGlish: по нажатию на месте плейсхолдера встаёт наш виджет вокруг их видео, × сворачивает обратно.
+ * виджеты YouGlish: на место .article__yg виджет встаёт сам, когда место видно (строка раскрыта). Раньше —
+ * нет: каждый виджет тратит поиск из дневной квоты YouGlish, а свёрнутых статей на странице десятки.
  */
 export function Article({ html }: { html: string }) {
+    const box = useRef<HTMLDivElement>(null);
     const [YG, setYG] = useState<YGApi | null>(null);
     const [open, setOpen] = useState<Open[]>([]);
 
-    const onClick = async (e: MouseEvent<HTMLDivElement>) => {
-        const btn = (e.target as Element).closest<HTMLButtonElement>('.article__yg');
-        if (!btn || btn.disabled) return;
-        const items = JSON.parse(btn.dataset.ygItems ?? '[]') as YouglishItem[];
-        if (!items.length) return;
-        btn.disabled = true;
-        btn.classList.add('article__yg--busy');
-        try {
-            setYG(await loadYouglish());
-            // Плейсхолдер прячется, а не удаляется: × возвращает его на место.
-            const host = document.createElement('div');
-            btn.after(host);
-            btn.hidden = true;
-            setOpen((list) => [...list, { key: ++widgets, host, btn, items }]);
-        } catch (err) {
-            btn.title = err instanceof Error ? err.message : String(err);
-        } finally {
-            btn.disabled = false;
-            btn.classList.remove('article__yg--busy');
-        }
-    };
-
-    const close = (o: Open) => {
-        setOpen((list) => list.filter((x) => x !== o));
-        // Хост убирается после того, как React снимет портал.
-        requestAnimationFrame(() => o.host.remove());
-        o.btn.hidden = false;
-        o.btn.focus();
-    };
+    useEffect(() => {
+        const slots = [...box.current!.querySelectorAll<HTMLElement>('.article__yg')];
+        if (!slots.length) return;
+        // Свёрнутая строка — высота 0 под overflow: hidden: место не пересекает окно, пока строку не раскроют.
+        const io = new IntersectionObserver((entries) => {
+            for (const e of entries) {
+                if (!e.isIntersecting) continue;
+                io.unobserve(e.target);
+                const host = e.target as HTMLElement;
+                const items = JSON.parse(host.dataset.ygItems ?? '[]') as YouglishItem[];
+                if (!items.length) continue;
+                loadYouglish().then(
+                    (api) => {
+                        setYG(api);
+                        host.replaceChildren();
+                        setOpen((list) => [...list, { key: ++widgets, host, items }]);
+                    },
+                    (err) => {
+                        host.firstElementChild!.textContent = err instanceof Error ? err.message : String(err);
+                    },
+                );
+            }
+        }, { threshold: 0.1 });
+        slots.forEach((s) => io.observe(s));
+        return () => io.disconnect();
+    }, [html]);
 
     return (
         <>
             {/* Статью пишет сам пользователь; сырой HTML в ней renderArticle показывает текстом. */}
-            <div className="article" onClick={onClick} dangerouslySetInnerHTML={{ __html: html }} />
-            {YG && open.map((o) => createPortal(
-                <Youglish YG={YG} items={o.items} onClose={() => close(o)} />, o.host, o.key,
-            ))}
+            <div ref={box} className="article" dangerouslySetInnerHTML={{ __html: html }} />
+            {YG && open.map((o) => createPortal(<Youglish YG={YG} items={o.items} />, o.host, o.key))}
         </>
     );
 }

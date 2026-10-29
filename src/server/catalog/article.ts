@@ -83,14 +83,9 @@ function youglishList(tokens: Token[]): YouglishItem[] | null {
 const escape = (s: string) =>
     s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-/** Значок ▶ — тот же путь, что play в Icon.tsx: символ ▶ на части систем рисуется эмодзи. */
-const PLAY = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3.2v9.6L12.6 8z"/></svg>';
-
-/** Плейсхолдер YouGlish: виджет и скрипт грузит по нажатию Article.tsx, список слов — в data-yg-items. */
+/** Место виджета YouGlish: его ставит Article.tsx, когда место видно; список слов — в data-yg-items. */
 function youglishHtml(items: YouglishItem[]): string {
-    const words = items.map((i) => escape(i.label)).join(' · ');
-    return `<p><button type="button" class="btn article__yg" data-yg-items="${escape(JSON.stringify(items))}">`
-        + `${PLAY}<span><span class="article__yg-word">${words}</span> — в живой речи (YouGlish)</span></button></p>\n`;
+    return `<div class="article__yg" data-yg-items="${escape(JSON.stringify(items))}"><p class="muted">Загружаю…</p></div>\n`;
 }
 
 /** caption — текст ссылки; у голого URL он равен адресу, и подписи нет. YouGlish — youglishHtml. */

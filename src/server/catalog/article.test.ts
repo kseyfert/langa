@@ -37,15 +37,14 @@ test('аудио с upload.wikimedia.org → <audio>, подпись — тек�
     assert.equal(embedFor('https://example.com/ship.mp3'), null);
 });
 
-test('YouGlish → плейсхолдер со словом и акцентом, без скрипта', () => {
+test('YouGlish → место виджета со словом и акцентом, без скрипта', () => {
     assert.deepEqual(embedFor('https://youglish.com/pronounce/thought/english/uk'), { kind: 'youglish', word: 'thought', accent: 'uk' });
     assert.deepEqual(embedFor('https://youglish.com/pronounce/good%20luck/english'), { kind: 'youglish', word: 'good luck', accent: null });
     assert.equal(embedFor('https://youglish.com/pronounce/thought/french'), null);
     assert.equal(embedFor('https://youglish.com/pronounce/thought/english/xx'), null);
     const html = renderArticle('https://youglish.com/pronounce/thought/english/uk');
     assert.deepEqual(ygItems(html), [{ word: 'thought', accent: 'uk', label: 'thought' }]);
-    assert.match(html, /<button type="button" class="btn article__yg" data-yg-items=/);
-    assert.match(html, /thought<\/span> — в живой речи \(YouGlish\)/);
+    assert.match(html, /<div class="article__yg" data-yg-items=/);
     assert.doesNotMatch(html, /<script|widget\.js/);
 });
 
@@ -53,8 +52,7 @@ test('YouGlish: абзац из ссылок — один виджет со сп
     // Подписанные ссылки через « · »: подпись — текст ссылки.
     const signed = renderArticle(`[made](${yg('made')}) · [mad](${yg('mad')}) · [pain](${yg('pain')}) · [pan](${yg('pan')})`);
     assert.deepEqual(ygItems(signed), ['made', 'mad', 'pain', 'pan'].map((w) => ({ word: w, accent: 'uk', label: w })));
-    assert.match(signed, /made · mad · pain · pan<\/span> — в живой речи \(YouGlish\)/);
-    assert.equal((signed.match(/<button/g) ?? []).length, 1);
+    assert.equal((signed.match(/article__yg/g) ?? []).length, 1);
     // Голые URL через пробел и через запятую: подпись — слово из адреса.
     assert.deepEqual(ygItems(renderArticle(`${yg('ship')} ${yg('sheep')}`)), [
         { word: 'ship', accent: 'uk', label: 'ship' }, { word: 'sheep', accent: 'uk', label: 'sheep' },
