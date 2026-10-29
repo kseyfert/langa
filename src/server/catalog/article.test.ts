@@ -17,7 +17,7 @@ test('YouTube: watch, youtu.be, t и start → iframe youtube-nocookie', () => {
     assert.deepEqual(embedFor('https://youtube.com/watch?v=dQw4w9WgXcQ&t=1m30s'), { kind: 'youtube', id: 'dQw4w9WgXcQ', start: 90 });
     assert.deepEqual(embedFor('https://m.youtube.com/watch?v=dQw4w9WgXcQ&start=42'), { kind: 'youtube', id: 'dQw4w9WgXcQ', start: 42 });
     const html = renderArticle('Посмотри:\n\nhttps://youtu.be/dQw4w9WgXcQ?t=90\n');
-    assert.match(html, /<iframe src="https:\/\/www\.youtube-nocookie\.com\/embed\/dQw4w9WgXcQ\?start=90"[^>]* loading="lazy"/);
+    assert.match(html, /<iframe data-src="https:\/\/www\.youtube-nocookie\.com\/embed\/dQw4w9WgXcQ\?start=90"/);
     assert.doesNotMatch(html, /<a /);
 });
 

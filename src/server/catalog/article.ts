@@ -88,12 +88,16 @@ function youglishHtml(items: YouglishItem[]): string {
     return `<div class="article__yg" data-yg-items="${escape(JSON.stringify(items))}"><p class="muted">Загружаю…</p></div>\n`;
 }
 
-/** caption — текст ссылки; у голого URL он равен адресу, и подписи нет. YouGlish — youglishHtml. */
+/**
+ * caption — текст ссылки; у голого URL он равен адресу, и подписи нет. YouGlish — youglishHtml.
+ * У видео адрес в data-src: src ставит Article.tsx, когда видео видно. loading=lazy не спасает — свёрнутые
+ * строки высотой 0 стоят рядом, и браузер грузит iframe всех статей страницы разом.
+ */
 function embedHtml(e: Exclude<Embed, { kind: 'youglish' }>, caption: string | null): string {
     switch (e.kind) {
         case 'youtube': {
             const src = `https://www.youtube-nocookie.com/embed/${e.id}${e.start ? `?start=${e.start}` : ''}`;
-            return `<div class="article__video"><iframe src="${src}" title="${escape(caption ?? 'YouTube')}" loading="lazy" `
+            return `<div class="article__video"><iframe data-src="${src}" title="${escape(caption ?? 'YouTube')}" `
                 + 'allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" '
                 + 'referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe></div>\n';
         }

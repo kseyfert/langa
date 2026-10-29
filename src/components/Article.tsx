@@ -246,8 +246,9 @@ type Open = { key: number; host: HTMLElement; items: YouglishItem[] };
 
 /**
  * Статья юнита (catalog-spec.md, «Статья юнита»): HTML готовит на сервере renderArticle. Здесь — только
- * виджеты YouGlish: на место .article__yg виджет встаёт сам, когда место видно (строка раскрыта). Раньше —
- * нет: каждый виджет тратит поиск из дневной квоты YouGlish, а свёрнутых статей на странице десятки.
+ * встроенное, которое грузится, когда его место видно (строка раскрыта): видео получает src, на место
+ * .article__yg встаёт виджет YouGlish. Раньше — нет: свёрнутых статей на странице десятки, их видео
+ * грузились бы все разом, а каждый виджет тратит поиск из дневной квоты YouGlish.
  */
 export function Article({ html }: { html: string }) {
     const box = useRef<HTMLDivElement>(null);
@@ -255,7 +256,7 @@ export function Article({ html }: { html: string }) {
     const [open, setOpen] = useState<Open[]>([]);
 
     useEffect(() => {
-        const slots = [...box.current!.querySelectorAll<HTMLElement>('.article__yg')];
+        const slots = [...box.current!.querySelectorAll<HTMLElement>('.article__yg, iframe[data-src]')];
         if (!slots.length) return;
         // Свёрнутая строка — высота 0 под overflow: hidden: место не пересекает окно, пока строку не раскроют.
         const io = new IntersectionObserver((entries) => {
@@ -263,6 +264,10 @@ export function Article({ html }: { html: string }) {
                 if (!e.isIntersecting) continue;
                 io.unobserve(e.target);
                 const host = e.target as HTMLElement;
+                if (host instanceof HTMLIFrameElement) {
+                    host.src = host.dataset.src!;
+                    continue;
+                }
                 const items = JSON.parse(host.dataset.ygItems ?? '[]') as YouglishItem[];
                 if (!items.length) continue;
                 loadYouglish().then(
