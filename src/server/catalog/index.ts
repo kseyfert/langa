@@ -19,6 +19,7 @@ export type Unit = {
     title: string;
     summaryRu: string;
     guide: string;
+    article: string;
     buildsOn: number[];
     reviewed: boolean;
     started: boolean;

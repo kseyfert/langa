@@ -1,0 +1,38 @@
+/* Статья юнита — общий компонент: в раскрытой строке каталога, позже в разминке сессии.
+   Тот же тихий вид, что у guide, но текст для человека: курсив — не ошибка, а выделение. */
+.article { font-size: var(--t-sm); }
+.article > * { margin: 0; }
+.article > * + * { margin-top: var(--s-2); }
+.article h2, .article h3 {
+    font-size: var(--t-xs); font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--ink-soft);
+}
+.article > * + h2, .article > * + h3 { margin-top: var(--s-3); }
+.article ul, .article ol { padding-left: var(--s-4); }
+/* Курсив запрещён (design.md) — выделение весом. */
+.article em { font-style: normal; font-weight: 550; }
+.article code { font-family: var(--font-data); font-size: var(--t-xs); }
+.article blockquote { border-left: 2px solid var(--rule); padding-left: var(--s-3); color: var(--ink-soft); }
+.article a { color: var(--speak); }
+
+/* Видео — 16:9 по ширине колонки статьи; фон виден, пока iframe грузится. */
+.article__video { aspect-ratio: 16 / 9; background: var(--paper-deep); border-radius: var(--radius); overflow: hidden; }
+.article__video iframe { display: block; width: 100%; height: 100%; border: 0; }
+
+/* Звук: системный плеер и подпись справа в строку. */
+.article__audio { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-3); }
+.article__audio audio { max-width: 100%; }
+.article__audio figcaption { font-size: var(--t-xs); color: var(--ink-soft); }
+
+/* Плейсхолдер YouGlish — обычная контурная кнопка: до нажатия ничего не грузится. */
+.article__yg { display: inline-flex; align-items: center; gap: var(--s-2); }
+.article__yg svg { color: var(--speak); flex: none; }
+.article__yg-word { font-weight: 550; }
+/* Пока грузится скрипт — спиннер на месте ▶ (design.md, «Движение»); кнопка не бледнеет: она не выключена, а ждёт. */
+.article__yg--busy:disabled { opacity: 1; cursor: progress; }
+.article__yg--busy svg {
+    border-radius: 50%; border: 1.5px solid var(--rule); border-top-color: var(--speak);
+    animation: spinner 0.8s linear infinite;
+}
+.article__yg--busy svg path { display: none; }
+.article__yg-widget { border-radius: var(--radius); overflow: hidden; }

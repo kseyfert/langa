@@ -1,6 +1,7 @@
 import { marked } from 'marked';
 import { notFound } from 'next/navigation';
 import { getWorkspace, hasTasks, listUnits, type Unit, type Workspace } from '@/server/catalog';
+import { renderArticle } from '@/server/catalog/article';
 import { UnitMap } from '@/components/UnitMap';
 import { unitMapSections } from '@/components/unitMapSections';
 import { workspaceContent } from '@/server/content';
@@ -112,6 +113,7 @@ export default async function WorkspacePage({ params }: { params: Promise<{ id: 
                                             number={u.number}
                                             title={u.title}
                                             summaryRu={u.summaryRu}
+                                            articleHtml={u.article.trim() ? renderArticle(u.article) : null}
                                             guideHtml={u.guide.trim() ? marked.parse(u.guide, { async: false }) : null}
                                             deps={depsOf(u)}
                                             rating={ratings.get(u.id) ?? null}

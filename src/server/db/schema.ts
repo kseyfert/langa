@@ -34,6 +34,8 @@ export const units = pgTable(
         title: text('title').notNull(),
         summaryRu: text('summary_ru').notNull().default(''),
         guide: text('guide').notNull().default(''),
+        // Статья для человека (как произносить, видео, звук); guide — для промптов. На hasTasks не влияет.
+        article: text('article').notNull().default(''),
         buildsOn: bigint('builds_on', { mode: 'number' }).array().notNull().default(sql`'{}'`),
         reviewed: boolean('reviewed').notNull().default(false),
         // Взят ли юнит в работу.

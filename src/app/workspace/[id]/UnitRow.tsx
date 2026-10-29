@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useId, useRef, useState, useTransition } from 'react';
+import { Article } from '@/components/Article';
 import { Icon } from '@/components/Icon';
 import { unitStatus } from '@/components/unitStatus';
 import { AnyExercise } from '@/components/exercises/AnyExercise';
@@ -28,6 +29,8 @@ type Props = {
     number: number | null;
     title: string;
     summaryRu: string;
+    /** Статья для человека, уже отрендеренная на сервере (renderArticle); null — статьи нет. */
+    articleHtml: string | null;
     /** guide, уже отрендеренный на сервере; null — описания нет. */
     guideHtml: string | null;
     deps: Dep[];
@@ -41,7 +44,7 @@ type Props = {
     types: string[];
 };
 
-export function UnitRow({ id: unitId, number, title, summaryRu, guideHtml, deps, rating, started: startedInit, hasTasks, types }: Props) {
+export function UnitRow({ id: unitId, number, title, summaryRu, articleHtml, guideHtml, deps, rating, started: startedInit, hasTasks, types }: Props) {
     const [open, setOpen] = useState(false);
     const id = useId();
     const row = useRef<HTMLLIElement>(null);
@@ -157,10 +160,11 @@ export function UnitRow({ id: unitId, number, title, summaryRu, guideHtml, deps,
                             ))}
                         </p>
                     )}
+                    {articleHtml && <Article html={articleHtml} />}
                     {guideHtml ? (
                         // guide пишет сам пользователь, чужого HTML там нет.
                         <div className="guide" dangerouslySetInnerHTML={{ __html: guideHtml }} />
-                    ) : (
+                    ) : !articleHtml && (
                         <p className="hint muted">Описания пока нет</p>
                     )}
                 </div>

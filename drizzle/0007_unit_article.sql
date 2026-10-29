@@ -1,0 +1,1 @@
+ALTER TABLE "units" ADD COLUMN "article" text DEFAULT '' NOT NULL;
